@@ -5,7 +5,7 @@ defmodule WotexHome.MixProject do
 
   @ex_maude_version "0.5.0"
   @wotex_udp_ref "dde1837f03f88a847ba5a0ec4479711a5ff1cf96"
-  @profiles_ref "ba8ea373244ce57987f47a731b8eca3ccae9b45f"
+  @profiles_ref "687a5cd70267fa47dbfb36e28eccad6ef2964fdf"
   @booking_ref "25ad04548c01e5a24c5505acfbe063550d3efaa0"
 
   def project do
@@ -49,6 +49,7 @@ defmodule WotexHome.MixProject do
       wotex: @profiles_ref,
       wotex_runtime: @profiles_ref,
       wotex_profiles: @profiles_ref,
+      wotex_binding_mqtt: @profiles_ref,
       ex_booking: @booking_ref
     }
 
@@ -56,7 +57,8 @@ defmodule WotexHome.MixProject do
     do: %{
       wotex: "packages/wotex",
       wotex_runtime: "packages/wotex-runtime",
-      wotex_profiles: "packages/wotex-profiles"
+      wotex_profiles: "packages/wotex-profiles",
+      wotex_binding_mqtt: "packages/wotex-binding-mqtt"
     }
 
   defp deps do
@@ -70,6 +72,7 @@ defmodule WotexHome.MixProject do
       producer_dep(:wotex, "wotex"),
       producer_dep(:wotex_runtime, "wotex-runtime"),
       producer_dep(:wotex_profiles, "wotex-profiles"),
+      producer_dep(:wotex_binding_mqtt, "wotex-binding-mqtt"),
       local_or_git(
         :ex_booking,
         "../ex_booking",

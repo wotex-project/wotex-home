@@ -34,6 +34,12 @@ defmodule HomeAbsentReaderSeams do
                identity["profiles_runtime_sha256"]
              ])
 
+    witness = JSON.decode!(File.read!("test/fixtures/profiles/historical-runtime.json"))
+    assert {:ok, retained} = WotexHome.Profiles.RetainedSource.decode(witness["source_document"])
+    assert retained.sha256 == witness["source_sha256"]
+    assert retained.reader_basis_sha256 == witness["reader_basis_sha256"]
+    assert retained.policy_sha256 == witness["policy_sha256"]
+
     refute Code.ensure_loaded?(Wotex.Profiles.Contract)
 
     assert {:error, :runtime_artifact_unavailable} =

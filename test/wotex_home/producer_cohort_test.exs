@@ -18,10 +18,57 @@ defmodule WotexHome.ProducerCohortTest do
                  :wotex -> Wotex.JSON
                  :wotex_runtime -> Wotex.Runtime
                  :wotex_profiles -> Wotex.Profiles.Contract
+                 :wotex_binding_mqtt -> Wotex.Binding.MQTT.JSONProjection
                  :ex_booking -> ExBooking.RRule
                  :wotex_udp -> Wotex.UDP
                end
              )
+    end
+  end
+
+  test "locked MQTT producer preserves exact values and retained metadata under the Home OTP lane" do
+    alias Wotex.Binding.MQTT.{Delivery, JSONProjection}
+    alias Wotex.Runtime.Codec.JSON, as: ExactJSON
+
+    {:ok, delivery} =
+      Delivery.new(~s({"a":9007199254740993.1,"b":18446744073709551615}),
+        topic: "samples/value",
+        qos: 2,
+        retain: true
+      )
+
+    for {path, expected} <- [
+          {["a"], %{"type" => "decimal", "coefficient" => "90071992547409931", "exponent" => -1}},
+          {["b"], %{"type" => "uint", "value" => "18446744073709551615"}}
+        ] do
+      selector = %{"topic" => "samples/value", "path" => path}
+      assert :ok = JSONProjection.validate_selector(selector)
+
+      assert {:ok, ^expected, %{topic: "samples/value", qos: 2, retained: true}} =
+               JSONProjection.project(delivery, selector)
+    end
+
+    assert {:error, :unsupported_value} = ExactJSON.decode("1e32768")
+    token = "1e" <> String.duplicate("0", 126)
+    assert {:ok, %{"coefficient" => "1", "exponent" => 0}} = ExactJSON.decode(token)
+    assert {:error, :output_limit} = ExactJSON.decode(token <> "0")
+    {:ok, invalid} = Delivery.new("private-canary invalid JSON", topic: "other/value")
+    assert :ignore = JSONProjection.project(invalid, %{"topic" => "samples/value", "path" => []})
+
+    assert {:error, %Wotex.Binding.MQTT.Error{code: :json_invalid_input, details: %{}} = error} =
+             JSONProjection.project(invalid, %{"topic" => "other/value", "path" => []})
+
+    refute inspect(error) =~ "private-canary"
+  end
+
+  test "firmware and root lockfiles retain the same exact owned cohort" do
+    root = Mix.Dep.Lock.read("mix.lock")
+    firmware = Mix.Dep.Lock.read("native/nerves/mix.lock")
+
+    for app <- [:wotex, :wotex_runtime, :wotex_profiles, :wotex_binding_mqtt] do
+      ref = WotexHome.MixProject.source_pins()[app]
+      assert {:git, "https://github.com/wotex-project/wotex.git", ^ref, _} = root[app]
+      assert root[app] == firmware[app]
     end
   end
 

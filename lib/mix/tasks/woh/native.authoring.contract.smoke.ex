@@ -33,7 +33,19 @@ defmodule Woh.Tool.NativeAuthoringContractSmoke do
     }
 
     valid =
-      valid ++ [one.("valid-runtime", wrap.(put_in(base, ["summary", "producer"], runtime)))]
+      valid ++
+        for {name, revision} <- [
+              {"valid-runtime-predecessor", runtime["source_revision"]},
+              {"valid-runtime-current", WotexHome.MixProject.source_pins()[:wotex]},
+              {"valid-runtime-other", String.duplicate("f", 40)}
+            ] do
+          one.(
+            name,
+            wrap.(
+              put_in(base, ["summary", "producer"], Map.put(runtime, "source_revision", revision))
+            )
+          )
+        end
 
     bad = [
       Map.put(base, "extra", true),
@@ -60,7 +72,17 @@ defmodule Woh.Tool.NativeAuthoringContractSmoke do
       put_in(
         base,
         ["summary", "producer"],
-        Map.put(runtime, "source_revision", String.duplicate("0", 40))
+        Map.put(runtime, "source_revision", String.duplicate("A", 40))
+      ),
+      put_in(
+        base,
+        ["summary", "producer"],
+        Map.put(runtime, "source_revision", String.duplicate("0", 41))
+      ),
+      put_in(
+        base,
+        ["summary", "producer"],
+        Map.put(runtime, "source_revision", String.duplicate("0", 39))
       )
     ]
 

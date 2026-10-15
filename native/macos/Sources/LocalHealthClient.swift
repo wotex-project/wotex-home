@@ -1722,7 +1722,8 @@ enum LocalHealthClient {
         let runtime = ["core_runtime_sha256", "runtime_runtime_sha256", "profiles_runtime_sha256"]
         guard Set(producer.keys) == Set(runtime + ["format", "source_revision"]),
               producer["format"] as? String == "wotex-home.profile-producer-runtime@1",
-              producer["source_revision"] as? String == "ba8ea373244ce57987f47a731b8eca3ccae9b45f" else { return false }
+              let revision = producer["source_revision"] as? String, revision.utf8.count == 40,
+              revision.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }) else { return false }
         return runtime.allSatisfy { (producer[$0] as? String).map(profileDigest) == true }
     }
 

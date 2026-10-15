@@ -189,7 +189,10 @@ model; it does not create a second path to a device.
 
 The repository pins Elixir and OTP in `.tool-versions`. Mix selects released
 ExMaude 0.5.0 from Hex and exact WoTEx UDP, core/Runtime/Profiles and ExBooking
-Git commits in `mix.lock`. The [producer adoption record](docs/provenance/producer-cohort-adoption-2026-10.md)
+plus MQTT Git commits in `mix.lock`. The [MQTT cohort contract](docs/specs/mqtt-producer-cohort-v1.md)
+and its evidence distinguish the exact local candidate source from clean remote
+availability; the newly selected WoTEx commit requires the user's manual push.
+The [producer adoption record](docs/provenance/producer-cohort-adoption-2026-10.md)
 distinguishes available library APIs from installed profile/source configuration.
 Set `WOTEX_HOME_PATH_DEPS=1` explicitly for sibling development checkouts;
 CI and ordinary builds use the locked sources. ExMaude’s Hex archive has no

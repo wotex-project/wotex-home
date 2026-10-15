@@ -55,7 +55,11 @@ defmodule WotexHome.InstalledProfileRuntimeTest do
     for bad <- [
           Map.merge(runtime, archive),
           Map.put(runtime, "extra", true),
-          Map.put(runtime, "source_revision", String.duplicate("a", 40)),
+          Map.put(runtime, "source_revision", String.duplicate("a", 39)),
+          Map.put(runtime, "source_revision", String.duplicate("A", 40)),
+          Map.put(runtime, "source_revision", String.duplicate("g", 40)),
+          Map.put(runtime, "source_revision", String.duplicate("a", 41)),
+          Map.put(runtime, "source_revision", nil),
           Map.put(runtime, "format", "unknown"),
           Map.put(runtime, "core_runtime_sha256", String.duplicate("A", 64)),
           %ReaderSelection{inputs: %{}, data: %{}}
@@ -67,6 +71,43 @@ defmodule WotexHome.InstalledProfileRuntimeTest do
     changed = Map.put(runtime, "core_runtime_sha256", String.duplicate("0", 64))
     assert ProducerIdentity.valid?(changed)
     assert {:error, :stale_profile_runtime} = ProducerIdentity.check_current(changed)
+  end
+
+  test "predecessor runtime wire and retained-source witnesses stay historical without becoming current" do
+    witness = fixture("historical-runtime")
+    producer = witness["producer"]
+    assert producer["source_revision"] != WotexHome.MixProject.source_pins()[:wotex]
+    assert ProducerIdentity.valid?(producer)
+    assert ProducerIdentity.values(producer) == witness["wire"]
+    assert JSON.encode!(ProducerIdentity.values(producer)) == witness["wire_document"]
+    assert {:ok, ^producer} = ProducerIdentity.from_wire(witness["wire"])
+    assert {:error, :stale_profile_runtime} = ProducerIdentity.check_current(producer)
+    assert {:ok, source} = WotexHome.Profiles.RetainedSource.decode(witness["source_document"])
+    assert source.inputs["reader"]["installed"]["producer"] == producer
+    assert source.sha256 == witness["source_sha256"]
+    assert source.reader_basis_sha256 == witness["reader_basis_sha256"]
+    assert source.policy_sha256 == witness["policy_sha256"]
+    summary = fixture("external-inspections")["temperature"]["result"]["envelope"]
+    summary = Map.put(summary, "producer", producer)
+    assert EnvelopeSummary.valid?(summary)
+    assert {:ok, ^summary} = EnvelopeSummary.from_wire(EnvelopeSummary.values(summary))
+    reader = source.inputs["reader"]
+
+    assert {:error, :stale_profile_runtime} =
+             ReaderSelection.new(reader["installed"], reader["capture"], reader["reader_limits"])
+
+    assert {:error, :stale_profile_runtime} =
+             AuthoringContract.export(
+               reader["installed"],
+               fixture("authoring-mechanics")["temperature"]["limits"]
+             )
+
+    for revision <- [String.duplicate("0", 40), String.duplicate("f", 40)] do
+      historical = Map.put(producer, "source_revision", revision)
+      assert ProducerIdentity.valid?(historical)
+      assert {:ok, ^historical} = ProducerIdentity.from_wire(ProducerIdentity.values(historical))
+      assert {:error, :stale_profile_runtime} = ProducerIdentity.check_current(historical)
+    end
   end
 
   test "two independent families install actual runtime basis and reject forged current assertions" do
