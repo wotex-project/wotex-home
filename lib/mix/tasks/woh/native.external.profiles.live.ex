@@ -3,7 +3,7 @@ defmodule Woh.Tool.NativeExternalProfileLive do
 
   alias Woh.Tool.{Command, NativeFixture}
   alias WotexHome.{Authority, Durable.Store}
-  alias WotexHome.LocalAPI.Server
+  alias WotexHome.LocalAPI.{Client, Frame, Server}
 
   alias WotexHome.Profiles.{
     AuthoringObject,
@@ -69,6 +69,61 @@ defmodule Woh.Tool.NativeExternalProfileLive do
 
       {:error, reason} ->
         Mix.raise("native external-profile #{category}/#{expected} Store read failed: #{reason}")
+    end
+  end
+
+  defp revision_race(root, executable, socket, credential, store, category, receipt) do
+    path = Path.join(root, "race-#{category}.sock")
+
+    {:ok, listener} =
+      :gen_tcp.listen(0, [:binary, active: false, ifaddr: {:local, String.to_charlist(path)}])
+
+    File.chmod!(path, 0o600)
+
+    domain =
+      if category == "catalogue", do: "external_profiles", else: "external_inspection_status"
+
+    before = revision(store)
+
+    proxy =
+      Task.async(fn ->
+        for operation <- ["controller_identity", domain, "controller_identity"] do
+          {:ok, peer} = :gen_tcp.accept(listener, 5000)
+
+          try do
+            {:ok, <<size::unsigned-big-32>>} = :gen_tcp.recv(peer, 4, 5000)
+            {:ok, body} = :gen_tcp.recv(peer, size, 5000)
+            {:ok, request} = Frame.decode_request(body)
+            ^operation = request["operation"]
+            {:ok, response} = Client.request(socket, request)
+
+            if operation == domain do
+              {:ok, _, _} = Store.provision_principal(store, "race:#{category}", ["read"], [])
+            end
+
+            {:ok, frame} = Frame.encode_response(response)
+            :ok = :gen_tcp.send(peer, frame)
+          after
+            :gen_tcp.close(peer)
+          end
+        end
+
+        :ok
+      end)
+
+    try do
+      if category == "catalogue" do
+        read(executable, path, credential, category, "guard", 1)
+      else
+        original(executable, path, credential, category, receipt)
+      end
+
+      :ok = Task.await(proxy, 10_000)
+      true = revision(store) == before + 1
+    after
+      if Process.alive?(proxy.pid), do: Task.shutdown(proxy, :brutal_kill)
+      :gen_tcp.close(listener)
+      File.rm(path)
     end
   end
 
@@ -241,6 +296,8 @@ defmodule Woh.Tool.NativeExternalProfileLive do
             do: read(executable, socket, credential, kind, "missing", 1, "absent:read")
 
         ^before = revision(store)
+        revision_race(root, executable, socket, credential, store, "catalogue", inspected)
+        revision_race(root, executable, socket, credential, store, "inspection", inspected)
 
         {:ok, target_revoke} =
           Store.change_external_target(
