@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.27. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.28. Updated: 2026-10-15. Status: accepted target.
 Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection and measured native external-input review context.
 Evidence: finite software subset; full acceptance cases remain open.
 
@@ -342,3 +342,9 @@ coverage; four isolated Store probes reject closing byte drift across all runtim
 groups. Installation/revoke, proactive withdrawal and current collection remain
 open. Linux-only execution, physical qualification and complete composed execution
 retain their separate obligations.
+
+The input successor also fixes computed withdrawal capacity before live
+installation: every prospective installed head reserves one exact withdrawal
+history row and its bytes. Durable losses retire affected slots in lexical order
+inside the cause's Store transaction; failures roll back the cause and the whole
+batch. Historical quotas and original receipts retain their existing meanings.

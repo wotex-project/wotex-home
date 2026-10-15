@@ -1,6 +1,6 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.12. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.13. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition,
 signed-review verifier, retained codecs, schema-38 history/migration/recovery and
@@ -474,6 +474,32 @@ normalizes malformed domain data to corrupt_external_inputs; prospective
 capacity returns external_input_capacity and propagates actual SQL errors.
 These historical primitives do not authenticate a caller or install a package.
 
+The same collaborator's retirement_reserve(db, excluded_slot) returns
+{:ok, %{history_rows: count, bytes: count}} for the exact prospective withdrawal
+footprint of currently installed heads. excluded_slot is null (Elixir nil) or one
+valid {target_id, capability_key} tuple that a new user change will replace.
+Each included head charges one history row and the UTF-8 byte size of its exact
+retained outcome re-encoded with action withdraw. No user operation or receipt is
+reserved. Invalid exclusion is invalid_external_input; malformed retained heads
+are corrupt_external_inputs; SQL failures propagate. This computed read retains
+no reservation row, lease or authority, and does not require live producers.
+
+withdraw_invalidated(db) runs only inside the owning Store transaction after its
+durable mutations and schedule invalidation, before final history validation and
+COMMIT. Schema 38 examines installed heads in lexical target/key order and finds
+each first applicable retained loss through the current global revision. For
+each affected slot, append one withdrawal journal/history row, increment its
+generation, retain its last install_revision and exact package, and mark its head
+revoked. Allocate new global revisions in that lexical order; immutable cause
+receipts keep their original revisions. No affected head is omitted and no user
+operation is created. Schemas 4–37 are unchanged; unsupported/unreadable versions
+refuse corrupt_external_inputs. With no applicable loss it writes nothing.
+Unrelated loss events and transient owner/runtime absence create no withdrawal.
+Quota or counter exhaustion refuses external_input_capacity or revision_exhausted
+and rolls back the entire owning change as a policy denial. Any withdrawal SQL
+or graph failure rolls back the cause and all affected withdrawals and fences
+the writer. A later retry cannot retain half of a retirement batch.
+
 Outcome has exactly format wotex-home.external-input-result@1, action, target_id,
 capability_key, definition_sha256 and package_document; install retains its exact
 package, revoke/withdraw retain the last installed package and definition identity.
@@ -523,6 +549,19 @@ combined input/outcome UTF-8 bytes across operations and history are at most
 16777216. Check inclusive prospective count/byte totals before preparation and
 inside the transaction. Original replay precedes capacity charging. Capacity
 refuses external_input_capacity; it does not evict a no-repeat original.
+
+New install/revoke admission additionally charges the computed retirement reserve
+for every installed head after that prospective change. A new install therefore
+needs its actual operation/history bytes plus one extra history row and the exact
+withdraw outcome bytes; replacement removes the old slot's reserve and charges
+the new one. Revoke removes its slot's reserve but still charges its own actual
+operation/history bytes. Repeat admission before preparation and in SQL, after
+original lookup. New installation generations stop at signed-64 maximum minus
+one, reserving the next generation for retirement. No schema change or altered
+historical codec follows: capacity/5 and historical validation retain their actual
+row/byte ceilings, so retained originals remain readable independently of this
+write-admission reserve. Mandatory withdrawal consumes the reserved footprint;
+it does not charge a user operation or require a fresh source/key/runtime.
 
 **EI-01 — Install once against the actual current basis.** Recheck actor/grant,
 authority/maintenance, slot CAS, complete target/source/reader/declaration and

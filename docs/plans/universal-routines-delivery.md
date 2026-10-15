@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.21. Updated: 2026-10-15. Accepted build order; implementation and
+Version: 0.1.22. Updated: 2026-10-15. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -318,7 +318,10 @@ successor. Current status and remaining order:
    Bounded native review context is implemented with independent caller/author
    grants and repeated private-source/runtime checks. Focused actual Store
    restart, timeout, source drift and corruption probes plus four isolated runtime
-   group drift cases pass. Implement original-first install/revoke and atomic
+   group drift cases pass. The accepted write contract computes one exact
+   withdrawal reserve per prospective installed head and retires complete batches
+   with their durable cause, preserving original receipts and historical quotas.
+   Implement original-first install/revoke and atomic
    maintenance/author/target withdrawal before exposing installed current use.
 3. Implement Store-owned complete requested-scope collection from actual private
    custody, committed original pointer and live consumed lifetime. Exercise
