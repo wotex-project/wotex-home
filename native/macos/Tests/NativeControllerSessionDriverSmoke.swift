@@ -77,7 +77,23 @@ struct NativeControllerSessionDriverSmoke {
             do { _ = try await controller.readAuthoring(.original(.review, 1, "review:1")); throw DriverAssertion.failed(#line) }
             catch NativeControllerDriverError.clockUnavailable {}
             do { _ = try await controller.prepareAuthoring(kind: .import, originalURL: URL(fileURLWithPath: "/missing-original"), payloadURL: nil); throw DriverAssertion.failed(#line) }
-            catch NativeControllerDriverError.unavailable {}
+            catch NativeControllerDriverError.clockUnavailable {}
+            let signed = NativeControllerSessionDriver(certificateClock: { _ = source.capture(); throw NativeControllerTLSError.tlsClockUncertain },
+                directory: metadata, local: NativeControllerLocalReadClient(capture: { source.capture() }, socket: { socket }))
+            await signed.reload()
+            let missingFile = URL(fileURLWithPath: "/fixture/missing-authoring-input")
+            let operations: [@MainActor () async throws -> Void] = [
+                { _ = try await signed.prepareAuthoringDataImport(kind: .source, url: missingFile) },
+                { _ = try await signed.prepareManualDraftImport(missingFile) },
+                { _ = try await signed.loadMappingEditorContext() },
+                { _ = try await signed.prepareAuthoringReview(candidateEpoch: 1, candidateOperation: "candidate:fixture", evidenceURL: missingFile) },
+                { _ = try await signed.prepareAuthoring(kind: .import, originalURL: missingFile, payloadURL: missingFile) },
+            ]
+            for operation in operations {
+                do { try await operation(); throw DriverAssertion.failed(#line) }
+                catch NativePairedSessionError.custody(.denied) {}
+                try require(source.captures == captures && !signed.busy)
+            }
             try require(source.captures == captures && !application.health.canStagePower(thing))
             try require(association.access.permissions.contains("control:ordinary"))
             application.health.stagePower(thing, on: true)

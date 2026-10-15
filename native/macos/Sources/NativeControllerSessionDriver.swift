@@ -135,8 +135,33 @@ final class NativeControllerSessionDriver: ObservableObject {
         guard let certificateClock else { throw NativeControllerDriverError.clockUnavailable }
         return try await NativePairedControllerSession.selected(expected: original, clock: certificateClock)
     }
+    private var pairedSelected: Bool {
+        if let snapshot, case .remote = snapshot.document.selection { return true }; return false
+    }
+    private func pairedAuthoring<Value: Sendable>(_ operation: @escaping @Sendable (NativePairedAuthoringBasis, Data) throws -> Value) async throws -> (Value, NativeControllerAssociationSnapshot, UInt64, ContinuousClock.Instant) {
+        return try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot, case .remote = selected.document.selection else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let capturedGeneration = generation, session = try await self.selected(selected)
+            let basis = NativePairedAuthoringBasis(association: session.association, scope: session.scope)
+            do {
+                let result = try await session.perform { try operation(basis, $0) }
+                try await session.current()
+                try current(selected, generation: capturedGeneration, checkMetadata: false); try session.deliveryCurrent()
+                return (result, selected, capturedGeneration, session.viewDeliveryDeadline)
+            } catch {
+                try await session.current()
+                try current(selected, generation: capturedGeneration, checkMetadata: false)
+                throw error
+            }
+        }
+    }
+    private func pairedPreparation(_ operation: @escaping @Sendable (NativePairedAuthoringBasis, Data) throws -> NativePairedAuthoringPreparation) async throws -> NativeAuthoringPreparedDecision {
+        let (value, selection, generation, deadline) = try await pairedAuthoring(operation)
+        return NativeAuthoringPreparedDecision(paired: value, selection: selection, generation: generation, readDeadline: deadline)
+    }
     func readHome() async throws -> NativeHomeRead {
-        try await metadataChecked { try await homeForSelection() }
+        return try await metadataChecked { try await homeForSelection() }
     }
     private func metadataChecked<Value: Sendable>(_ read: () async throws -> Value) async throws -> Value {
         do { return try await read() }
@@ -194,7 +219,7 @@ final class NativeControllerSessionDriver: ObservableObject {
         return NativeHomeRead(health: health, view: view, overrides: overrides, localCredential: local ? credential : nil)
     }
     func readThing(target: String, probe: Bool) async throws -> (HomeThingInspection, HomeThingRefresh?) {
-        try await metadataChecked { try await thingForSelection(target: target, probe: probe) }
+        return try await metadataChecked { try await thingForSelection(target: target, probe: probe) }
     }
     private func thingForSelection(target: String, probe: Bool) async throws -> (HomeThingInspection, HomeThingRefresh?) {
         guard !busy, !needsReload, let original = snapshot else { throw NativeControllerDriverError.unavailable }
@@ -239,7 +264,7 @@ final class NativeControllerSessionDriver: ObservableObject {
         return (view, refreshed)
     }
     func readExternalReport(target: String, key: String) async throws -> HomeExternalReport {
-        try await metadataChecked {
+        return try await metadataChecked {
             guard !busy, !needsReload, let original = snapshot else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let originalGeneration = generation
@@ -299,7 +324,9 @@ final class NativeControllerSessionDriver: ObservableObject {
                 let session = try await selected(original)
                 paired = session
                 result = try await session.perform { credential in
-                    try Self.authoring(request, socket: "", credential: credential, identity: session.scope.identity)
+                    try NativePairedAuthoringClient.scoped(NativePairedAuthoringBasis(association: session.association, scope: session.scope), credential: credential) {
+                        try Self.authoring(request, socket: "", credential: credential, identity: session.scope.identity)
+                    }
                 }
             }
             if let paired { try await paired.current() }
@@ -309,7 +336,7 @@ final class NativeControllerSessionDriver: ObservableObject {
         }
     }
     func readAuthoringContract() async throws -> HomeAuthoringContractRead {
-        try await metadataChecked {
+        return try await metadataChecked {
             guard !busy, !needsReload, let original = snapshot else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let originalGeneration = generation
@@ -327,7 +354,9 @@ final class NativeControllerSessionDriver: ObservableObject {
                 let session = try await selected(original)
                 paired = session
                 result = try await session.perform { credential in
-                    try Self.authoringContract(socket: "", credential: credential, identity: session.scope.identity)
+                    try NativePairedAuthoringClient.scoped(NativePairedAuthoringBasis(association: session.association, scope: session.scope), credential: credential) {
+                        try Self.authoringContract(socket: "", credential: credential, identity: session.scope.identity)
+                    }
                 }
             }
             if let paired { try await paired.current() }
@@ -338,7 +367,15 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
 
     func prepareAuthoringDataImport(kind: HomeAuthoringObjectKind, url: URL) async throws -> NativeAuthoringPreparedDecision {
-        try await metadataChecked {
+        if pairedSelected {
+            let operation = "authoring:data:" + UUID().uuidString.lowercased()
+            return try await pairedPreparation { basis, credential in
+                try NativePairedAuthoringClient.data(basis, credential: credential, kind: kind, operation: operation) {
+                    try NativeAuthoringFiles.read(url, maximum: kind.maximumBytes)
+                }
+            }
+        }
+        return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
@@ -369,7 +406,7 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
 
     func loadGenerationContext() async throws -> NativeGenerationContext {
-        try await metadataChecked {
+        return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
@@ -389,7 +426,7 @@ final class NativeControllerSessionDriver: ObservableObject {
         return NativeGenerationDecision(original: original, context: context, previous: nil)
     }
     func loadGenerationWorkspace(_ entries: [NativeGenerationWorkspaceEntry]) async throws -> NativeGenerationWorkspaceEntry? {
-        try await metadataChecked {
+        return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
@@ -431,7 +468,7 @@ final class NativeControllerSessionDriver: ObservableObject {
         } else { guard capture.nativeReference == nil else { throw LocalHealthError.nativeGuardConflict } }
     }
     func readGeneration(_ entry: NativeGenerationWorkspaceEntry) async throws -> (HomeGenerationStatus?, HomeGenerationStatus?) {
-        try await metadataChecked {
+        return try await metadataChecked {
             guard !entry.custody.isPaired, !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
@@ -454,7 +491,7 @@ final class NativeControllerSessionDriver: ObservableObject {
         }
     }
     func prepareGenerationAttempt(_ entry: NativeGenerationWorkspaceEntry, feedbackConsent: Bool) async throws -> NativeGenerationDecision {
-        try await metadataChecked {
+        return try await metadataChecked {
             guard !entry.custody.isPaired, !busy, !needsReload, let selected = snapshot, selected.document.selection == .local, !entry.cancellationPending else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
@@ -499,7 +536,7 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
     func submitGeneration(_ decision: NativeGenerationDecision, workspace: NativeGenerationWorkspaceCoordinator,
                           journal: NativePendingCoordinator) async throws -> NativeGenerationWorkspaceEntry {
-        try await metadataChecked {
+        return try await metadataChecked {
             let context = decision.context
             guard decision.previous?.custody.isPaired != true, !busy, !needsReload, snapshot == context.selection, generation == context.generation, journal.canStart else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
@@ -541,7 +578,7 @@ final class NativeControllerSessionDriver: ObservableObject {
         }
     }
     func cancelGeneration(_ entry: NativeGenerationWorkspaceEntry, workspace: NativeGenerationWorkspaceCoordinator, retry: Bool) async throws -> NativeGenerationWorkspaceEntry {
-        try await metadataChecked {
+        return try await metadataChecked {
             guard !entry.custody.isPaired, !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
@@ -576,7 +613,7 @@ final class NativeControllerSessionDriver: ObservableObject {
     // separate, explicit actions in the shared pending recovery panel.
     func restoreGenerationPending(_ entry: NativeGenerationWorkspaceEntry, workspace: NativeGenerationWorkspaceCoordinator,
                                   journal: NativePendingCoordinator) async throws {
-        try await metadataChecked {
+        return try await metadataChecked {
             guard !entry.custody.isPaired, !busy, !needsReload, let selected = snapshot, selected.document.selection == .local,
                   journal.canStart, !entry.cancellationPending else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
@@ -607,7 +644,7 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
 
     func prepareGeneratedDraftAssessment(_ entry: NativeGenerationWorkspaceEntry, instruction: String) async throws -> NativeAuthoringPreparedDecision {
-        try await metadataChecked {
+        return try await metadataChecked {
             guard !entry.custody.isPaired, !busy, !needsReload, let selected = snapshot, selected.document.selection == .local,
                   let attempt = entry.attempts.last else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
@@ -655,7 +692,16 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
 
     func loadMappingEditorContext() async throws -> NativeMappingEditorContext {
-        try await metadataChecked {
+        if pairedSelected {
+            let (value, selection, generation, deadline) = try await pairedAuthoring { basis, credential in
+                let read = try NativePairedAuthoringClient.contract(basis, credential: credential)
+                return (try HomeMappingGrammar.parse(read.contract), read)
+            }
+            guard ContinuousClock.now < deadline else { throw NativePendingError.outcomeUnknown }
+            return NativeMappingEditorContext(grammar: value.0, contract: value.1.contract, identity: value.1.identity,
+                selection: selection, generation: generation, readDeadline: deadline)
+        }
+        return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
@@ -676,7 +722,15 @@ final class NativeControllerSessionDriver: ObservableObject {
         try await prepareManualDraftImport(context: context, payloadLoader: { try fields.payload(grammar: context.grammar) })
     }
     private func prepareManualDraftImport(context: NativeMappingEditorContext?, payloadLoader: @escaping @Sendable () throws -> Data) async throws -> NativeAuthoringPreparedDecision {
-        try await metadataChecked {
+        if pairedSelected {
+            if let context { guard context.selection == snapshot, context.generation == generation else { throw NativeControllerDriverError.unavailable } }
+            let operation = "authoring:draft:" + UUID().uuidString.lowercased()
+            return try await pairedPreparation { basis, credential in
+                try NativePairedAuthoringClient.draft(basis, credential: credential, operation: operation,
+                    expectedBasis: context?.grammar.basis, payload: payloadLoader)
+            }
+        }
+        return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             if let context {
                 guard context.selection == selected, context.generation == generation else { throw NativeControllerDriverError.unavailable }
@@ -709,13 +763,21 @@ final class NativeControllerSessionDriver: ObservableObject {
     func submitManualDraftImport(_ prepared: NativeAuthoringPreparedDecision, journal: NativePendingCoordinator) async throws -> NativeOwnedManualDraft {
         guard prepared.original.kind == .import, prepared.manualBasis != nil,
               let object = (try prepared.original.fields())["object"] as? [String: Any], object["kind"] as? String == "draft" else { throw LocalHealthError.invalidProfileRequest }
-        let receipt = try await submitAuthoring(prepared, journal: journal)
+        let delivery = try await submitAuthoringDelivery(prepared, journal: journal), receipt = delivery.receipt
         guard receipt.kind == .import, receipt.object?.kind == "draft", receipt.firstRevision != nil else { throw LocalHealthError.invalidResponse }
-        return NativeOwnedManualDraft(receipt: receipt, identity: prepared.identity, selection: prepared.selection, generation: prepared.generation)
+        return NativeOwnedManualDraft(receipt: receipt, identity: prepared.identity, selection: prepared.selection, generation: prepared.generation, delivery: delivery)
     }
 
     func prepareManualDraftAssessment(_ owned: NativeOwnedManualDraft, instruction: String, selectionURL: URL? = nil) async throws -> NativeAuthoringPreparedDecision {
-        try await metadataChecked {
+        if pairedSelected {
+            guard owned.selection == snapshot, owned.generation == generation else { throw NativeControllerDriverError.unavailable }
+            let operation = "authoring:assess:" + UUID().uuidString.lowercased()
+            return try await pairedPreparation { basis, credential in
+                try NativePairedAuthoringClient.assessment(basis, credential: credential, receipt: owned.receipt, owner: owned.identity,
+                    operation: operation, instruction: instruction) { try NativeAuthoringSelections.read(selectionURL) }
+            }
+        }
+        return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local,
                   owned.selection == selected, owned.generation == generation,
                   let summary = owned.receipt.object, summary.kind == "draft", let first = owned.receipt.firstRevision else { throw NativeControllerDriverError.unavailable }
@@ -772,6 +834,13 @@ final class NativeControllerSessionDriver: ObservableObject {
     private func prepareAuthoringReview(candidateEpoch: Int64, candidateOperation: String,
                                        contentLoader: @escaping @Sendable () throws -> [String: Any]) async throws -> NativeAuthoringPreparedDecision {
         guard candidateEpoch > 0, LocalHealthClient.profileID(candidateOperation) else { throw LocalHealthError.invalidProfileRequest }
+        if pairedSelected {
+            let operation = "authoring:review:" + UUID().uuidString.lowercased()
+            return try await pairedPreparation { basis, credential in
+                try NativePairedAuthoringClient.review(basis, credential: credential, epoch: candidateEpoch, candidateID: candidateOperation,
+                    operation: operation, content: contentLoader)
+            }
+        }
         return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
@@ -809,7 +878,21 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
 
     func prepareAuthoring(kind: HomeAuthoringOriginalKind, originalURL: URL, payloadURL: URL?) async throws -> NativeAuthoringPreparedDecision {
-        try await metadataChecked {
+        if pairedSelected {
+            return try await pairedPreparation { basis, credential in
+                try NativePairedAuthoringClient.original(basis, credential: credential, kind: kind, original: {
+                    let maximum = kind == .import ? 4096 : kind == .candidate ? 65536 : 262144
+                    return try NativeAuthoringOriginalWire.nativeJSON(NativeAuthoringFiles.read(originalURL, maximum: maximum), kind: kind)
+                }, payload: {
+                    if kind == .import {
+                        guard let payloadURL else { throw NativeAuthoringFileError.invalidFile }
+                        return try NativeAuthoringFiles.read(payloadURL, maximum: 262144)
+                    }
+                    guard payloadURL == nil else { throw NativeAuthoringFileError.invalidFile }; return nil
+                })
+            }
+        }
+        return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
@@ -841,14 +924,15 @@ final class NativeControllerSessionDriver: ObservableObject {
         }
     }
     func submitAuthoring(_ prepared: NativeAuthoringPreparedDecision, journal: NativePendingCoordinator) async throws -> HomeAuthoringOriginalRead {
-        try await metadataChecked {
+        guard prepared.paired == nil, let originalCapture = prepared.capture else { throw NativeControllerDriverError.unavailable }
+        return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local,
                   prepared.selection == selected, prepared.generation == generation, journal.canStart else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let completion = try fence.beginLocal(), local = local
             let capture = try await Task.detached {
                 let fresh = try local.capture()
-                guard fresh.bytes == prepared.capture.bytes, fresh.nativeReference == prepared.capture.nativeReference else { throw LocalHealthError.sessionChanged }
+                guard fresh.bytes == originalCapture.bytes, fresh.nativeReference == originalCapture.nativeReference else { throw LocalHealthError.sessionChanged }
                 let identity = try LocalHealthClient.fetchControllerIdentity(socketPath: local.socket(), credential: fresh.bytes)
                 try Self.nativeCapture(fresh.nativeReference, credential: fresh.bytes, identity: identity)
                 guard identity.matchesAuthority(prepared.identity), identity.revision == prepared.identity.revision else { throw LocalHealthError.nativeGuardConflict }
@@ -883,6 +967,31 @@ final class NativeControllerSessionDriver: ObservableObject {
                 }
                 throw LocalHealthError.server(reason)
             }
+        }
+    }
+    func submitAuthoringDelivery(_ prepared: NativeAuthoringPreparedDecision, journal: NativePendingCoordinator) async throws -> NativeAuthoringSubmission {
+        guard let basis = prepared.paired else {
+            return NativeAuthoringSubmission(receipt: try await submitAuthoring(prepared, journal: journal))
+        }
+        return try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot, selected == prepared.selection,
+                  generation == prepared.generation, case .remote = selected.document.selection, journal.canStart else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let session = try await self.selected(selected)
+            let fresh = NativePairedAuthoringBasis(association: session.association, scope: session.scope)
+            let metadata = NativePairedAuthoringPreparation(original: prepared.original, payload: prepared.payload,
+                identity: prepared.identity, paired: basis, manualBasis: prepared.manualBasis)
+            try await session.perform { try NativePairedAuthoringClient.validate(metadata, fresh: fresh, credential: $0) }
+            try current(selected, generation: prepared.generation, checkMetadata: false)
+            let publication = try await journal.submittingPaired(.authoring(prepared.original, prepared.payload), session: session)
+            do {
+                try current(selected, generation: prepared.generation, checkMetadata: false)
+                try publication.deliveryCurrent()
+                guard let receipt = publication.authoringReceipt else { throw NativeAuthoringDeliveryError.outcomeUnknown }
+                try NativeAuthoringMutationClient.verify(receipt, original: prepared.original)
+                try publication.deliveryCurrent()
+                return NativeAuthoringSubmission(receipt: receipt, publication: publication)
+            } catch { journal.pairedDeliveryUnconfirmed(publication); throw error }
         }
     }
     nonisolated private static func authoring(_ request: HomeAuthoringReadRequest, socket: String, credential: Data,
@@ -947,70 +1056,70 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
 }
 
-struct NativeAuthoringSelections: Sendable {
-    let sources: [NativeAuthoringObjectHandle], fixtures: [NativeAuthoringObjectHandle]
-    static func read(_ url: URL?) throws -> Self {
-        guard let url else { return Self(sources: [], fixtures: []) }
-        let bytes = try NativeAuthoringFiles.read(url, maximum: 16384)
-        try StrictLocalJSON.check(bytes, maximumDepth: 3)
-        guard let root = try JSONSerialization.jsonObject(with: bytes) as? [String: Any],
-              Set(root.keys) == Set(["source_refs", "fixture_refs"]) else { throw LocalHealthError.invalidProfileRequest }
-        func handles(_ value: Any?) throws -> [NativeAuthoringObjectHandle] {
-            guard let list = value as? [[String: Any]], list.count <= 32 else { throw LocalHealthError.invalidProfileRequest }
-            var previous = ""
-            return try list.map { item in
-                guard Set(item.keys) == Set(["object_digest", "first_revision"]),
-                      let digest = item["object_digest"] as? String, LocalHealthClient.profileDigest(digest), digest > previous,
-                      let first = LocalHealthClient.profileInteger(item["first_revision"]), first > 0 else { throw LocalHealthError.invalidProfileRequest }
-                previous = digest; return NativeAuthoringObjectHandle(digest: digest, firstRevision: first)
-            }
-        }
-        return try Self(sources: handles(root["source_refs"]), fixtures: handles(root["fixture_refs"]))
-    }
-    func verify(socket: String, credential: Data) throws {
-        var frameBytes = 0
-        for (kind, handles) in [("source", sources), ("fixture", fixtures)] {
-            for handle in handles {
-                guard let object = try NativeAuthoringReadClient.fetchObject(socketPath: socket, credential: credential, digest: handle.digest) else {
-                    throw LocalHealthError.server("authoring_object_unavailable")
-                }
-                guard object.summary.kind == kind, object.firstRevision == Int64(handle.firstRevision) else {
-                    throw LocalHealthError.server("stale_authoring_reference")
-                }
-                frameBytes += object.summary.size + 42
-                guard frameBytes <= 4194304 else { throw LocalHealthError.server("authoring_limit") }
-            }
-        }
-    }
-}
-
 struct NativeMappingEditorContext: Sendable, CustomReflectable {
     let grammar: HomeMappingGrammar
     fileprivate let contract: HomeAuthoringContractRead, identity: HomeControllerIdentity
     fileprivate let selection: NativeControllerAssociationSnapshot, generation: UInt64
+    fileprivate var readDeadline: ContinuousClock.Instant? = nil
+    func preparationDeliveryCurrent() throws {
+        guard !Task.isCancelled, readDeadline.map({ ContinuousClock.now < $0 }) != false else { throw NativePendingError.outcomeUnknown }
+    }
     var details: [String] { ["Installed mapping contract: \(contract.contractSHA)", "Current authoring basis: \(grammar.basis)", "Available bindings: \(grammar.bindings.count)"] }
     var customMirror: Mirror { Mirror(self, children: ["details": details]) }
 }
 
 struct NativeOwnedManualDraft: Sendable, CustomReflectable {
     let receipt: HomeAuthoringOriginalRead
+    private var delivery: NativeAuthoringSubmission? = nil
+    fileprivate init(receipt: HomeAuthoringOriginalRead, identity: HomeControllerIdentity, selection: NativeControllerAssociationSnapshot,
+                     generation: UInt64, delivery: NativeAuthoringSubmission? = nil) {
+        self.receipt = receipt; self.identity = identity; self.selection = selection; self.generation = generation; self.delivery = delivery
+    }
+    @MainActor func deliveryCurrent(journal: NativePendingCoordinator) throws { try delivery?.deliveryCurrent(journal: journal) }
+    @MainActor func unconfirmedDelivery(journal: NativePendingCoordinator) { delivery?.unconfirmed(journal: journal) }
     fileprivate let identity: HomeControllerIdentity, selection: NativeControllerAssociationSnapshot, generation: UInt64
     var customMirror: Mirror { Mirror(self, children: ["receipt": receipt]) }
 }
 
+struct NativeAuthoringSubmission: Sendable, CustomReflectable {
+    let receipt: HomeAuthoringOriginalRead
+    private let publication: NativePairedRecoveryPublication?
+    fileprivate init(receipt: HomeAuthoringOriginalRead, publication: NativePairedRecoveryPublication? = nil) {
+        self.receipt = receipt; self.publication = publication
+    }
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+    @MainActor func deliveryCurrent(journal: NativePendingCoordinator) throws {
+        guard let publication else { return }
+        do { try publication.deliveryCurrent() }
+        catch { journal.pairedDeliveryUnconfirmed(publication); throw error }
+    }
+    @MainActor func unconfirmed(journal: NativePendingCoordinator) { if let publication { journal.pairedDeliveryUnconfirmed(publication) } }
+}
+
 struct NativeAuthoringPreparedDecision: Sendable, CustomReflectable {
-    fileprivate let original: HomeAuthoringOriginal, payload: Data?, capture: LocalCredentialCapture
+    fileprivate let original: HomeAuthoringOriginal, payload: Data?
+    fileprivate let capture: LocalCredentialCapture?, paired: NativePairedAuthoringBasis?
+    private let readDeadline: ContinuousClock.Instant?
     fileprivate let identity: HomeControllerIdentity, selection: NativeControllerAssociationSnapshot, generation: UInt64
     fileprivate let manualBasis: String?
     fileprivate init(original: HomeAuthoringOriginal, payload: Data?, capture: LocalCredentialCapture, identity: HomeControllerIdentity,
                      selection: NativeControllerAssociationSnapshot, generation: UInt64, manualBasis: String? = nil) {
-        self.original = original; self.payload = payload; self.capture = capture; self.identity = identity
+        self.original = original; self.payload = payload; self.capture = capture; self.paired = nil; self.readDeadline = nil; self.identity = identity
         self.selection = selection; self.generation = generation; self.manualBasis = manualBasis
+    }
+    fileprivate init(paired value: NativePairedAuthoringPreparation, selection: NativeControllerAssociationSnapshot,
+                     generation: UInt64, readDeadline: ContinuousClock.Instant) {
+        original = value.original; payload = value.payload; capture = nil; paired = value.paired; identity = value.identity
+        self.selection = selection; self.generation = generation; manualBasis = value.manualBasis; self.readDeadline = readDeadline
+    }
+    func preparationDeliveryCurrent() throws {
+        guard !Task.isCancelled, readDeadline.map({ ContinuousClock.now < $0 }) != false else { throw NativePendingError.outcomeUnknown }
     }
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     var details: [String] {
         var rows = ["\(original.kind.rawValue.capitalized) · Authority \(original.epoch) · \(original.operation)",
             "Store basis: \(original.expectedRevision)", "Principal: \(identity.principalID)", "Owner: \(identity.ownerID)", "Original SHA: \(original.sha)"]
+        if let paired { rows.insert("Paired controller: " + paired.association.label, at: 0) }
         if let manualBasis { rows.append("Installed authoring basis: \(manualBasis)") }
         guard let fields = try? original.fields() else { return [] }
         if let object = fields["object"] as? [String: Any] {

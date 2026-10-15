@@ -45,7 +45,7 @@ struct NativePendingPanel: View {
                     .font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
         }
-        .confirmationDialog(confirmation.decision?.action == .acknowledgeAbsent ? "Clear if the generation original is missing?" : "Clear if the original generation outcome is unknown?",
+        .confirmationDialog(confirmation.decision?.action == .acknowledgeAbsent ? "Clear if the original request is missing?" : "Clear if the original generation outcome is unknown?",
             isPresented: Binding(get: { confirmation.decision != nil }, set: { if !$0 { confirmation.decision = nil } }),
             presenting: confirmation.decision) { decision in
                 Button(decision.action == .acknowledgeAbsent ? "Acknowledge Missing Original" : "Acknowledge Unknown Outcome") {
@@ -54,7 +54,7 @@ struct NativePendingPanel: View {
                 Button("Keep Original", role: .cancel) { confirmation.decision = nil }
             } message: { decision in
                 Text(decision.action == .acknowledgeAbsent ?
-                    "This checks existing status before clearing the pending record. A request or result may arrive later. Clearing does not stop a model or refund its budget; no new operation is sent." :
+                    (decision.entry.category == .generation ? "This checks existing status before clearing the pending record. A request or result may arrive later. Clearing does not stop a model or refund its budget; no new operation is sent." : "This checks existing status before clearing only client pending metadata. A request or result may arrive later. No operation, cancellation or rollback is sent.") :
                     "This clears the pending record only after checking an unknown outcome. A model may still be working, and a result may appear later. No new attempt is sent.")
             }
     }

@@ -1,5 +1,18 @@
 import Foundation
 
+enum NativeAuthoringRecoveryResult: Sendable {
+    case known(HomeAuthoringOriginalRead), missing, acknowledgedAbsent
+    var receipt: HomeAuthoringOriginalRead? { if case .known(let receipt) = self { return receipt }; return nil }
+    var outcome: NativePendingRecoveryOutcome {
+        switch self {
+        case .known(let receipt): return .resolved("Original authoring \(receipt.kind.rawValue) confirmed at revision \(receipt.revision). Approval and selection are separate.")
+        case .missing: return .retained("No matching result confirmed. The original request remains retained.")
+        case .acknowledgedAbsent: return .resolved("Missing authoring original acknowledged. A request or result may arrive later; no operation, cancellation or rollback was sent.")
+        }
+    }
+}
+
+
 // Closed SDK calls from the retained typed input. There is no editable request,
 // credential selection, new operation ID or approval renewal in this runner.
 enum NativePendingRecoveryOperations {
@@ -195,28 +208,36 @@ enum NativePendingRecoveryOperations {
             }
             return .resolved("Original generation attempt · \(result.state). Draft mechanics, source review and approval remain separate; this does not prove that a remote model stopped.")
         case .authoring:
-            let (original, payload) = try entry.authoringOperation()
-            let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socketPath, credential: credential)
-            guard entry.context.matches(before) else { throw LocalHealthError.nativeGuardConflict }
-            let result: HomeAuthoringOriginalRead?
-            if entry.custody.isPaired && action == .retry {
-                if let existing = try NativeAuthoringMutationClient.deliver(socketPath: socketPath, credential: credential,
-                    original: original, payload: payload, lookup: true) {
-                    result = existing
-                } else {
-                    result = try NativeAuthoringMutationClient.deliver(socketPath: socketPath, credential: credential,
-                        original: original, payload: payload, lookup: false)
-                }
-            } else {
-                result = try NativeAuthoringMutationClient.deliver(socketPath: socketPath, credential: credential,
-                    original: original, payload: payload, lookup: action == .lookup)
-            }
-            let after = try LocalHealthClient.fetchControllerIdentity(socketPath: socketPath, credential: credential)
-            guard entry.context.matches(after), after.revision >= before.revision,
-                  Int64(after.revision) >= (result?.revision ?? 0) else { throw LocalHealthError.nativeGuardConflict }
-            guard let result else { return missing }
-            return .resolved("Original authoring \(original.kind.rawValue) confirmed at revision \(result.revision). Approval and selection are separate.")
+            return try authoring(entry, credential: credential, socketPath: socketPath, action: action).outcome
         }
+    }
+    static func authoring(_ entry: NativePendingEntry, credential: Data, socketPath: String,
+                          action: NativePendingRecoveryAction, verifyLookup: Bool = false) throws -> NativeAuthoringRecoveryResult {
+        guard action.permits(entry), entry.custody.matches(credential) else { throw NativePendingError.invalidRecord }
+        if entry.custody.isPaired && NativeDomainTransportScope.current == nil { throw NativePendingError.unavailable }
+        let (original, payload) = try entry.authoringOperation()
+        let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socketPath, credential: credential)
+        guard entry.context.matches(before) else { throw LocalHealthError.nativeGuardConflict }
+        var result: HomeAuthoringOriginalRead?
+        if entry.custody.isPaired && action == .retry {
+            if let existing = try NativeAuthoringMutationClient.deliver(socketPath: socketPath, credential: credential,
+                original: original, payload: payload, lookup: true) { result = existing }
+            else { result = try NativeAuthoringMutationClient.deliver(socketPath: socketPath, credential: credential,
+                original: original, payload: payload, lookup: false) }
+        } else {
+            result = try NativeAuthoringMutationClient.deliver(socketPath: socketPath, credential: credential,
+                original: original, payload: payload, lookup: action != .retry)
+        }
+        if verifyLookup && result != nil {
+            guard let checked = try NativeAuthoringMutationClient.deliver(socketPath: socketPath, credential: credential,
+                original: original, payload: payload, lookup: true) else { throw NativeAuthoringDeliveryError.outcomeUnknown }
+            result = checked
+        }
+        let after = try LocalHealthClient.fetchControllerIdentity(socketPath: socketPath, credential: credential)
+        guard entry.context.matches(after), after.revision >= before.revision,
+              Int64(after.revision) >= (result?.revision ?? 0) else { throw LocalHealthError.nativeGuardConflict }
+        if let result { return .known(result) }
+        return action == .acknowledgeAbsent ? .acknowledgedAbsent : .missing
     }
     private static func power(_ receipt: HomeReceipt) -> NativePendingRecoveryOutcome {
         .resolved("Original request is \(receipt.disposition) at revision \(receipt.revision). This receipt does not establish observed device state.")

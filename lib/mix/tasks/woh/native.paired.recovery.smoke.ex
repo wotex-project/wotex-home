@@ -97,7 +97,12 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
         NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativeGenerationOriginalWire NativeGenerationClient NativePendingCodec NativePendingStorage NativePendingPairedCustody NativeAuthoringMutationClient NativePendingRecoveryOperations
         NativePairedPendingRecoveryOperations NativePairedRecoveryCorrespondence NativePendingCoordinator)
 
-      sources = Enum.uniq(sources ++ Woh.Tool.NativePairedRecoverySources.names())
+      sources =
+        Enum.uniq(
+          sources ++
+            Woh.Tool.NativePairedRecoverySources.names() ++
+            ~w(NativeAuthoringFiles NativeAuthoringSelections NativePairedAuthoringClient)
+        )
 
       args =
         [
@@ -344,7 +349,11 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
         {:ok, staged} = Store.revision(store)
         true = staged == 4
         transport(executable, %{input | "mode" => "authoring-existing"})
+        transport(executable, %{input | "mode" => "authoring-absence"})
         {:ok, ^staged} = Store.revision(store)
+        transport(executable, %{input | "mode" => "authoring-data"})
+        {:ok, imported} = Store.revision(store)
+        true = imported == staged + 1
 
         mode =
           if scenario == "complete",
@@ -467,7 +476,9 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
 
   defp transport(executable, input) do
     body = JSON.encode!(input)
-    timeout = if input["mode"] == "authoring-workspace", do: 30_000, else: 20_000
+
+    timeout =
+      if input["mode"] in ~w(authoring-stage authoring-workspace), do: 45_000, else: 20_000
 
     case Command.run_diagnostic(
            executable,

@@ -508,8 +508,8 @@ struct NativePendingStorageSmoke {
                 var generationAttempt = false
                 if case .generation(let original) = entry.input { generationAttempt = original.kind == .attempt }
                 for action in [NativePendingRecoveryAction.lookup, .retry, .cancelReview, .acknowledgeUnknown, .acknowledgeAbsent] {
-                    let expected = action == .lookup || action == .retry || (entry.category == .generation &&
-                        (action == .acknowledgeAbsent || (action == .acknowledgeUnknown && generationAttempt)))
+                    let expected = action == .lookup || action == .retry || action == .acknowledgeAbsent ||
+                        (action == .acknowledgeUnknown && generationAttempt)
                     try check(action.permits(entry) == expected)
                 }
                 if entry.category == .authoring { _ = try entry.authoringOperation() }

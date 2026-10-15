@@ -207,7 +207,7 @@ struct NativePairedRecoverySmoke {
             let pending = try NativePendingStorage.retaining(entry, directory: directory, expected: .empty)
             try require(pending.document.version == .v8)
             for action in [NativePendingRecoveryAction.lookup, .retry, .cancelReview, .acknowledgeUnknown, .acknowledgeAbsent] {
-                try require(action.permits(entry) == (action == .lookup || action == .retry || (input.category == .generation && action == .acknowledgeAbsent)))
+                try require(action.permits(entry) == (action == .lookup || action == .retry || action == .acknowledgeAbsent))
                 let clock = RecoveryClockProbe()
                 do { _ = try await NativePairedControllerSession.recovering(entry, action: action, pending: pending, associations: associations, clock: clock.clock); throw PairedRecoverySmokeError.failed(#line) }
                 catch NativePendingError.conflict {}
@@ -643,7 +643,9 @@ struct NativePairedRecoverySmoke {
                 let probe = AuthoringTransportProbe(base: base, dropCommitted: dropCommitted)
                 do {
                     let outcome = try NativeDomainTransportScope.$current.withValue(probe) {
-                        try NativePendingRecoveryOperations.executePaired(entry, association: association, credential: key, action: action)
+                        let result = try NativePendingRecoveryOperations.executePairedAuthoring(entry, association: association, credential: key, action: action)
+                        if let receipt = result.receipt { try NativeAuthoringMutationClient.verify(receipt, original: entry.authoringOperation().0) }
+                        return result.outcome
                     }
                     try require(expectMutation ? probe.observation.mutations > 0 : probe.observation.mutations == 0)
                     return outcome
@@ -689,30 +691,59 @@ struct NativePairedRecoverySmoke {
         }
         if mode == "authoring-stage" {
             guard let text = payload["draft"] as? String else { throw PairedRecoverySmokeError.failed(#line) }
-            let bytes = Data(text.utf8), summary = try NativeAuthoringReadClient.objectSummary(kind: "draft", payload: bytes)
-            let scope = try await remote { try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key) }
-            let imported = try authoringOriginal(["authority_epoch": scope.identity.authorityEpoch,
-                "operation_id": "op:paired-authoring-import", "expected_revision": scope.identity.revision,
-                "object": ["kind": summary.kind, "object_digest": summary.digest, "payload_sha256": summary.payloadSHA, "payload_bytes": summary.size]], kind: .import)
-            let object = try await stage("manual import") { try await submit(imported, bytes: bytes) }
-            let contract = try await stage("contract export") { try await remote { try NativeAuthoringContractClient.fetch(socketPath: "", credential: key) } }
-            var limits: [String: Any] = contract.limits.authoring.mapValues { Int($0) as Any }
-            limits["reader"] = contract.limits.reader.mapValues(Int.init)
-            let candidate = try authoringOriginal(["authority_epoch": Int(contract.epoch),
-                "operation_id": "op:paired-authoring-candidate", "expected_revision": Int(contract.revision),
-                "request": ["mode": "manual", "contract_digest": contract.contractSHA,
-                    "base_draft_ref": ["object_digest": summary.digest, "first_revision": Int(object.firstRevision!)],
-                    "source_refs": [], "fixture_refs": [], "instruction": "Assess only the retained synthetic draft.",
-                    "limits": limits]], kind: .candidate)
-            let assessed = try await stage("manual candidate") { try await submit(candidate, bytes: nil) }
+            let bytes = Data(text.utf8)
+            let initial = try await remote { try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key) }
+            let basis = NativePairedAuthoringBasis(association: association, scope: initial)
+            let draft = try await stage("selected draft preparation") { try await remote {
+                try NativePairedAuthoringClient.draft(basis, credential: key, operation: "op:paired-authoring-import") { bytes }
+            } }
+            try await remote { try NativePairedAuthoringClient.validate(draft, fresh: basis, credential: key) }
+            try require(draft.paired == basis && Mirror(reflecting: draft).children.isEmpty)
+            let object = try await stage("manual import") { try await submit(draft.original, bytes: draft.payload) }
+            let current = try await remote { try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key) }
+            let fresh = NativePairedAuthoringBasis(association: association, scope: current)
+            do { try await remote { try NativePairedAuthoringClient.validate(draft, fresh: fresh, credential: key) }; throw PairedRecoverySmokeError.failed(#line) }
+            catch LocalHealthError.nativeGuardConflict {}
+            let candidate = try await stage("selected assessment preparation") { try await remote {
+                try NativePairedAuthoringClient.assessment(fresh, credential: key, receipt: object, owner: draft.identity,
+                    operation: "op:paired-authoring-candidate", instruction: "Assess only the retained synthetic draft.") {
+                    NativeAuthoringSelections(sources: [], fixtures: [])
+                }
+            } }
+            let assessed = try await stage("manual candidate") { try await submit(candidate.original, bytes: nil) }
             try require(assessed.disposition == "compatible" && assessed.sourceReview == "not_assessed")
-            let current = try await remote { try LocalHealthClient.fetchControllerIdentity(socketPath: "", credential: key) }
-            let review = try authoringOriginal(["authority_epoch": current.authorityEpoch,
-                "operation_id": "op:paired-authoring-review", "expected_revision": current.revision,
-                "review": ["mode": "source", "candidate_ref": ["authority_epoch": Int(assessed.epoch), "operation_id": assessed.operation,
-                    "revision": Int(assessed.revision), "input_sha256": assessed.inputSHA!, "assessment_sha256": assessed.resultSHA!],
-                    "evidence": [], "unresolved_paths": ["/profile/binding"], "envelope_ref": NSNull()]], kind: .review)
-            _ = try await stage("source review") { try await submit(review, bytes: nil) }
+            let reviewScope = try await remote { try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key) }
+            let reviewBasis = NativePairedAuthoringBasis(association: association, scope: reviewScope)
+            let review = try await stage("selected review preparation") { try await remote {
+                try NativePairedAuthoringClient.review(reviewBasis, credential: key, epoch: assessed.epoch, candidateID: assessed.operation,
+                    operation: "op:paired-authoring-review") {
+                    ["mode": "source", "evidence": [], "unresolved_paths": ["/profile/binding"], "envelope_ref": NSNull()]
+                }
+            } }
+            let receipt = try await stage("source review") { try await submit(review.original, bytes: nil) }
+            try require(receipt.sourceReview == "incomplete")
+        } else if mode == "authoring-data" {
+            let pending = try NativePendingStorage.load(directory: directory)
+            guard let retained = pending.document.entries.first else { throw PairedRecoverySmokeError.failed(#line) }
+            _ = try NativePendingStorage.resolving(retained, directory: directory, expected: pending)
+            let scope = try await remote { try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key) }
+            let basis = NativePairedAuthoringBasis(association: association, scope: scope)
+            let bytes = Data("Synthetic source evidence; no hardware qualification.".utf8)
+            let prepared = try await remote {
+                try NativePairedAuthoringClient.data(basis, credential: key, kind: .source,
+                    operation: "op:paired-authoring-source") { bytes }
+            }
+            let complete = try await remote {
+                try NativePairedAuthoringClient.original(basis, credential: key, kind: .import,
+                    original: { prepared.original }, payload: { bytes })
+            }
+            try require(complete.original == prepared.original && complete.payload == bytes && complete.identity == prepared.identity)
+            try await remote { try NativePairedAuthoringClient.validate(complete, fresh: basis, credential: key) }
+            let receipt = try await submit(complete.original, bytes: complete.payload)
+            try require(receipt.object?.kind == "source" && receipt.object?.size == bytes.count)
+            let empty = try NativePendingStorage.load(directory: directory)
+            try require(empty.document.entries.isEmpty)
+            _ = try NativePendingStorage.retaining(retained, directory: directory, expected: empty)
         } else if mode.hasPrefix("authoring-workspace") || mode.hasPrefix("authoring-generation") {
             try await stage("paired workspace transport") {
                 try await workspaceTransport(mode: mode, directory: directory, association: association, key: key, clock: clock)
@@ -720,7 +751,33 @@ struct NativePairedRecoverySmoke {
         } else {
             let before = try NativePendingStorage.load(directory: directory)
             guard let entry = before.document.entries.first, entry.category == .authoring else { throw PairedRecoverySmokeError.failed(#line) }
+            if mode == "authoring-absence" {
+                guard case .resolved = try await execute(entry, .acknowledgeAbsent) else { throw PairedRecoverySmokeError.failed(#line) }
+                let cleared = try NativePendingStorage.resolving(entry, directory: directory, expected: before)
+                let (original, payload) = try entry.authoringOperation()
+                var fields = try original.fields(); fields["operation_id"] = "op:missing-authoring-review"
+                let missing = try NativeAuthoringOriginalWire.encode(fields, kind: original.kind)
+                let row = NativePendingEntry(context: entry.context, custody: entry.custody, input: .authoring(missing, payload), phase: .pending)
+                let retained = try NativePendingStorage.retaining(row, directory: directory, expected: cleared)
+                guard case .retained = try await execute(row, .lookup) else { throw PairedRecoverySmokeError.failed(#line) }
+                guard case .resolved(let detail) = try await execute(row, .acknowledgeAbsent), detail.contains("Missing authoring original") else { throw PairedRecoverySmokeError.failed(#line) }
+                let resolved = try NativePendingStorage.resolving(row, directory: directory, expected: retained)
+                _ = try NativePairedRecoveryCorrespondence.publication(of: row, outcome: .resolved(detail), before: retained, after: resolved)
+                try require(resolved.document.version == .v8 && resolved.document.entries.isEmpty)
+                _ = try NativePendingStorage.retaining(entry, directory: directory, expected: resolved)
+                return
+            }
             if mode == "authoring-revoked" {
+                let c = association.scope
+                let knownScope = HomeControllerScope(identity: HomeControllerIdentity(deploymentID: c.deployment, ownerID: c.owner,
+                    authorityEpoch: Int(c.epoch), revision: Int(c.creationRevision), principalID: c.principal), permissions: ["profile:manage"], targetIDs: [])
+                let denied = NativePairedAuthoringBasis(association: association, scope: knownScope), loader = RecoveryClockProbe()
+                do {
+                    _ = try await remote { try NativePairedAuthoringClient.data(denied, credential: key, kind: .source,
+                        operation: "op:refused-private-input") { _ = try loader.clock(); return Data("unread fixture".utf8) } }
+                    throw PairedRecoverySmokeError.failed(#line)
+                } catch LocalHealthError.server("unauthorized") {}
+                try require(loader.calls == 0)
                 do { _ = try await execute(entry, .retry); throw PairedRecoverySmokeError.failed(#line) }
                 catch LocalHealthError.server("unauthorized") {}
             } else {

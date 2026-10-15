@@ -46,6 +46,7 @@ final class HomeApplicationModel: ObservableObject {
         authoringOperations = NativeAuthoringViewModel(journal: pending,
             preparer: { try await controller.prepareAuthoring(kind: $0, originalURL: $1, payloadURL: $2) },
             sender: { try await controller.submitAuthoring($0, journal: pending) },
+            deliverySender: { try await controller.submitAuthoringDelivery($0, journal: pending) },
             draftPreparer: { try await controller.prepareManualDraftImport($0) },
             draftSender: { try await controller.submitManualDraftImport($0, journal: pending) },
             assessmentPreparer: { try await controller.prepareManualDraftAssessment($0, instruction: $1) },
@@ -104,8 +105,8 @@ final class HomeApplicationModel: ObservableObject {
             schedules.invalidateSessionView(); things.invalidateSessionView(); externalReports.invalidateSessionView(); authoring.invalidateSessionView(); authoringOperations.invalidateSessionView(); generation.invalidate()
         }
         authoring.workAllowed = { [weak self] in self?.busy == false }
-        authoring.sourceAllowed = { [weak self] in self?.controller.localSelected == true }
-        authoringOperations.workAllowed = { [weak self] in self?.busy == false && self?.controller.localSelected == true }
+        authoring.sourceAllowed = { [weak self] in self?.controller.needsReload == false }
+        authoringOperations.workAllowed = { [weak self] in self?.busy == false && self?.controller.needsReload == false }
         generation.workAllowed = { [weak self] in self?.busy == false && self?.controller.localSelected == true }
         generation.didAssess = { [weak self] in self?.authoringOperations.useGeneratedCandidate($0) }
         things.changesAllowed = { [weak self] in self?.busy == false && self?.pending.canStart == true }

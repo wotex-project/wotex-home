@@ -6,6 +6,9 @@ extension NativePendingRecoveryOperations {
     static func executePaired(_ entry: NativePendingEntry, association: NativeControllerPublicAssociation,
                               credential: Data, action: NativePendingRecoveryAction,
                               workspace: NativeGenerationWorkspaceSnapshot? = nil) throws -> NativePendingRecoveryOutcome {
+        if entry.category == .authoring {
+            return try executePairedAuthoring(entry, association: association, credential: credential, action: action).outcome
+        }
         guard let transport = NativeDomainTransportScope.current else { throw NativePendingError.unavailable }
         guard entry.custody.isPaired, entry.category != .access, action.permits(entry),
               entry.custody.matches(association: association, context: entry.context),
@@ -26,20 +29,40 @@ extension NativePendingRecoveryOperations {
                 nativeAccess: { _, _ in throw NativePendingError.unavailable })
         }
     }
+    static func executePairedAuthoring(_ entry: NativePendingEntry, association: NativeControllerPublicAssociation,
+                                      credential: Data, action: NativePendingRecoveryAction) throws -> NativeAuthoringRecoveryResult {
+        guard let transport = NativeDomainTransportScope.current else { throw NativePendingError.unavailable }
+        guard entry.category == .authoring, entry.custody.isPaired, action.permits(entry),
+              entry.custody.matches(association: association, context: entry.context), entry.custody.matches(credential) else { throw NativePendingError.invalidRecord }
+        _ = try NativePendingDocument(revision: 1, entries: [entry]).encoded()
+        let guarded = try NativePairedProfileTransport.guarding(transport, association: association, credential: credential, entry: entry)
+        return try NativeDomainTransportScope.$current.withValue(guarded) {
+            try authoring(entry, credential: credential, socketPath: "", action: action, verifyLookup: true)
+        }
+    }
 }
 
 enum NativePairedProfileTransport {
     @TaskLocal static var revisions: NativePairedScopeRevision?
     static func guarding(_ base: any NativeDomainTransport, association: NativeControllerPublicAssociation,
                          credential: Data, entry: NativePendingEntry) throws -> any NativeDomainTransport {
+        guard entry.category == .authoring || entry.category == .generation else { throw NativePendingError.invalidRecord }
+        return try guarding(base, association: association, credential: credential, context: entry.context)
+    }
+    static func guarding(_ base: any NativeDomainTransport, association: NativeControllerPublicAssociation,
+                         credential: Data, context: NativePendingContext, originalScope: HomeControllerScope? = nil) throws -> any NativeDomainTransport {
         let scope = try NativeDomainTransportScope.$current.withValue(base) {
             try LocalHealthClient.fetchControllerScope(socketPath: "", credential: credential)
         }
         try NativePairedSessionCorrespondence.check(scope, association: association)
-        try NativePairedSessionCorrespondence.checkProfileScope(scope, entry: entry)
+        try NativePairedSessionCorrespondence.checkProfileScope(scope, context: context)
+        if let originalScope {
+            guard scope.identity.matchesAuthority(originalScope.identity), scope.identity.revision >= originalScope.identity.revision,
+                  scope.permissions == originalScope.permissions, scope.targetIDs == originalScope.targetIDs else { throw NativePairedSessionError.scopeConflict }
+        }
         let revisions = revisions ?? NativePairedScopeRevision(initial: scope.identity.revision)
         try revisions.check(scope.identity.revision)
-        return PairedProfileOriginalTransport(base: base, credential: credential, association: association, entry: entry,
+        return PairedProfileOriginalTransport(base: base, credential: credential, association: association, context: context,
             initial: scope, revisions: revisions)
     }
 }
@@ -50,7 +73,7 @@ private struct PairedProfileOriginalTransport: NativeDomainTransport, CustomRefl
     let base: any NativeDomainTransport
     let credential: Data
     let association: NativeControllerPublicAssociation
-    let entry: NativePendingEntry
+    let context: NativePendingContext
     let initial: HomeControllerScope
     let revisions: NativePairedScopeRevision
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
@@ -68,7 +91,7 @@ private struct PairedProfileOriginalTransport: NativeDomainTransport, CustomRefl
             try LocalHealthClient.fetchControllerScope(socketPath: "", credential: credential)
         }
         try NativePairedSessionCorrespondence.check(scope, association: association)
-        try NativePairedSessionCorrespondence.checkProfileScope(scope, entry: entry)
+        try NativePairedSessionCorrespondence.checkProfileScope(scope, context: context)
         guard scope.permissions == initial.permissions, scope.targetIDs == initial.targetIDs,
               scope.identity.revision >= initial.identity.revision else { throw NativePairedSessionError.scopeConflict }
         try revisions.check(scope.identity.revision)

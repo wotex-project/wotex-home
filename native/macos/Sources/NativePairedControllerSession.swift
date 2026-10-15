@@ -25,9 +25,10 @@ enum NativePairedSessionError: Error, Sendable {
 enum NativePairedSessionCorrespondence {
     static func checkProfileScope(_ scope: HomeControllerScope, entry: NativePendingEntry) throws {
         guard entry.category == .authoring || entry.category == .generation else { return }
-        guard entry.context.matches(scope.identity), scope.permissions.contains("profile:manage") else {
-            throw NativePairedSessionError.scopeConflict
-        }
+        try checkProfileScope(scope, context: entry.context)
+    }
+    static func checkProfileScope(_ scope: HomeControllerScope, context: NativePendingContext) throws {
+        guard context.matches(scope.identity), scope.permissions.contains("profile:manage") else { throw NativePairedSessionError.scopeConflict }
     }
     static func check(_ scope: HomeControllerScope, association: NativeControllerPublicAssociation) throws {
         _ = try association.encoded()
@@ -214,7 +215,9 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
         guard !Task.isCancelled else { throw NativeControllerTLSError.cancelled }
         try Self.lifetime(deadline)
         return try await NativeControllerDomainClient.perform(association.peer, credential: bearer,
-            clock: clock, exchangeGuard: exchangeGuard, deadline: deadline) { [bearer] in try operation(bearer) }
+            clock: clock, exchangeGuard: exchangeGuard, deadline: deadline) { [bearer, scopeRevisions] in
+                try NativePairedProfileTransport.$revisions.withValue(scopeRevisions) { try operation(bearer) }
+            }
     }
 
     func current() async throws {
@@ -296,6 +299,19 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
             clock: clock, exchangeGuard: exchangeGuard, deadline: deadline) { [association, bearer, scopeRevisions] in
             try NativePairedProfileTransport.$revisions.withValue(scopeRevisions) {
                 try NativePendingRecoveryOperations.executePaired(entry, association: association, credential: bearer, action: action, workspace: workspace)
+            }
+        }
+    }
+
+    fileprivate func performAuthoring(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
+                                     pending: NativePendingSnapshot) async throws -> NativeAuthoringRecoveryResult {
+        guard entry.category == .authoring else { throw NativePendingError.conflict }
+        try await currentOriginal(entry, action: action, pending: pending)
+        let exchangeGuard = Self.currentGuard(expected: snapshot, association: association, custody: custody, deadline: deadline, purpose: purpose)
+        return try await NativeControllerDomainClient.perform(association.peer, credential: bearer, clock: clock,
+            exchangeGuard: exchangeGuard, deadline: deadline) { [association, bearer, scopeRevisions] in
+            try NativePairedProfileTransport.$revisions.withValue(scopeRevisions) {
+                try NativePendingRecoveryOperations.executePairedAuthoring(entry, association: association, credential: bearer, action: action)
             }
         }
     }
@@ -576,10 +592,14 @@ struct NativePairedControllerRecovery: Sendable, CustomStringConvertible, Custom
             let next = try await session.publishingCancellation(entry, action: action, pending: pending)
             current = try await continuingCancellation(pending: next)
         }
-        let outcome = try await current.perform()
+        let outcome: NativePendingRecoveryOutcome, authoringReceipt: HomeAuthoringOriginalRead?
+        if entry.category == .authoring {
+            let result = try await current.session.performAuthoring(current.entry, action: action, pending: current.pending)
+            outcome = result.outcome; authoringReceipt = result.receipt
+        } else { outcome = try await current.perform(); authoringReceipt = nil }
         let (next, updated) = try await current.session.publishing(current.entry, action: action, pending: current.pending, outcome: outcome)
         let publication = NativePairedRecoveryPublication(entry: updated, pending: next, outcome: outcome,
-            deadline: current.session.ownerDeadline)
+            authoringReceipt: authoringReceipt, deadline: current.session.ownerDeadline)
         try publication.deliveryCurrent()
         return publication
     }
@@ -589,11 +609,12 @@ struct NativePairedRecoveryPublication: Sendable, CustomReflectable {
     let entry: NativePendingEntry
     let pending: NativePendingSnapshot
     let outcome: NativePendingRecoveryOutcome
+    let authoringReceipt: HomeAuthoringOriginalRead?
     private let deadline: ContinuousClock.Instant
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     fileprivate init(entry: NativePendingEntry, pending: NativePendingSnapshot, outcome: NativePendingRecoveryOutcome,
-                     deadline: ContinuousClock.Instant) {
-        self.entry = entry; self.pending = pending; self.outcome = outcome; self.deadline = deadline
+                     authoringReceipt: HomeAuthoringOriginalRead? = nil, deadline: ContinuousClock.Instant) {
+        self.entry = entry; self.pending = pending; self.outcome = outcome; self.authoringReceipt = authoringReceipt; self.deadline = deadline
     }
     // Repeat the original lifetime after hopping to the presentation actor.
     // The caller consumes this value synchronously before changing memory/UI.

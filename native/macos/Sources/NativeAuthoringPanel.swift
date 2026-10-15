@@ -26,6 +26,7 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
     nonisolated var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     private let preparer: @Sendable (HomeAuthoringOriginalKind, URL, URL?) async throws -> NativeAuthoringPreparedDecision
     private let sender: @Sendable (NativeAuthoringPreparedDecision) async throws -> HomeAuthoringOriginalRead
+    private let deliverySender: (@Sendable (NativeAuthoringPreparedDecision) async throws -> NativeAuthoringSubmission)?
     private let draftPreparer: (@Sendable (URL) async throws -> NativeAuthoringPreparedDecision)?
     private let draftSender: (@Sendable (NativeAuthoringPreparedDecision) async throws -> NativeOwnedManualDraft)?
     private let assessmentPreparer: (@Sendable (NativeOwnedManualDraft, String) async throws -> NativeAuthoringPreparedDecision)?
@@ -65,13 +66,14 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
     @Published private(set) var busy = false
     @Published private(set) var details: [String] = []
     @Published private(set) var receipt: HomeAuthoringOriginalRead?
-    @Published private(set) var status = "Choose a complete original for local authoring. Approval and selection are separate."
+    @Published private(set) var status = "Choose a complete original under the selected controller. Approval and selection are separate."
     @Published private(set) var error: String?
     private var decision: NativeAuthoringPreparedDecision?
     private var generation: UInt64 = 0
     init(journal: NativePendingCoordinator,
          preparer: @escaping @Sendable (HomeAuthoringOriginalKind, URL, URL?) async throws -> NativeAuthoringPreparedDecision,
          sender: @escaping @Sendable (NativeAuthoringPreparedDecision) async throws -> HomeAuthoringOriginalRead,
+         deliverySender: (@Sendable (NativeAuthoringPreparedDecision) async throws -> NativeAuthoringSubmission)? = nil,
          draftPreparer: (@Sendable (URL) async throws -> NativeAuthoringPreparedDecision)? = nil,
          draftSender: (@Sendable (NativeAuthoringPreparedDecision) async throws -> NativeOwnedManualDraft)? = nil,
          assessmentPreparer: (@Sendable (NativeOwnedManualDraft, String) async throws -> NativeAuthoringPreparedDecision)? = nil,
@@ -81,7 +83,7 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
          editedReviewPreparer: (@Sendable (Int64, String, NativeAuthoringReviewContent) async throws -> NativeAuthoringPreparedDecision)? = nil,
          mappingLoader: (@Sendable () async throws -> NativeMappingEditorContext)? = nil,
          mappingPreparer: (@Sendable (NativeMappingEditorContext, NativeMappingDraftFields) async throws -> NativeAuthoringPreparedDecision)? = nil) {
-        self.journal = journal; self.preparer = preparer; self.sender = sender
+        self.journal = journal; self.preparer = preparer; self.sender = sender; self.deliverySender = deliverySender
         self.draftPreparer = draftPreparer; self.draftSender = draftSender; self.assessmentPreparer = assessmentPreparer
         self.reviewPreparer = reviewPreparer; self.dataPreparer = dataPreparer
         self.selectedAssessmentPreparer = selectedAssessmentPreparer; self.editedReviewPreparer = editedReviewPreparer
@@ -137,8 +139,19 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
         entryMode = .review; candidateEpochInput = String(value.epoch); candidateOperationInput = value.operation
         status = "Fresh manual candidate selected. Enter explicit source attribution and review."
     }
-    func invalidateSessionView() { invalidate(clearOwned: true, clearContext: true); status = "Prepare a new decision under the selected local session." }
-    func hostDidWake() { invalidate(clearOwned: true, clearContext: true); status = "Host availability changed. Prepare the original again." }
+    private func retirePrivate() {
+        invalidate(clearOwned: true, clearContext: true)
+        originalURL = nil; payloadURL = nil; draftURL = nil; dataURL = nil; selectionURL = nil; reviewURL = nil
+        instruction = ""; candidateEpochInput = ""; candidateOperationInput = ""; reviewCitations = []; reviewUnresolved = []
+        reviewEnvelopeDigest = ""; reviewEnvelopeRevision = ""; mappingFields = NativeMappingDraftFields()
+    }
+    private func retireAfterFailure(_ error: Error) {
+        if case LocalHealthError.invalidProfileRequest = error { return }
+        if error is NativeAuthoringFileError { return }
+        retirePrivate()
+    }
+    func invalidateSessionView() { retirePrivate(); status = "Prepare a new decision under the selected controller." }
+    func hostDidWake() { retirePrivate(); status = "Host availability changed. Prepare the original again." }
 
     func loadMappingContext() async {
         guard canLoadMapping, let mappingLoader else { return }
@@ -148,11 +161,13 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
         defer { busy = false }
         do {
             let value = try await mappingLoader()
+            try value.preparationDeliveryCurrent()
             guard !Task.isCancelled, current == generation else { return }
             mappingContext = value; status = "Choose an installed binding and edit the mapping. Import and assessment are separate."
         } catch {
             guard current == generation else { return }
-            self.error = "Installed mapping context unavailable. Reload the selected local session and try again."
+            retireAfterFailure(error)
+            self.error = "Installed mapping context unavailable. Reload the selected controller and try again."
         }
     }
 
@@ -173,11 +188,13 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
             else { return }
             if Task.isCancelled { invalidate(clearOwned: true, clearContext: true); return }
             guard current == generation else { return }
+            try prepared.preparationDeliveryCurrent()
             manualAssessment = owned != nil; decision = prepared; details = prepared.details
             status = manualAssessment ? "Review this separate manual assessment, then confirm." : "Review this exact draft import, then confirm. Assessment is a separate decision."
         } catch {
             guard current == generation else { return }
             if Task.isCancelled { invalidate(clearOwned: true, clearContext: true); return }
+            retireAfterFailure(error)
             if entry == .editor { mappingContext = nil; self.error = "Mapping preparation unavailable. Reload the installed context and prepare again." }
             else { self.error = error.localizedDescription }
             status = "Manual draft preparation unavailable."
@@ -193,10 +210,12 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
         do {
             let value = try await dataPreparer(kind, file)
             guard !Task.isCancelled, current == generation else { return }
+            try value.preparationDeliveryCurrent()
             decision = value; details = value.details
             status = "Review this inert data import, then confirm. Assessment and review are separate."
         } catch {
             guard current == generation else { return }
+            retireAfterFailure(error)
             self.error = error.localizedDescription; status = "Data import preparation unavailable."
         }
     }
@@ -219,10 +238,11 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
             else if entry == .file, let file, let reviewPreparer { value = try await reviewPreparer(epoch, operation, file) }
             else { throw LocalHealthError.invalidProfileRequest }
             guard !Task.isCancelled, current == generation else { return }
+            try value.preparationDeliveryCurrent()
             decision = value; details = value.details
             status = "Review this source/fixture decision, then confirm. Approval and selection are separate."
         } catch {
-            guard current == generation else { return }; self.error = error.localizedDescription; status = "Source/fixture review preparation unavailable."
+            guard current == generation else { return }; retireAfterFailure(error); self.error = error.localizedDescription; status = "Source/fixture review preparation unavailable."
         }
     }
     func prepare() async {
@@ -234,14 +254,15 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
         do {
             let value = try await preparer(requestedKind, originalURL, requestedPayload)
             guard !Task.isCancelled, current == generation else { return }
+            try value.preparationDeliveryCurrent()
             decision = value; details = value.details; status = "Review this exact original, then confirm its separate submission."
         } catch {
-            guard current == generation else { return }; self.error = error.localizedDescription; status = "Authoring preparation unavailable."
+            guard current == generation else { return }; retireAfterFailure(error); self.error = error.localizedDescription; status = "Authoring preparation unavailable."
         }
     }
     func submit() async {
         guard canSubmit, let decision else { return }
-        let current = generation
+        let current = generation, submittedMode = entryMode
         busy = true; error = nil; confirmed = false; status = "Retaining the original before submission…"
         defer { busy = false; self.decision = nil; details = [] }
         do {
@@ -249,7 +270,13 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
             var imported: NativeOwnedManualDraft?
             if entryMode == .manualDraft && !manualAssessment {
                 guard let draftSender else { throw NativeControllerDriverError.unavailable }
-                let value = try await draftSender(decision); imported = value; result = value.receipt
+                let value = try await draftSender(decision)
+                guard !Task.isCancelled, current == generation else { value.unconfirmedDelivery(journal: journal); return }
+                try value.deliveryCurrent(journal: journal); imported = value; result = value.receipt
+            } else if let deliverySender {
+                let delivery = try await deliverySender(decision)
+                guard !Task.isCancelled, current == generation else { delivery.unconfirmed(journal: journal); return }
+                try delivery.deliveryCurrent(journal: journal); result = delivery.receipt
             } else { result = try await sender(decision) }
             guard !Task.isCancelled, current == generation else { return }
             if let imported { ownedDraft = imported }
@@ -257,9 +284,10 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
             if imported != nil { status = "Draft import recorded. Prepare and confirm its manual assessment separately." }
         } catch {
             guard current == generation else { return }
+            retireAfterFailure(error)
             self.error = error.localizedDescription
             let uncertain = error is NativeAuthoringDeliveryError || !journal.canStart
-            if entryMode == .manualDraft { unconfirmed = uncertain }
+            if submittedMode == .manualDraft { unconfirmed = uncertain }
             status = uncertain ? "Authoring submission unconfirmed. Recover its original in Activity." : "Authoring submission refused. Prepare a new reviewed decision."
         }
     }
