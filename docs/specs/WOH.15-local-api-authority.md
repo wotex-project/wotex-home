@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.170. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.171. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
 now defines fresh signed authorization after human review, unchanged first originals,
@@ -50,7 +50,9 @@ all five decisions from checked snapshots and object references, with
 [Selected guided decisions](native-external-profile-guided-v1.md) now compose bounded
 operator forms, fresh selected preparation and separate confirmation, with
 [executed shared app/Store, fault/recovery and mounted layout evidence](../provenance/native-external-profile-guided-2026-10.md).
-Signed paired consumers and installed/physical qualification remain successors.
+[Paired external composition](native-paired-external-profiles-v1.md) now defines
+current scope, exact originals, sealed publication and original-association recovery;
+implementation and installed/physical qualification remain successors.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)
 defines durable root/attempt workspace custody, explicit policy/consent/budget,
