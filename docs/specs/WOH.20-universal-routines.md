@@ -1,7 +1,7 @@
 # WOH.20 — Reusable routines and the Home consumer
 
 Version: 0.1.4. Updated: 2026-10-15. Status: accepted target.
-Implementation: partial, restricted archive comparison and pure immutable-timezone join.
+Implementation: partial, restricted comparison and pure immutable-timezone/civil-calendar joins.
 Evidence: finite software subset; full acceptance cases remain open.
 
 ## Purpose, ownership and current subset
@@ -233,7 +233,9 @@ runtime adoption.
 The [temporal runtime contract](routine-temporal-runtime-v1.md) freezes the
 complete ten-application producer/dependency cohort, eleven-application Store
 guard union, v4 correspondence, historical-proof refusal and current writer
-boundaries. The distinct RCC provider has direct callback/independent-vector evidence; its
-public calculation/archive join and complete current-runtime acceptance remain
-pending. Both successors retain their separately stated implementation scope. Existing single-active admission and physical
-qualification requirements remain intact.
+boundaries. The RCC provider and public pure calendar candidate now have
+[exact archive evidence](../provenance/routines-civil-2026-10.md): all 230 local
+labels, 112 recurrence vectors and bounded ambiguity/order/refusal cases pass.
+Complete current-runtime/Store adoption remains pending. Both successors retain
+their separately stated implementation scope. Existing single-active admission
+and physical qualification requirements remain intact.

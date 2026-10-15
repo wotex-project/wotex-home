@@ -102,3 +102,8 @@ warnings. This does not select profile runtime archives or call an inventory
 inside the restricted Boolean calculation. It grants no current profile identity.
 Earlier source/360-case evidence remains historical; a changed closure requires
 fresh warnings-as-errors compilation and the unchanged comparison corpus.
+
+The [renewed civil cohort record](../provenance/routines-civil-2026-10.md) also
+records successful restricted warnings-as-errors compilation and all four tests
+including the unchanged 360 scenarios at source `167954f`. The source closure
+repair does not establish broader routine or current-runtime admission.

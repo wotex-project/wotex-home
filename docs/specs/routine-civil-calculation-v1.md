@@ -2,9 +2,9 @@
 
 Version: 0.1.1. Updated: 2026-10-15. Status: accepted target.
 Owner: WOH.20 H20-02/07/08 and H20-T7; WOH.04 owns temporal admission.
-Implementation: RCC-01–03 provider implemented; RCC-04–05/public archive join planned.
-Evidence: direct Home provider checks pass; actual Home civil archive and runtime
-adoption cases remain open.
+Implementation: RCC-01–05 pure provider/candidate and extracted archive join implemented.
+Evidence: 27 focused Home tests, 14 civil/provider archive cases and the retained
+restricted corpus pass. Runtime selection/current Store acceptance remains open.
 
 ## Purpose and dependencies
 
@@ -215,3 +215,15 @@ absence. The old RRULE provider's threefold refusal remains unchanged.
 These are direct callback checks. The current locked producer lacks the new
 public civil capability; actual public-provider construction and WRO.03/Home
 archive consumption remain separate acceptance work.
+
+## Executed complete candidate
+
+The [exact Home civil cohort](../provenance/routines-civil-2026-10.md) records
+source `167954f`, toolchains, every copied temporal source/fixture and all four
+archive digests. The candidate passes all 230 local labels and 112 recurrence
+vectors, literal multi-fold and local-date-order cases, 256 simultaneous
+alternatives, first-fold/one-shot policies, headroom and the 32-date limit.
+Closed output faults and exact producer error outcomes refuse without fallback.
+The five original SP.08 archive cases and the restricted 360-scenario corpus
+remain green. Actual dependency selection and replacing Recurrence belong to
+RTR; these finite software results do not authorize a schedule or device.
