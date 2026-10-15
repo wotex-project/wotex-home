@@ -1,6 +1,6 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.10. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.11. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition,
 signed-review verifier, retained codecs and schema-38 history/migration/recovery. Evidence:
@@ -71,6 +71,10 @@ rule:review and read plus grants for every requested target. Authenticate the
 whole scope before reading any slot; an unauthorized member refuses the entire
 call without a partial response. A signer key is not an operator bearer. No
 permission, target grant or declaration changes as a side effect of installation.
+The original selector must still have profile:manage and enroll:review, and the
+original trust approver must still have profile:manage. Each must independently
+retain an explicit grant for this target. These author checks precede private
+custody/source reads; caller permissions cannot substitute for either author.
 There is no new socket/CLI/model body accepting reports or clocks; native client
 adapters require a separately specified closed framing extension.
 
@@ -113,6 +117,19 @@ Require the actual current native ProducerIdentity assertion, matching the
 rebuilt reader/declaration. Legacy three-archive assertions remain historical
 compatibility data and cannot seed this current input context.
 
+Context preparation has a 10000 ms overall monotonic budget. Before each
+five-second source, report-owner or custody call, require at least 5000 ms
+remaining; exhaustion or owner failure refuses external_input_unavailable.
+Read verified immutable objects without allocating a retained lease. Capture the
+complete authenticated DB/source/custody/declaration/runtime basis, rebuild it
+again before returning, and require exact equality. Repeat the source and
+report-owner identities after private reads and freshly check all runtime groups
+at closing. Changed opening/closing evidence refuses external_input_basis_changed;
+absence on the opening pass refuses external_input_unavailable. Named corruption
+and SQL failures retain their owning write-fencing behavior. No partial context
+or asynchronous continuation is returned. Context creates no durable operation,
+lease, revision, input installation or physical qualification.
+
 receipt_clock is exactly the WRO six-member receipt-clock@1 floor_millisecond
 alternative. Its source_epoch is the configured live report owner's epoch;
 source_origin_us is canonical signed-64 decimal 1000 * Store.clock_origin;
@@ -120,6 +137,7 @@ target_epoch is Store.clock_epoch and target_origin_ms is 0. It is stable within
 that Store/report-owner incarnation. Refuse overflow or absent owners; never
 infer a clock pair from two processing-time samples. The report owner itself
 supplies no grant or physical qualification.
+Signed origin multiplication overflow refuses external_input_limit.
 
 The new external-input runtime identity combines four bounded inventory groups.
 Every group hashes actual complete app versions/module inventories through
