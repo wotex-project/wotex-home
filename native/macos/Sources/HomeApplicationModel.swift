@@ -106,7 +106,7 @@ final class HomeApplicationModel: ObservableObject {
             health.invalidateSessionView(); profiles.invalidateSessionView(); rules.invalidateSessionView()
             schedules.invalidateSessionView(); things.invalidateSessionView(); externalReports.invalidateSessionView(); externalProfiles.invalidate(clearReads: true); authoring.invalidateSessionView(); authoringOperations.invalidateSessionView(); generation.invalidate()
         }
-        externalProfiles.workAllowed = { [weak self] in self?.busy == false && self?.controller.localSelected == true }
+        externalProfiles.workAllowed = { [weak self] in self?.busy == false }
         authoring.workAllowed = { [weak self] in self?.busy == false }
         authoring.sourceAllowed = { [weak self] in self?.controller.needsReload == false }
         authoringOperations.workAllowed = { [weak self] in self?.busy == false && self?.controller.needsReload == false }

@@ -1,5 +1,19 @@
 import Foundation
 
+// Typed fixed-runner result; only the actual session can seal its publication.
+enum NativeExternalProfileRecoveryResult: Sendable {
+    case known(HomeExternalProfileOriginalRead), missing, acknowledgedAbsent
+    var receipt: HomeExternalProfileOriginalRead? { if case .known(let receipt) = self { return receipt }; return nil }
+    var outcome: NativePendingRecoveryOutcome {
+        switch self {
+        case .known(let receipt): return .resolved("Original external \(receipt.kind.rawValue) confirmed at revision \(receipt.revision). Current approval, target selection and observed state remain separate.")
+        case .missing: return .retained("No matching result confirmed. The original request remains retained.")
+        case .acknowledgedAbsent: return .resolved("Missing external original acknowledged. A request or result may arrive later; no operation, cancellation or rollback was sent.")
+        }
+    }
+}
+
+
 enum NativeAuthoringRecoveryResult: Sendable {
     case known(HomeAuthoringOriginalRead), missing, acknowledgedAbsent
     var receipt: HomeAuthoringOriginalRead? { if case .known(let receipt) = self { return receipt }; return nil }
@@ -47,18 +61,7 @@ enum NativePendingRecoveryOperations {
         switch entry.input {
         case .externalProfile:
             guard !entry.custody.isPaired else { throw NativePendingError.unavailable }
-            let original = try entry.externalProfileOperation()
-            let identity = try NativeExternalProfileClient.identity(socketPath: socketPath, credential: credential)
-            guard entry.context.matches(identity) else { throw LocalHealthError.nativeGuardConflict }
-            let result = try NativeExternalProfileMutationClient.deliver(socketPath: socketPath, credential: credential, original: original,
-                expectedController: identity, lookup: action != .retry)
-            if let result {
-                return .resolved("Original external \(result.kind.rawValue) confirmed at revision \(result.revision). Current approval, target selection and observed state remain separate.")
-            }
-            if action == .acknowledgeAbsent {
-                return .resolved("Missing external original acknowledged. A request or result may arrive later; no operation, cancellation or rollback was sent.")
-            }
-            return missing
+            return try external(entry, credential: credential, socketPath: socketPath, action: action).outcome
         case .schedule:
             let original = try entry.scheduleOperation()
             let result = try NativeScheduleClient.deliver(socketPath: socketPath, credential: credential, original: original,
@@ -224,6 +227,24 @@ enum NativePendingRecoveryOperations {
         case .authoring:
             return try authoring(entry, credential: credential, socketPath: socketPath, action: action).outcome
         }
+    }
+    static func external(_ entry: NativePendingEntry, credential: Data, socketPath: String,
+                         action: NativePendingRecoveryAction) throws -> NativeExternalProfileRecoveryResult {
+        guard entry.category == .externalProfile, action.permits(entry), entry.custody.matches(credential) else { throw NativePendingError.invalidRecord }
+        if entry.custody.isPaired && NativeDomainTransportScope.current == nil { throw NativePendingError.unavailable }
+        _ = try NativePendingDocument(revision: 1, entries: [entry]).encoded()
+        let original = try entry.externalProfileOperation()
+        let identity = try NativeExternalProfileClient.identity(socketPath: socketPath, credential: credential)
+        guard entry.context.matches(identity) else { throw LocalHealthError.nativeGuardConflict }
+        let result = try NativeExternalProfileMutationClient.deliver(socketPath: socketPath, credential: credential, original: original,
+            expectedController: identity, lookup: action != .retry)
+        if let result {
+            return .known(result)
+        }
+        if action == .acknowledgeAbsent {
+            return .acknowledgedAbsent
+        }
+        return .missing
     }
     static func authoring(_ entry: NativePendingEntry, credential: Data, socketPath: String,
                           action: NativePendingRecoveryAction, verifyLookup: Bool = false) throws -> NativeAuthoringRecoveryResult {

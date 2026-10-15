@@ -59,7 +59,7 @@ struct NativePendingExternalSmoke {
                 try check(original.epoch == entry.context.epoch && original.operation == entry.input.operationID)
                 try check(Mirror(reflecting: entry).children.isEmpty && Mirror(reflecting: entry.input).children.isEmpty && Mirror(reflecting: original).children.isEmpty)
                 for action in [NativePendingRecoveryAction.lookup, .retry, .cancelReview, .acknowledgeAbsent, .acknowledgeUnknown] {
-                    let expected = !entry.custody.isPaired && (action == .lookup || action == .retry || action == .acknowledgeAbsent)
+                    let expected = action == .lookup || action == .retry || action == .acknowledgeAbsent
                     try check(action.permits(entry) == expected)
                 }
             }
@@ -153,6 +153,8 @@ struct NativePendingExternalSmoke {
                     catch {}
                 }
                 try check(calls.count == before + (!entry.custody.isPaired && action.permits(entry) ? 1 : 0))
+                try check(coordinator.needsReload == (entry.custody.isPaired && action.permits(entry)))
+                if coordinator.needsReload { await coordinator.reload() }
             }
             try check(coordinator.snapshot == stored && !coordinator.needsReload && !coordinator.busy)
             try check(try NativePendingStorage.load(directory: root) == stored)

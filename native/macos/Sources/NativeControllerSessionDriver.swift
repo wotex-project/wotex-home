@@ -131,9 +131,9 @@ final class NativeControllerSessionDriver: ObservableObject {
         guard !Task.isCancelled, !needsReload, self.generation == generation, snapshot == original else { throw LocalHealthError.sessionChanged }
         if checkMetadata { try persistence.check(original) }
     }
-    private func selected(_ original: NativeControllerAssociationSnapshot) async throws -> NativePairedControllerSession {
+    private func selected(_ original: NativeControllerAssociationSnapshot, additionalCheck: @escaping @Sendable () throws -> Void = {}) async throws -> NativePairedControllerSession {
         guard let certificateClock else { throw NativeControllerDriverError.clockUnavailable }
-        return try await NativePairedControllerSession.selected(expected: original, clock: certificateClock)
+        return try await NativePairedControllerSession.selected(expected: original, clock: certificateClock, additionalCheck: additionalCheck)
     }
     private var pairedSelected: Bool {
         if let snapshot, case .remote = snapshot.document.selection { return true }; return false
@@ -999,7 +999,12 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
 
     func readExternalProfileCatalogue() async throws -> HomeExternalProfileCatalogue {
-        try await metadataChecked {
+        if pairedSelected {
+            let (value, _, _, _) = try await pairedProfile { try NativePairedExternalProfileClient.catalogue($0, credential: $1) }
+            return value
+        }
+
+        return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
@@ -1019,6 +1024,10 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
     func readExternalProfileOriginal(kind: HomeExternalProfileOriginalKind, epoch: Int64, operation: String) async throws -> HomeExternalProfileOriginalRead? {
         guard epoch > 0, LocalHealthClient.profileID(operation) else { throw LocalHealthError.invalidProfileRequest }
+        if pairedSelected {
+            let (value, _, _, _) = try await pairedProfile { try NativePairedExternalProfileClient.original($0, credential: $1, kind: kind, epoch: epoch, operation: operation) }
+            return value
+        }
         return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
@@ -1039,7 +1048,12 @@ final class NativeControllerSessionDriver: ObservableObject {
         }
     }
     func readExternalProfileSources() async throws -> HomeExternalSourceCatalogue {
-        try await metadataChecked {
+        if pairedSelected {
+            let (value, _, _, _) = try await pairedProfile { try NativePairedExternalProfileClient.sources($0, credential: $1) }
+            return value
+        }
+
+        return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
@@ -1055,6 +1069,10 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
     func prepareExternalProfile(draft: NativeExternalProfileDraft) async throws -> NativeExternalProfilePreparedDecision {
         try draft.validate()
+        if pairedSelected {
+            let (value, selection, generation, _) = try await pairedProfile { try NativePairedExternalProfileClient.prepare($0, credential: $1, draft: draft) }
+            return NativeExternalProfilePreparedDecision(paired: value, selection: selection, generation: generation)
+        }
         return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
@@ -1072,7 +1090,16 @@ final class NativeControllerSessionDriver: ObservableObject {
         }
     }
     func prepareExternalProfile(kind: HomeExternalProfileOriginalKind, originalURL: URL) async throws -> NativeExternalProfilePreparedDecision {
-        try await metadataChecked {
+        if pairedSelected {
+            let (value, selection, generation, _) = try await pairedProfile { basis, credential in
+                try NativePairedExternalProfileClient.prepare(basis, credential: credential, kind: kind) {
+                    try NativeExternalProfileOriginalWire.nativeJSON(NativeAuthoringFiles.read(originalURL, maximum: kind.nativeMaximum), kind: kind)
+                }
+            }
+            return NativeExternalProfilePreparedDecision(paired: value, selection: selection, generation: generation)
+        }
+
+        return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
@@ -1088,6 +1115,8 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
     func submitExternalProfile(_ prepared: NativeExternalProfilePreparedDecision, journal: NativePendingCoordinator) async throws -> HomeExternalProfileOriginalRead {
         try prepared.checkLifetime()
+        if let basis = prepared.paired { return try await submitPairedExternal(prepared, basis: basis, journal: journal) }
+        guard let preparedCapture = prepared.capture else { throw NativeControllerDriverError.unavailable }
         return try await withTaskCancellationHandler {
           try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local,
@@ -1097,7 +1126,7 @@ final class NativeControllerSessionDriver: ObservableObject {
             let capture = try await Task.detached {
                 try NativeLocalControllerRequestGuard.withAdditionalCheck({ try prepared.checkLifetime() }) {
                     let fresh = try local.capture()
-                    guard fresh.bytes == prepared.capture.bytes, fresh.nativeReference == prepared.capture.nativeReference else { throw LocalHealthError.sessionChanged }
+                    guard fresh.bytes == preparedCapture.bytes, fresh.nativeReference == preparedCapture.nativeReference else { throw LocalHealthError.sessionChanged }
                     let identity: HomeControllerIdentity
                     if let draft = prepared.draft {
                         let rebuilt = try NativeExternalGuidedWorkflow.prepare(draft, socket: local.socket(), credential: fresh.bytes) {
@@ -1130,27 +1159,37 @@ final class NativeControllerSessionDriver: ObservableObject {
           }
         } onCancel: { prepared.retire() }
     }
-    nonisolated private static func externalDecisionBasis(_ original: HomeExternalProfileOriginal, capture: LocalCredentialCapture, socket: String) throws -> HomeControllerIdentity {
-        let fields = try original.fields()
-        let before = try NativeExternalProfileClient.identity(socketPath: socket, credential: capture.bytes)
-        try nativeCapture(capture.nativeReference, credential: capture.bytes, identity: before)
-        let catalogue = try NativeExternalProfileClient.decodeCatalogue(LocalHealthClient.externalProfileReadTransport(socketPath: socket,
-            credential: capture.bytes, operation: "external_profiles", fields: [:]))
-        let existing = try NativeExternalProfileClient.decodeOriginal(LocalHealthClient.externalProfileReadTransport(socketPath: socket,
-            credential: capture.bytes, operation: original.kind.operation, fields: ["authority_epoch": original.epoch, "operation_id": original.operation]),
-            kind: original.kind, epoch: original.epoch, operation: original.operation, expectedInputSHA: original.sha)
-        let after = try NativeExternalProfileClient.identity(socketPath: socket, credential: capture.bytes)
-        guard existing == nil, before.matchesAuthority(after), before.revision == after.revision, catalogue.epoch == Int64(after.authorityEpoch),
-              catalogue.revision == Int64(after.revision), original.epoch == Int64(after.authorityEpoch), original.expectedRevision == Int64(after.revision) else { throw LocalHealthError.nativeGuardConflict }
-        if original.kind != .inspection {
-            let item = catalogue.items.first { $0.artifact == fields["artifact_digest"] as? String }
-            guard LocalHealthClient.profileInteger(fields["expected_policy_generation"]).map(Int64.init) == catalogue.policyGeneration,
-                  LocalHealthClient.profileInteger(fields["expected_trust_revision"]).map(Int64.init) == (item?.trustRevision ?? 0) else { throw LocalHealthError.nativeGuardConflict }
-            if original.kind == .target {
-                guard let item, fields["action"] as? String != "select" || item.state == "approved" else { throw LocalHealthError.nativeGuardConflict }
+    private func submitPairedExternal(_ prepared: NativeExternalProfilePreparedDecision, basis: NativePairedAuthoringBasis,
+                                      journal: NativePendingCoordinator) async throws -> HomeExternalProfileOriginalRead {
+        try await withTaskCancellationHandler {
+            try await metadataChecked {
+                guard !busy, !needsReload, let selected = snapshot, selected == prepared.selection,
+                      generation == prepared.generation, case .remote = selected.document.selection, journal.canStart else { throw NativeControllerDriverError.unavailable }
+                busy = true; defer { busy = false }
+                try prepared.checkLifetime()
+                let session = try await self.selected(selected, additionalCheck: { try prepared.checkLifetime() })
+                let fresh = NativePairedAuthoringBasis(association: session.association, scope: session.scope)
+                try await session.perform { credential in
+                    try NativePairedExternalProfileClient.validate(prepared.original, draft: prepared.draft, reviewed: basis,
+                        identity: prepared.identity, fresh: fresh, credential: credential)
+                }
+                try prepared.checkLifetime(); try current(selected, generation: prepared.generation, checkMetadata: false)
+                let publication = try await journal.submittingPaired(.externalProfile(prepared.original), session: session)
+                do {
+                    try prepared.checkLifetime(); try current(selected, generation: prepared.generation, checkMetadata: false)
+                    try publication.deliveryCurrent()
+                    guard let receipt = publication.externalReceipt else { throw NativeExternalProfileDeliveryError.outcomeUnknown }
+                    try NativeExternalProfileMutationClient.verify(receipt, original: prepared.original)
+                    try publication.deliveryCurrent(); try prepared.checkLifetime(); prepared.retire()
+                    return receipt
+                } catch { journal.pairedDeliveryUnconfirmed(publication); throw error }
             }
+        } onCancel: { prepared.retire() }
+    }
+    nonisolated private static func externalDecisionBasis(_ original: HomeExternalProfileOriginal, capture: LocalCredentialCapture, socket: String) throws -> HomeControllerIdentity {
+        try NativeExternalGuidedWorkflow.complete(original, socket: socket, credential: capture.bytes) {
+            try nativeCapture(capture.nativeReference, credential: capture.bytes, identity: $0)
         }
-        return after
     }
     func prepareAuthoring(kind: HomeAuthoringOriginalKind, originalURL: URL, payloadURL: URL?) async throws -> NativeAuthoringPreparedDecision {
         if pairedSelected {
@@ -1379,13 +1418,18 @@ fileprivate final class ExternalDecisionLifetime: @unchecked Sendable {
 }
 
 struct NativeExternalProfilePreparedDecision: Sendable, CustomReflectable {
-    fileprivate let original: HomeExternalProfileOriginal, capture: LocalCredentialCapture, identity: HomeControllerIdentity
+    fileprivate let original: HomeExternalProfileOriginal, identity: HomeControllerIdentity
+    fileprivate let capture: LocalCredentialCapture?, paired: NativePairedAuthoringBasis?
     fileprivate let selection: NativeControllerAssociationSnapshot, generation: UInt64
     fileprivate let draft: NativeExternalProfileDraft?
     private let lifetime = ExternalDecisionLifetime()
     fileprivate init(original: HomeExternalProfileOriginal, capture: LocalCredentialCapture, identity: HomeControllerIdentity,
                      selection: NativeControllerAssociationSnapshot, generation: UInt64, draft: NativeExternalProfileDraft? = nil) {
-        self.original = original; self.capture = capture; self.identity = identity; self.selection = selection; self.generation = generation; self.draft = draft
+        self.original = original; self.capture = capture; paired = nil; self.identity = identity; self.selection = selection; self.generation = generation; self.draft = draft
+    }
+    fileprivate init(paired value: NativePairedExternalPreparation, selection: NativeControllerAssociationSnapshot, generation: UInt64) {
+        original = value.original; identity = value.identity; capture = nil; paired = value.paired; draft = value.draft
+        self.selection = selection; self.generation = generation
     }
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     func retire() { lifetime.retire() }
@@ -1393,7 +1437,7 @@ struct NativeExternalProfilePreparedDecision: Sendable, CustomReflectable {
     var kind: HomeExternalProfileOriginalKind { original.kind }
     var details: [String] {
         guard let fields = try? original.fields() else { return [] }
-        var rows = ["Authority \(original.epoch) · Decision \(original.operation)", "Store basis: \(original.expectedRevision)",
+        var rows = ["Controller: " + (paired?.association.label ?? "This Mac"), "Authority \(original.epoch) · Decision \(original.operation)", "Store basis: \(original.expectedRevision)",
             "Principal: \(identity.principalID)", "Controller owner: \(identity.ownerID)", "Decision SHA: \(original.sha)"]
         switch kind {
         case .inspection:

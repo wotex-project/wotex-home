@@ -80,11 +80,11 @@ struct NativeExternalProfilePanelLiveSmoke {
                 _ = try NativeControllerAssociationStorage.selecting(.remote(record.id), directory: metadata, expected: stored)
                 await controller.reload()
                 do { _ = try await controller.prepareExternalProfile(kind: kind, originalURL: root.appendingPathComponent("missing")); throw ExternalPanelFailure.line(#line) }
-                catch NativeControllerDriverError.unavailable {}
+                catch NativeControllerDriverError.clockUnavailable {}
                 do { _ = try await controller.readExternalProfileCatalogue(); throw ExternalPanelFailure.line(#line) }
-                catch NativeControllerDriverError.unavailable {}
+                catch NativeControllerDriverError.clockUnavailable {}
                 do { _ = try await controller.readExternalProfileOriginal(kind: kind, epoch: 1, operation: "test"); throw ExternalPanelFailure.line(#line) }
-                catch NativeControllerDriverError.unavailable {}
+                catch NativeControllerDriverError.clockUnavailable {}
                 try check(calls.count == 0 && journal.entries.isEmpty); return
             }
             if mode == "retire-prepare" {

@@ -147,7 +147,7 @@ struct NativeExternalProfilePanel: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("External profile decisions").font(.headline)
             Text(profiles.status).font(.callout).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
-            if !profiles.localSelected { Text("External profile decisions are currently available on This Mac.").font(.footnote) }
+            if !profiles.localSelected { Text("Decisions use the selected paired controller and its owned imported references.").font(.footnote) }
             Button("Refresh external catalogue") { Task { await profiles.refresh() } }.disabled(!profiles.canRead)
             if let catalogue = profiles.catalogue {
                 Text("Catalogue revision \(catalogue.revision) · Policy \(catalogue.policyGeneration)").font(.caption)

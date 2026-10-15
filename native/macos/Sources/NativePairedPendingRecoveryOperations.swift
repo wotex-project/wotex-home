@@ -6,6 +6,9 @@ extension NativePendingRecoveryOperations {
     static func executePaired(_ entry: NativePendingEntry, association: NativeControllerPublicAssociation,
                               credential: Data, action: NativePendingRecoveryAction,
                               workspace: NativeGenerationWorkspaceSnapshot? = nil) throws -> NativePendingRecoveryOutcome {
+        if entry.category == .externalProfile {
+            return try executePairedExternal(entry, association: association, credential: credential, action: action).outcome
+        }
         if entry.category == .authoring {
             return try executePairedAuthoring(entry, association: association, credential: credential, action: action).outcome
         }
@@ -29,6 +32,17 @@ extension NativePendingRecoveryOperations {
                 nativeAccess: { _, _ in throw NativePendingError.unavailable })
         }
     }
+    static func executePairedExternal(_ entry: NativePendingEntry, association: NativeControllerPublicAssociation,
+                                     credential: Data, action: NativePendingRecoveryAction) throws -> NativeExternalProfileRecoveryResult {
+        guard let transport = NativeDomainTransportScope.current else { throw NativePendingError.unavailable }
+        guard entry.category == .externalProfile, entry.custody.isPaired, action.permits(entry),
+              entry.custody.matches(association: association, context: entry.context), entry.custody.matches(credential) else { throw NativePendingError.invalidRecord }
+        _ = try NativePendingDocument(revision: 1, entries: [entry]).encoded()
+        let guarded = try NativePairedProfileTransport.guarding(transport, association: association, credential: credential, entry: entry)
+        return try NativeDomainTransportScope.$current.withValue(guarded) {
+            try external(entry, credential: credential, socketPath: "", action: action)
+        }
+    }
     static func executePairedAuthoring(_ entry: NativePendingEntry, association: NativeControllerPublicAssociation,
                                       credential: Data, action: NativePendingRecoveryAction) throws -> NativeAuthoringRecoveryResult {
         guard let transport = NativeDomainTransportScope.current else { throw NativePendingError.unavailable }
@@ -46,16 +60,18 @@ enum NativePairedProfileTransport {
     @TaskLocal static var revisions: NativePairedScopeRevision?
     static func guarding(_ base: any NativeDomainTransport, association: NativeControllerPublicAssociation,
                          credential: Data, entry: NativePendingEntry) throws -> any NativeDomainTransport {
-        guard entry.category == .authoring || entry.category == .generation else { throw NativePendingError.invalidRecord }
-        return try guarding(base, association: association, credential: credential, context: entry.context)
+        guard entry.category == .authoring || entry.category == .generation || entry.category == .externalProfile else { throw NativePendingError.invalidRecord }
+        return try guarding(base, association: association, credential: credential, context: entry.context,
+            requiresEnrollment: entry.category == .externalProfile && entry.externalProfileOperation().kind == .target)
     }
     static func guarding(_ base: any NativeDomainTransport, association: NativeControllerPublicAssociation,
-                         credential: Data, context: NativePendingContext, originalScope: HomeControllerScope? = nil) throws -> any NativeDomainTransport {
+                         credential: Data, context: NativePendingContext, originalScope: HomeControllerScope? = nil, requiresEnrollment: Bool = false) throws -> any NativeDomainTransport {
         let scope = try NativeDomainTransportScope.$current.withValue(base) {
             try LocalHealthClient.fetchControllerScope(socketPath: "", credential: credential)
         }
         try NativePairedSessionCorrespondence.check(scope, association: association)
         try NativePairedSessionCorrespondence.checkProfileScope(scope, context: context)
+        guard !requiresEnrollment || scope.permissions.contains("enroll:review") else { throw NativePairedSessionError.scopeConflict }
         if let originalScope {
             guard scope.identity.matchesAuthority(originalScope.identity), scope.identity.revision >= originalScope.identity.revision,
                   scope.permissions == originalScope.permissions, scope.targetIDs == originalScope.targetIDs else { throw NativePairedSessionError.scopeConflict }
@@ -63,7 +79,7 @@ enum NativePairedProfileTransport {
         let revisions = revisions ?? NativePairedScopeRevision(initial: scope.identity.revision)
         try revisions.check(scope.identity.revision)
         return PairedProfileOriginalTransport(base: base, credential: credential, association: association, context: context,
-            initial: scope, revisions: revisions)
+            initial: scope, revisions: revisions, requiresEnrollment: requiresEnrollment)
     }
 }
 
@@ -76,6 +92,7 @@ private struct PairedProfileOriginalTransport: NativeDomainTransport, CustomRefl
     let context: NativePendingContext
     let initial: HomeControllerScope
     let revisions: NativePairedScopeRevision
+    let requiresEnrollment: Bool
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
 
     func request(body: Data, allowNotFound: Bool) throws -> Data {
@@ -92,6 +109,7 @@ private struct PairedProfileOriginalTransport: NativeDomainTransport, CustomRefl
         }
         try NativePairedSessionCorrespondence.check(scope, association: association)
         try NativePairedSessionCorrespondence.checkProfileScope(scope, context: context)
+        guard !requiresEnrollment || scope.permissions.contains("enroll:review") else { throw NativePairedSessionError.scopeConflict }
         guard scope.permissions == initial.permissions, scope.targetIDs == initial.targetIDs,
               scope.identity.revision >= initial.identity.revision else { throw NativePairedSessionError.scopeConflict }
         try revisions.check(scope.identity.revision)

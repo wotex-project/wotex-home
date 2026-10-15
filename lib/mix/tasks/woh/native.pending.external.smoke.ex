@@ -2,12 +2,22 @@ defmodule Mix.Tasks.Woh.Native.Pending.External.Smoke do
   @moduledoc """
   Checks complete external-profile originals in the private native journal.
 
-  Run `mix woh.native.pending.external.smoke` on the supported macOS toolchain.
-  The task compiles production Swift against frozen independent v9 roots, then
-  exercises private publication, old-version upgrades, CAS conflicts, process
-  restart and concurrent writers. Instrumented capture and recovery entry points
-  exercise existing-only custody failure and refuse paired actions before credentials
-  or transport while their signed consumer is absent.
+  Run from the repository root with an Apple Silicon macOS Swift 6 toolchain:
+
+      mix woh.native.pending.external.smoke
+
+  The task compiles production Swift for macOS 15 against frozen independent v9
+  journal roots. Checks exercise private publication, old-version upgrades,
+  CAS conflicts, process restart and concurrent writers. Instrumented capture
+  and recovery entry points check existing-only custody failures and missing
+  paired associations without obtaining credentials or starting transport.
+  Failed recovery preserves the exact journal snapshot.
+
+  Paired external originals support lookup, exact retry and explicit absence
+  acknowledgement; cancellation and unknown-outcome acknowledgement remain
+  invalid. This task checks journal correspondence and refusal paths. The
+  complementary `Mix.Tasks.Woh.Native.Paired.External.Smoke` task exercises actual
+  paired TLS consumption and the unsigned production session-factory boundary.
 
   Fixtures use disposable account directories and public synthetic metadata.
   Passing checks establish software custody, not installed signing, physical

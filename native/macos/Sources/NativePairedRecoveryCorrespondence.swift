@@ -45,8 +45,11 @@ enum NativePairedRecoveryCorrespondence {
             throw NativePendingError.conflict
         }
         _ = try NativePendingDocument(revision: 1, entries: [entry]).encoded()
-        if entry.category == .authoring || entry.category == .generation {
+        if entry.category == .authoring || entry.category == .generation || entry.category == .externalProfile {
             guard association.access.permissions.contains("profile:manage") else { throw NativePairedSessionError.scopeConflict }
+            if case .externalProfile(let original) = entry.input, original.kind == .target {
+                guard association.access.permissions.contains("enroll:review") else { throw NativePairedSessionError.scopeConflict }
+            }
         }
         return association
     }

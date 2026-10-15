@@ -23,7 +23,7 @@ struct NativeExternalProfileGuidedSmoke {
                 try FileManager.default.createDirectory(at: path, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
             }
             let capture: @Sendable () throws -> LocalCredentialCapture = { captures.record(); return LocalCredentialCapture(bytes: bytes, nativeReference: nil) }
-            let controller = NativeControllerSessionDriver(directory: metadata, local: .init(capture: capture, socket: { socket }))
+            let controller = NativeControllerSessionDriver(certificateClock: { captures.record(); throw NativeControllerTLSError.tlsClockUncertain }, directory: metadata, local: .init(capture: capture, socket: { socket }))
             controller.installLocalFence(); await controller.reload()
             let journal = NativePendingCoordinator(persistence: .init(directory: pending), capture: capture, socketPath: { socket })
             await journal.reload()
@@ -81,8 +81,13 @@ struct NativeExternalProfileGuidedSmoke {
                 let stored = try NativeControllerAssociationStorage.retaining(record, directory: metadata, expected: .empty)
                 _ = try NativeControllerAssociationStorage.selecting(.remote(record.id), directory: metadata, expected: stored)
                 await controller.reload()
-                do { _ = try await controller.prepareExternalProfile(draft: model.guidedDraft()); throw GuidedFailure.line(#line) } catch NativeControllerDriverError.unavailable {}
-                do { _ = try await controller.readExternalProfileSources(); throw GuidedFailure.line(#line) } catch NativeControllerDriverError.unavailable {}
+                try check(model.canRead && model.canPrepare)
+                await model.prepare()
+                try check(model.error != nil && model.details.isEmpty && captures.count == 0 && journal.entries.isEmpty)
+                try check(model.error?.contains("Paired controller access is unavailable") == true)
+                try await render(model, state: "paired-refusal")
+                do { _ = try await controller.prepareExternalProfile(draft: model.guidedDraft()); throw GuidedFailure.line(#line) } catch NativePairedSessionError.custody(.denied) {}
+                do { _ = try await controller.readExternalProfileSources(); throw GuidedFailure.line(#line) } catch NativePairedSessionError.custody(.denied) {}
                 try check(captures.count == 0 && journal.entries.isEmpty); return
             }
             if mode == "recover" {

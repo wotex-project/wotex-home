@@ -106,7 +106,7 @@ struct NativePendingPanel: View {
         case .targetAccess(_, _, let target, let action, _): return "Retained access \(action.rawValue) for \(target)"
         case .generation(let original): return "Retained generation \(original.kind.rawValue) · Submission unconfirmed"
         case .authoring(let original, _): return "Retained authoring \(original.kind.rawValue) · Store basis \(original.expectedRevision) · Input SHA \(original.sha)"
-        case .externalProfile(let original): return "Retained external \(original.kind.rawValue) · Store basis \(original.expectedRevision) · \(entry.custody.isPaired ? "Remote recovery unavailable" : "Lookup and retry use its retained bytes")"
+        case .externalProfile(let original): return "Retained external \(original.kind.rawValue) · Store basis \(original.expectedRevision) · \(entry.custody.isPaired ? "Recovery uses its recorded controller and retained bytes" : "Lookup and retry use its retained bytes")"
         default: return nil
         }
     }

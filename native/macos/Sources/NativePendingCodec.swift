@@ -20,7 +20,7 @@ enum NativePendingRecoveryAction: Equatable, Sendable {
     case lookup, retry, cancelReview, acknowledgeUnknown, acknowledgeAbsent
     func permits(_ entry: NativePendingEntry) -> Bool {
         if entry.category == .externalProfile {
-            return !entry.custody.isPaired && (self == .lookup || self == .retry || self == .acknowledgeAbsent)
+            return self == .lookup || self == .retry || self == .acknowledgeAbsent
         }
         if self == .acknowledgeAbsent { return entry.category == .generation || entry.category == .authoring }
         if self == .acknowledgeUnknown {

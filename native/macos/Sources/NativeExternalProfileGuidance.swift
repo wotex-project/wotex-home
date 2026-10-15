@@ -103,6 +103,29 @@ enum NativeExternalGuidedWorkflow {
               context.basis.epoch == Int64(after.authorityEpoch), context.basis.revision == Int64(after.revision) else { throw LocalHealthError.nativeGuardConflict }
         return NativeExternalGuidedPreparation(original: original, identity: after)
     }
+    static func complete(_ original: HomeExternalProfileOriginal, socket: String, credential: Data,
+                         validateIdentity: (HomeControllerIdentity) throws -> Void) throws -> HomeControllerIdentity {
+        let fields = try original.fields()
+        let before = try NativeExternalProfileClient.identity(socketPath: socket, credential: credential)
+        try validateIdentity(before)
+        let catalogue = try NativeExternalProfileClient.decodeCatalogue(LocalHealthClient.externalProfileReadTransport(socketPath: socket,
+            credential: credential, operation: "external_profiles", fields: [:]))
+        let existing = try NativeExternalProfileClient.decodeOriginal(LocalHealthClient.externalProfileReadTransport(socketPath: socket,
+            credential: credential, operation: original.kind.operation, fields: ["authority_epoch": original.epoch, "operation_id": original.operation]),
+            kind: original.kind, epoch: original.epoch, operation: original.operation, expectedInputSHA: original.sha)
+        let after = try NativeExternalProfileClient.identity(socketPath: socket, credential: credential)
+        guard existing == nil, before.matchesAuthority(after), before.revision == after.revision, catalogue.epoch == Int64(after.authorityEpoch),
+              catalogue.revision == Int64(after.revision), original.epoch == Int64(after.authorityEpoch), original.expectedRevision == Int64(after.revision) else { throw LocalHealthError.nativeGuardConflict }
+        if original.kind != .inspection {
+            let item = catalogue.items.first { $0.artifact == fields["artifact_digest"] as? String }
+            guard LocalHealthClient.profileInteger(fields["expected_policy_generation"]).map(Int64.init) == catalogue.policyGeneration,
+                  LocalHealthClient.profileInteger(fields["expected_trust_revision"]).map(Int64.init) == (item?.trustRevision ?? 0) else { throw LocalHealthError.nativeGuardConflict }
+            if original.kind == .target {
+                guard let item, fields["action"] as? String != "select" || item.state == "approved" else { throw LocalHealthError.nativeGuardConflict }
+            }
+        }
+        return after
+    }
     static func sourceChoices(socket: String, credential: Data, validateIdentity: (HomeControllerIdentity) throws -> Void) throws -> HomeExternalSourceCatalogue {
         guard credential.count == 32 else { throw LocalHealthError.invalidProfileRequest }
         let before = try NativeExternalProfileClient.identity(socketPath: socket, credential: credential)
