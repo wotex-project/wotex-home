@@ -142,7 +142,7 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
                  proxy_path
                ],
                16_384,
-               15_000,
+               if(flow, do: 30_000, else: 15_000),
                JSON.encode!(input) <> "\n"
              ) do
           {:ok, output} ->
@@ -312,10 +312,24 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
               end)
             end
 
+            read_failure =
+              if operation in ~w(authoring_generation_status authoring_generation_attempt_status),
+                do: File.read(Path.join(journal, "generation-read-failure")),
+                else: {:error, :enoent}
+
             response =
-              case Client.request(socket, request, 5_000) do
-                {:ok, value} -> value
-                _ -> nil
+              case read_failure do
+                {:ok, "read"} ->
+                  nil
+
+                {:ok, "malformed"} ->
+                  %{"api_version" => 1, "outcome" => "ok", "authoring_generation" => %{}}
+
+                _ ->
+                  case Client.request(socket, request, 5_000) do
+                    {:ok, value} -> value
+                    _ -> nil
+                  end
               end
 
             drop =

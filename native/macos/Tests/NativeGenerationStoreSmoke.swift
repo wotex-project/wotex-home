@@ -63,6 +63,9 @@ enum NativeGenerationStoreSmoke {
             try require(try NativePendingStorage.load(directory: directory) == retained)
             if !startOnly { try require(detail.lowercased().contains("unknown")) }
             if startOnly {
+                let absent = try NativePendingRecoveryOperations.execute(pendingAttempt, credential: credential, socketPath: socket, action: .acknowledgeAbsent)
+                guard case .retained = absent else { throw GenerationStoreAssertion.failed(#line) }
+                try require(try NativePendingStorage.load(directory: directory) == retained)
                 print("native generation restart reservation retained")
                 return
             }
@@ -100,6 +103,12 @@ enum NativeGenerationStoreSmoke {
                 throw GenerationStoreAssertion.failed(#line)
             } catch LocalHealthError.server(let reason) { try require(reason == "generation_cancelled") }
             try require(try NativePendingStorage.load(directory: directory) == refusedSnapshot)
+            let missing = try NativePendingRecoveryOperations.execute(refusedEntry, credential: credential, socketPath: socket, action: .lookup)
+            guard case .retained = missing else { throw GenerationStoreAssertion.failed(#line) }
+            let acknowledged = try NativePendingRecoveryOperations.execute(refusedEntry, credential: credential, socketPath: socket, action: .acknowledgeAbsent)
+            guard case .resolved(let acknowledgement) = acknowledged, acknowledgement.contains("may arrive later") else { throw GenerationStoreAssertion.failed(#line) }
+            let cleared = try NativePendingStorage.resolving(refusedEntry, directory: directory, expected: refusedSnapshot)
+            try require(cleared.document.version == .v7 && cleared.document.entries.isEmpty)
             try require(try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: credential).revision == Int(cancellation))
             print("native generation Store original publication, candidate and cancellation passed")
         } catch let error as GenerationStoreAssertion { throw error }
@@ -119,6 +128,9 @@ enum NativeGenerationStoreSmoke {
         let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: credential)
         let uncertain = try NativePendingRecoveryOperations.execute(entry, credential: credential, socketPath: socket, action: .retry)
         guard case .retained(let unknown) = uncertain, unknown.contains("unknown") else { throw GenerationStoreAssertion.failed(#line) }
+        try require(try NativePendingStorage.load(directory: directory) == snapshot)
+        let missingAcknowledgement = try NativePendingRecoveryOperations.execute(entry, credential: credential, socketPath: socket, action: .acknowledgeAbsent)
+        guard case .retained(let retainedUnknown) = missingAcknowledgement, retainedUnknown.contains("unknown") else { throw GenerationStoreAssertion.failed(#line) }
         try require(try NativePendingStorage.load(directory: directory) == snapshot)
         let result = try NativePendingRecoveryOperations.execute(entry, credential: credential, socketPath: socket, action: .acknowledgeUnknown)
         guard case .resolved(let detail) = result, detail.lowercased().contains("unknown") else { throw GenerationStoreAssertion.failed(#line) }

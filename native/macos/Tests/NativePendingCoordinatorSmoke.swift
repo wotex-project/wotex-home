@@ -58,6 +58,19 @@ struct NativePendingCoordinatorSmoke {
                 try require(coordinator.entries == [entry] && !coordinator.busy && !coordinator.needsReload && source.calls == 0)
                 try require(try Data(contentsOf: directory.appendingPathComponent("native-pending-v1.json")) == before)
             }
+            let unrelated = NativePendingEntry(context: entry.context, custody: entry.custody,
+                input: .suspend(operation: "rule:no-missing-acknowledgement", revision: 3), phase: .pending)
+            let unrelatedDirectory = directory.appendingPathComponent("unrelated", isDirectory: true)
+            try FileManager.default.createDirectory(at: unrelatedDirectory, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+            _ = try NativePendingStorage.retaining(unrelated, directory: unrelatedDirectory, expected: .empty)
+            let unrelatedCoordinator = NativePendingCoordinator(persistence: NativePendingPersistence(directory: unrelatedDirectory),
+                capture: { source.capture() }, socketPath: { path })
+            await unrelatedCoordinator.reload()
+            await unrelatedCoordinator.recover(unrelated, action: .acknowledgeAbsent, custody: { _ in source.capture().bytes },
+                execute: { _, _, _, _ in _ = source.capture(); throw CoordinatorSmokeError.failed })
+            try require(unrelatedCoordinator.entries == [unrelated] && source.calls == 0)
+            do { _ = try NativePendingRecoveryOperations.execute(unrelated, credential: original, socketPath: path, action: .acknowledgeAbsent); throw CoordinatorSmokeError.failed }
+            catch NativePendingError.invalidRecord {}
             print("{\"complete\":true}")
             return
         }

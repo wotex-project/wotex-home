@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 import Foundation
 import SwiftUI
 
@@ -63,6 +64,9 @@ struct NativeGenerationFlowSmoke {
         try require(journal.entries.isEmpty)
         try await controller.restoreGenerationPending(root, workspace: workspace, journal: journal)
         try require(try journal.entries[0].generationOperation() == rootDecision.original)
+        try await missingChecks(journal, credential, socket, directory)
+        try require(workspace.entries == [root])
+        try await controller.restoreGenerationPending(root, workspace: workspace, journal: journal)
         await recover(journal, root, .retry, credential, socket)
         try require(journal.entries.count == 1)
         await recover(journal, root, .lookup, credential, socket)
@@ -80,11 +84,14 @@ struct NativeGenerationFlowSmoke {
         await journal.reload()
         try await controller.restoreGenerationPending(handed, workspace: workspace, journal: journal)
         try require(try journal.entries[0].generationOperation() == attempt.original)
+        try await missingChecks(journal, credential, socket, directory)
+        try require(workspace.entries == [handed])
+        try await controller.restoreGenerationPending(handed, workspace: workspace, journal: journal)
         await recover(journal, handed, .retry, credential, socket)
         try require(journal.entries.count == 1)
         let status = try await awaitResult(controller, handed)
         try require(status.result?.assessment?.disposition == "invalid")
-        await recover(journal, handed, .lookup, credential, socket)
+        await recover(journal, handed, .acknowledgeAbsent, credential, socket)
         try require(journal.entries.isEmpty)
         do { _ = try await controller.prepareGenerationAttempt(handed, feedbackConsent: false); throw GenerationFlowAssertion.failed(#line) }
         catch LocalHealthError.invalidProfileRequest {}
@@ -152,6 +159,41 @@ struct NativeGenerationFlowSmoke {
                                          _ action: NativePendingRecoveryAction, _ bytes: Data, _ socket: String) async {
         guard let pending = journal.entries.first else { return }
         await journal.recover(pending, action: action, custody: { _ in bytes }, execute: NativePendingRecoveryOperations.execute)
+    }
+    @MainActor private static func missingChecks(_ journal: NativePendingCoordinator, _ credential: Data, _ socket: String, _ directory: URL) async throws {
+        guard let entry = journal.entries.first else { throw GenerationFlowAssertion.failed(#line) }
+        let file = directory.appendingPathComponent("native-pending-v1.json"), beforeBytes = try Data(contentsOf: file)
+        let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: credential)
+        await journal.recover(entry, action: .lookup, custody: { _ in credential }, execute: NativePendingRecoveryOperations.execute)
+        try require(journal.entries == [entry] && Data(contentsOf: file) == beforeBytes)
+        await journal.recover(entry, action: .acknowledgeAbsent, custody: { _ in Data(repeating: 42, count: 32) }, execute: NativePendingRecoveryOperations.execute)
+        try require(journal.entries == [entry] && journal.error != nil && Data(contentsOf: file) == beforeBytes)
+        let wrongScope = NativePendingEntry(context: NativePendingContext(deployment: entry.context.deployment,
+            owner: entry.context.owner == String(repeating: "f", count: 64) ? String(repeating: "e", count: 64) : String(repeating: "f", count: 64),
+            epoch: entry.context.epoch, principal: entry.context.principal), custody: entry.custody, input: entry.input, phase: .pending)
+        do { _ = try NativePendingRecoveryOperations.execute(wrongScope, credential: credential, socketPath: socket, action: .acknowledgeAbsent); throw GenerationFlowAssertion.failed(#line) }
+        catch LocalHealthError.nativeGuardConflict {}
+        let marker = directory.appendingPathComponent("generation-read-failure")
+        for failure in ["read", "malformed"] {
+            try Data(failure.utf8).write(to: marker)
+            await journal.recover(entry, action: .acknowledgeAbsent, custody: { _ in credential }, execute: NativePendingRecoveryOperations.execute)
+            try require(journal.entries == [entry] && journal.error != nil && Data(contentsOf: file) == beforeBytes)
+            try FileManager.default.removeItem(at: marker)
+        }
+        await journal.recover(entry, action: .acknowledgeAbsent, custody: { _ in credential }, execute: { entry, bytes, socket, action in
+            let result = try NativePendingRecoveryOperations.execute(entry, credential: bytes, socketPath: socket, action: action)
+            let replacement = directory.appendingPathComponent("pending-inode-replacement")
+            guard FileManager.default.createFile(atPath: replacement.path, contents: beforeBytes, attributes: [.posixPermissions: 0o600]),
+                  rename(replacement.path, file.path) == 0 else { throw GenerationFlowAssertion.failed(#line) }
+            return result
+        })
+        try require(journal.entries == [entry] && journal.needsReload && Data(contentsOf: file) == beforeBytes)
+        await journal.reload()
+        await journal.recover(entry, action: .acknowledgeAbsent, custody: { _ in credential }, execute: NativePendingRecoveryOperations.execute)
+        let after = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: credential)
+        try require(journal.entries.isEmpty && journal.status.contains("may arrive later") && !journal.needsReload && before.revision == after.revision)
+        let empty = try NativePendingStorage.load(directory: directory)
+        try require(empty.document.version == .v7 && empty.document.entries.isEmpty)
     }
     private static func require(_ value: Bool, line: Int = #line) throws { if !value { throw GenerationFlowAssertion.failed(line) } }
 }

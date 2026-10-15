@@ -2,7 +2,8 @@ import SwiftUI
 
 @MainActor
 private final class NativePendingConfirmation: ObservableObject {
-    @Published var entry: NativePendingEntry?
+    struct Decision { let entry: NativePendingEntry, action: NativePendingRecoveryAction }
+    @Published var decision: Decision?
 }
 
 struct NativePendingPanel: View {
@@ -40,17 +41,21 @@ struct NativePendingPanel: View {
                 }
             }
             if !journal.entries.isEmpty {
-                Text("Recovery opens existing custody and checks the original controller and principal. Each action uses the recorded request. A missing result leaves the original retained.")
+                Text("Recovery opens existing custody and checks the original controller and principal. Lookup and retry retain a missing original; clearing it requires separate acknowledgement of uncertainty.")
                     .font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
         }
-        .confirmationDialog("Clear if the original generation outcome is unknown?",
-            isPresented: Binding(get: { confirmation.entry != nil }, set: { if !$0 { confirmation.entry = nil } }),
-            presenting: confirmation.entry) { entry in
-                Button("Acknowledge Unknown Outcome") { recover(entry, .acknowledgeUnknown); confirmation.entry = nil }
-                Button("Keep Original", role: .cancel) { confirmation.entry = nil }
-            } message: { _ in
-                Text("This clears the pending record only after checking an unknown outcome. A model may still be working, and a result may appear later. No new attempt is sent.")
+        .confirmationDialog(confirmation.decision?.action == .acknowledgeAbsent ? "Clear if the generation original is missing?" : "Clear if the original generation outcome is unknown?",
+            isPresented: Binding(get: { confirmation.decision != nil }, set: { if !$0 { confirmation.decision = nil } }),
+            presenting: confirmation.decision) { decision in
+                Button(decision.action == .acknowledgeAbsent ? "Acknowledge Missing Original" : "Acknowledge Unknown Outcome") {
+                    recover(decision.entry, decision.action); confirmation.decision = nil
+                }
+                Button("Keep Original", role: .cancel) { confirmation.decision = nil }
+            } message: { decision in
+                Text(decision.action == .acknowledgeAbsent ?
+                    "This checks existing status before clearing the pending record. A request or result may arrive later. Clearing does not stop a model or refund its budget; no new operation is sent." :
+                    "This clears the pending record only after checking an unknown outcome. A model may still be working, and a result may appear later. No new attempt is sent.")
             }
     }
     private func recoveryControls(_ entry: NativePendingEntry) -> some View {
@@ -63,7 +68,10 @@ struct NativePendingPanel: View {
                 Button("Cancel Original Review") { recover(entry, .cancelReview) }
             }
             if NativePendingRecoveryAction.acknowledgeUnknown.permits(entry) {
-                Button("Acknowledge Unknown Outcome…") { confirmation.entry = entry }
+                Button("Acknowledge Unknown Outcome…") { confirmation.decision = .init(entry: entry, action: .acknowledgeUnknown) }
+            }
+            if NativePendingRecoveryAction.acknowledgeAbsent.permits(entry) {
+                Button("Acknowledge Missing Original…") { confirmation.decision = .init(entry: entry, action: .acknowledgeAbsent) }
             }
         }
     }
@@ -102,6 +110,7 @@ struct NativePendingPanel: View {
         }
     }
     private func recover(_ entry: NativePendingEntry, _ action: NativePendingRecoveryAction) {
+        guard recoveryAllowed, !journal.busy, !journal.needsReload, action.permits(entry) else { return }
         if entry.custody.isPaired {
             if let pairedRecover { Task { await pairedRecover(entry, action) } }
             return

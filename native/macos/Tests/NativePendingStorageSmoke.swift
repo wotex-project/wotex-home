@@ -491,6 +491,7 @@ struct NativePendingStorageSmoke {
             try check(Mirror(reflecting: entry).children.isEmpty && Mirror(reflecting: entry.input).children.isEmpty)
             try check(NativePendingRecoveryAction.lookup.permits(entry) && NativePendingRecoveryAction.retry.permits(entry) && !NativePendingRecoveryAction.cancelReview.permits(entry))
             try check(NativePendingRecoveryAction.acknowledgeUnknown.permits(entry) == (value.kind == .attempt))
+            try check(NativePendingRecoveryAction.acknowledgeAbsent.permits(entry))
             return entry
         }
     }

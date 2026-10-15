@@ -171,11 +171,16 @@ enum NativePendingRecoveryOperations {
             let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socketPath, credential: credential)
             guard entry.context.matches(before) else { throw LocalHealthError.nativeGuardConflict }
             let result = try NativeGenerationClient.deliver(socketPath: socketPath, credential: credential, original: original,
-                lookup: action == .lookup || action == .acknowledgeUnknown)
+                lookup: action == .lookup || action == .acknowledgeUnknown || action == .acknowledgeAbsent)
             let after = try LocalHealthClient.fetchControllerIdentity(socketPath: socketPath, credential: credential)
             guard entry.context.matches(after), after.revision >= before.revision,
                   Int64(after.revision) >= (result?.knownRevision ?? 0) else { throw LocalHealthError.nativeGuardConflict }
-            guard let result else { return missing }
+            guard let result else {
+                if action == .acknowledgeAbsent {
+                    return .resolved("Missing generation original acknowledged. A request or result may arrive later at the controller; this does not stop a model, refund its budget or send another operation.")
+                }
+                return missing
+            }
             if original.kind == .preparation {
                 return .resolved("Original preparation confirmed · \(result.state). No completed draft or approval follows.")
             }

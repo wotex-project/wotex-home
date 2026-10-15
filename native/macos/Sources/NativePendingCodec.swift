@@ -17,8 +17,9 @@ enum NativePendingError: LocalizedError {
 enum NativePendingCategory: String, CaseIterable, Sendable { case maintenance, override, power, profile, rule, access, schedule, authoring, generation }
 
 enum NativePendingRecoveryAction: Equatable, Sendable {
-    case lookup, retry, cancelReview, acknowledgeUnknown
+    case lookup, retry, cancelReview, acknowledgeUnknown, acknowledgeAbsent
     func permits(_ entry: NativePendingEntry) -> Bool {
+        if self == .acknowledgeAbsent { return !entry.custody.isPaired && entry.category == .generation }
         if self == .acknowledgeUnknown {
             guard !entry.custody.isPaired, case .generation(let original) = entry.input else { return false }
             return original.kind == .attempt
@@ -29,7 +30,7 @@ enum NativePendingRecoveryAction: Equatable, Sendable {
         case .lookup: return true
         case .retry: return !entry.phase.isHeldReview
         case .cancelReview: return entry.phase.isHeldReview || entry.phase.isCancellation
-        case .acknowledgeUnknown: return false
+        case .acknowledgeUnknown, .acknowledgeAbsent: return false
         }
     }
 }
