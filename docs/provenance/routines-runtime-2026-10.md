@@ -77,3 +77,21 @@ no-advisory records are historical observations.
 No full Home suite, Dialyzer, release/image build or physical test ran for this
 slice. Tests clean their private staging/release fixtures. No standalone
 archives, reports, Docker resources or documentation output were created.
+
+## Inventory capacity finding before v4 implementation
+
+The first focused runtime/admission run after production calendar delegation
+failed Home inventory even for the old Home/UDP subset. A separate
+`MIX_ENV=test mix run --no-start --no-compile` probe loaded each application
+without starting it and inventoried each separately. Home declares **541**
+modules, above the previously accepted 512-module cap. All other selected
+applications passed: Routines 57, Continuum 26, core 18, ExBooking 26, Decimal 7,
+Jason 28, ExJsonSchema 107, NimbleOptions 3, Tz 18 and UDP 9.
+
+The successor contract was amended before changing the implementation bound:
+1024 modules per trusted application, eleven applications maximum and a
+11264-entry parsed checksum memo. This retains the complete actual Home module
+list with bounded headroom; no module is omitted or given a weaker digest.
+Artifact/path/read/timeout caps and loaded/file/old-code checks remain unchanged.
+The failed first run (31 cases, 18 failures, seed 569374) is diagnosis, not positive
+adoption evidence. The expanded-bound and complete-cohort tests remain next work.

@@ -1,6 +1,6 @@
 # Bound temporal producer runtime v1
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted target.
 Owner: WOH.20 H20-02/07/08, WOH.07 runtime correspondence and WOH.14 current guards.
 Implementation: exact dependencies selected; complete v4 runtime and Store adoption remain planned.
 Evidence: [pinned pure corpus and source selection](../provenance/routines-runtime-2026-10.md).
@@ -47,8 +47,12 @@ of identity. A name/version, source pin, lockfile hash or producer's declared
 producer_basis alone cannot replace this complete current inventory.
 
 **RTR-02 — Reader and guard bounds.** RuntimeArtifacts permits at most eleven
-trusted applications per request, 512 modules each and 16777216 bytes per
-artifact. The parsed checksum memo is bounded to 5632 modules. Existing 256 code
+trusted applications per request, 1024 modules each and 16777216 bytes per
+artifact. The parsed checksum memo is bounded to 11264 modules. This successor
+supersedes the former 512-module cap for every trusted inventory scope: the
+actual Home application already declares 541 modules. Inventory must retain
+all of them, including tooling modules; filtering or truncating the declared
+module list to fit the old cap is forbidden. Existing 256 code
 paths, 16384 directory entries, four temporary readers, 65536-byte reads and
 five-second reader timeout remain. Preserve complete EOF/read/digest checks,
 old-code tests, current path checks, reader cleanup and sequential OTP fallback.
