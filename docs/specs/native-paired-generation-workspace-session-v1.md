@@ -1,6 +1,6 @@
 # Existing paired generation workspace session
 
-Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18A-04/05, H18-T16/T17 and paired composition NPA-03/04.
 Implementation: fixed existing-only purpose, closed workspace operations and
@@ -81,7 +81,12 @@ receipt: import ID is ga: plus SHA256 of UTF-8 domain
 [principal,epoch,attemptOperation,"draft"]. Match draft kind/digest/first revision,
 payload SHA and bytes against the generation result. Derive source handles from
 explicit root passages and fixture handles from root examples, deduplicated and
-sorted by digest; conflicting first revisions refuse. Read those owned objects,
+sorted by digest; conflicting first revisions refuse. The derived handle join
+accepts at most32 exact object_digest/first_revision rows per category, lower hex64
+digests and positive signed-64 revisions, without bool/float coercion. Duplicate
+identical handles collapse; output is strictly digest-sorted. Source/fixture kinds
+remain separate and each retained object must have its exact declared kind and
+first revision. No mismatch can become a prepared manual original. Read those owned objects,
 current authoring contract and stable current identity. Require the original
 workspace basis SHA and exact controller/principal/epoch; no generation row is
 cast to a manual candidate. Build a fresh complete manual candidate using that
@@ -113,6 +118,7 @@ before implementation. Do not allocate expected valid bytes with the Swift owner
 | PGW-T1 | 01 | Wrong association/context/creation/verifier/grants/action/snapshot; actual unsigned factory reaches account/clock/network; raw fixture constructs a signed purpose. | Metadata/native refusal |
 | PGW-T2 | 01/02/04 | Independent exact no-op/intent/removal/restore transitions, other rows changed, version downgrade, stale inode/revision, late publication or multiple publisher winners. | Private file/process |
 | PGW-T3 | 02/03/04 | Real pinned TLS/Store original status, cancellation intent before send, dropped reply, restore without mutation, owned generated draft to fresh manual candidate, archive uncertainty and restart. Replay, false clear or borrowed principal fails. | Transport/Store only |
+| PGW-T3a | 03 | Independent handle-join cases include identical duplicates, unordered digests,32 handles and conflicting first revisions. Real paired TLS/Store uses two disjoint passages of one owned source plus an owned fixture, verifies the one-source/one-fixture manual join and refuses wrong actual kind/first revision. Lost replies/restart retain unchanged originals; fixtures supply no successful seal. | Pure metadata and raw transport/Store |
 | PGW-T4 | 01–04 | Actual installed signing/Keychain, original five-second lease, purpose/snapshot drift and late delivery. Reacquisition or usable late result fails. | Installed signed host |
 
 No schema, dependency or sibling producer change is required. Pure vectors, raw-key
