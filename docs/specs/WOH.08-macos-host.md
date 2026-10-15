@@ -1,11 +1,13 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.152. Status: accepted target.
+Version: 0.2.153. Status: accepted target.
 
 The [native certificate clock source](native-certificate-clock-v1.md) now defines
 its signed local challenge, bounded uncertainty, original expiry, private
-custody and source-aware TLS/Setup obligations before implementation. It remains
-planned and supplies no OS-clock default or synthetic qualification.
+custody and source-aware TLS/Setup obligations before implementation. Its inert
+codec/lease now has [executed pure evidence](../provenance/native-certificate-clock-2026-10.md);
+production ownership/composition remains planned, without an OS-clock default or
+synthetic qualification.
 
 The [last paired power receipt contract](native-paired-power-receipt-v1.md) now
 implements one in-memory resolved original and an explicit Activity read through

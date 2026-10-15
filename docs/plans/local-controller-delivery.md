@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.19. Updated: 2026-10-15. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads, paired first-power composition and last resolved power receipt lookup are implemented development entries; installed signed success, trusted certificate clock, broader paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
+Version: 0.1.20. Updated: 2026-10-15. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads, paired first-power composition and last resolved power receipt lookup are implemented development entries; installed signed success, trusted certificate clock, broader paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
 
 The [paired power entry](../specs/native-paired-power-v1.md) joins an actual
 authenticated view basis, fresh click scope and one busy reservation across first
@@ -23,8 +23,10 @@ The [native certificate clock contract](../specs/native-certificate-clock-v1.md)
 now freezes a signed local source and independent original lease, fixed custody,
 withdrawal and Setup/driver composition before code. Build its inert codec and
 independent arithmetic/signature vectors first, actual owner/signing refusal
-second, then source-aware TLS clocks and the shared UI. All stages are planned;
-a synthetic signed time cannot qualify an issuer or an installed host.
+second, then source-aware TLS clocks and the shared UI. The inert first stage
+now has [executed signature, interval and refusal evidence](../provenance/native-certificate-clock-2026-10.md);
+production owner and composition remain planned. A synthetic signed time cannot
+qualify an issuer or an installed host.
 
 ## Product outcome
 

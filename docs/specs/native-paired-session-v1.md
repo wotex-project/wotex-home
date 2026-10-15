@@ -1,6 +1,6 @@
 # Native paired session v1
 
-Version: 0.1.7. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: production selected factory implemented; pure correspondence/private CAS and actual unsigned refusal pass; original-purpose, first capture, closed consumers and shared UI software implemented separately; fixed power receipt purpose implemented; installed signed success and trusted certificate clock remain pending.
+Version: 0.1.8. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: production selected factory implemented; pure correspondence/private CAS and actual unsigned refusal pass; original-purpose, first capture, closed consumers and shared UI software implemented separately; fixed power receipt purpose implemented; installed signed success and trusted certificate clock remain pending.
 
 This composes [public associations](native-controller-associations-v1.md),
 [actual signed app custody](native-paired-keychain-v1.md),
@@ -67,8 +67,9 @@ Every later server operation retains its independent current authorization.
 
 The [native certificate clock source](native-certificate-clock-v1.md) defines
 that producer's signed local challenge, original age, private custody and
-withdrawal obligations. Its stages remain planned until their separate
-acceptance executes; this factory acquires no OS-clock default meanwhile.
+withdrawal obligations. Its inert codec/lease now has executed pure evidence;
+actual private owner and TLS/Setup composition remain planned. This factory
+acquires no OS-clock default meanwhile.
 
 At opening, immediately before sending, after validated response and after
 typed decoding, the bounded executor repeats actual original app/seal custody

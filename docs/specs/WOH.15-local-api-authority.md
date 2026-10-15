@@ -1,11 +1,13 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.174. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.175. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 The [native certificate clock source](native-certificate-clock-v1.md) now defines
 its signed local challenge, bounded uncertainty, original expiry, private
-custody and source-aware TLS/Setup obligations before implementation. It remains
-planned and supplies no OS-clock default or synthetic qualification.
+custody and source-aware TLS/Setup obligations before implementation. Its inert
+codec/lease now has [executed pure evidence](../provenance/native-certificate-clock-2026-10.md);
+production ownership/composition remains planned, without an OS-clock default or
+synthetic qualification.
 
 The [last paired power receipt consumer](native-paired-power-receipt-v1.md) now
 uses the existing principal-scoped status operation under a fixed read-only

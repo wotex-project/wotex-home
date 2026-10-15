@@ -1,8 +1,10 @@
 # Native certificate clock source
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted implementation contract.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted implementation contract.
 Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8.
-Implementation: planned. Evidence: missing.
+Implementation: inert document/signature/lease and continuity calculation implemented;
+production file owner, source-aware TLS clock and shared Setup/driver remain planned.
+Evidence: NC-T1 pure software executed; NC-T2–T5 remain open.
 
 ## Observable result and trust boundary
 
@@ -189,3 +191,9 @@ provides the process-local clock primitive, and
 [CryptoKit signature verification](https://developer.apple.com/documentation/cryptokit/curve25519/signing/publickey/isvalidsignature(_:for:))
 provides Ed25519 verification. Neither API establishes the installed issuer's
 UTC accuracy; that remains the named procedure's actual host evidence.
+
+The [executed foundation evidence](../provenance/native-certificate-clock-2026-10.md)
+records six independent OpenSSL signatures, eighteen interval and sixty-six
+continuity vectors, canonical/scope/signature/timing refusals and byte-identical
+regeneration. Passing isolated continuity checks is no installed source owner
+or irreversible withdrawal; later stages must execute their own cases.
