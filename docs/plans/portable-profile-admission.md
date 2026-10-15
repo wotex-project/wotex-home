@@ -154,7 +154,9 @@ The native v2 [catalogue/original read prerequisite](../specs/native-external-pr
 now has [executed framed and both-family Store evidence](../provenance/native-external-profile-reads-2026-10.md).
 Complete inspection/trust/target original codecs now have
 [independent and owning parity evidence](../provenance/native-external-profile-originals-2026-10.md).
-Build durable pending/recovery, then selected confirmations and panel composition;
+Build the [v9 external-profile journal](../specs/native-pending-external-profiles-v9.md)
+from independent roots first, then fixed mutation/recovery, selected confirmations
+and panel composition;
 no read receipt or structurally encoded input grants current trust, selection or
 source qualification.
 
