@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.46. Status: accepted target.
+Version: 0.2.47. Status: accepted target.
 
 ## Rule language
 
@@ -151,9 +151,14 @@ original/root. The compatibility invoke API uses that same join. Changed basis
 or malformed result creates no new original; final semantic denial rolls back
 publication, while SQL/history failure disables writing. All ten runtime members
 now have preparation/commit/final drift evidence, including final-read SQL faults
-and producer failure during actual calculation. Actual v3 held history survives
-current restart and producer absence without new authorization. Retained-v3
-spent/handoff uncertainty and the owning adoption milestone remain open.
+and producer failure during actual calculation. Actual v3 held, queued, claimed,
+handoff and ACK history survives current restart and producer absence, preserving
+spent roots and handoff uncertainty. Documented recovery/cancellation may advance
+request outcomes; immutable admissions/origins are never upgraded. Restored
+history remains quarantined. Profile-custody loss, source replacement and a
+foreign-epoch inert proposal refuse without publication. The owning rule/temporal
+software milestone passed 115 tests; wider admission and physical evidence remain
+separate obligations.
 No retained receipt is rewritten
 or implicitly upgraded. The shared trusted-release inventory
 continues to refuse missing/inconsistent metadata, unreadable modules, retained

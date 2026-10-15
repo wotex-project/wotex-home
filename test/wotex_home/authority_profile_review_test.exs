@@ -1646,6 +1646,80 @@ defmodule WotexHome.AuthorityProfileReviewTest do
     assert_pin_corruption(c, "profile_rule_pins")
   end
 
+  test "kernel preparation and commit repeat selected profile byte custody without publishing stale work",
+       c do
+    {:ok, controller, _} =
+      Store.provision_principal(
+        c.store,
+        "controller:kernel-profile",
+        ["read", "control:ordinary", "rule:manage", "rule:review"],
+        ["light:fixture"]
+      )
+
+    {input, _} = captured_input(c)
+    assert {:ok, _} = Authority.prepare_profile_selection(c.authority, c.operator, input)
+    assert {:ok, _} = Authority.profile_change(c.authority, c.operator, input)
+    end_maintenance(c)
+    {:ok, revision} = Store.revision(c.store)
+
+    assert {:ok, admission} =
+             Authority.admit_rule(c.authority, controller, 1, "rule:kernel-profile", revision, [
+               rule()
+             ])
+
+    assert {:ok, %{rule_generation: generation}} =
+             Authority.activate_rule(
+               c.authority,
+               controller,
+               1,
+               "activate:kernel-profile",
+               admission.revision,
+               admission.revision
+             )
+
+    prepare = fn ->
+      Store.prepare_rule_invocation(
+        c.store,
+        controller,
+        1,
+        "invoke:kernel-profile",
+        generation,
+        "rule:selection"
+      )
+    end
+
+    assert {:ok, preparation} = prepare.()
+    assert {:ok, projection} = WotexHome.Rules.InvocationPreparation.proposal(preparation)
+    before = kernel_invocation_snapshot(c)
+    bytes = File.read!(Path.join(c.root, c.digest <> ".json"))
+    File.rm!(Path.join(c.root, c.digest <> ".json"))
+
+    assert {:error, :profile_artifact_unavailable} =
+             Store.commit_rule_invocation(c.store, controller, preparation, projection)
+
+    assert {:error, :profile_artifact_unavailable} = prepare.()
+    assert kernel_invocation_snapshot(c) == before
+    assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(c.store)
+
+    assert {:ok, digest} = Custody.stage(c.custody, bytes)
+    assert digest == c.digest
+    assert {:ok, fresh} = prepare.()
+    assert fresh == preparation
+    assert {:ok, proposal} = WotexHome.Rules.InvocationPreparation.proposal(fresh)
+
+    assert {:ok, receipt} =
+             Store.commit_rule_invocation(c.store, controller, fresh, proposal)
+
+    assert receipt.disposition == :held
+
+    assert {:ok, [[1, 1]]} =
+             query(c, "SELECT selection_generation,resource_revision FROM profile_request_pins")
+
+    assert {:ok, [[1]]} = query(c, "SELECT COUNT(*) FROM request_rule_origins")
+    assert {:ok, [[0]]} = query(c, "SELECT reserved_effects FROM request_causal_roots")
+    assert :ok = Integrity.validate_snapshot(:sys.get_state(c.store).db)
+  end
+
   @tag requires_socket: true
   test "CLI and private socket retain the same review, selection and original receipt", c do
     socket_root =
@@ -2010,6 +2084,16 @@ defmodule WotexHome.AuthorityProfileReviewTest do
 
     assert :ok = Integrity.validate_snapshot(db)
     Sqlite3.close(db)
+  end
+
+  defp kernel_invocation_snapshot(c) do
+    {:ok, tables} =
+      query(c, "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+
+    Map.new(tables, fn [table] ->
+      {:ok, rows} = query(c, ~s(SELECT * FROM "#{String.replace(table, "\"", "\"\"")}"))
+      {table, Enum.sort(rows)}
+    end)
   end
 
   defp query(c, sql) do

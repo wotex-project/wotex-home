@@ -1,16 +1,16 @@
 # Explicit rule kernel adoption v1
 
-Version: 0.1.7. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.8. Updated: 2026-10-15. Status: accepted target.
 Owner: WOH.20 H20-02/03/06/08/10; WOH.04 rule admission; WOH.14 durable execution.
-Implementation: partial — pure mapping, current/historical proof and the explicit
-Authority/Store invocation join in RKA-01–08.
+Implementation: RKA-01–08 implemented for the existing single-effect profile.
 Evidence: bounded pure/software checks in the
 [kernel adoption record](../provenance/routines-kernel-2026-10.md).
-Bounded durable invocation, rollback and producer-absent original recovery now
-have software evidence. All-member preparation/commit/final runtime faults,
-final-read SQL faults and actual retained-v3 held-original recovery are checked.
-Retained-v3 spent/handoff uncertainty and the owning adoption milestone remain
-open. No installed or physical qualification is inferred.
+Bounded invocation, rollback and producer-absent original recovery have software
+evidence. All-member preparation/commit/final runtime faults, final-read SQL
+faults and actual v3 held/queued/claimed/handoff/ACK history are checked. The
+owning rule/temporal software milestone passed 115 tests. Installed and physical
+qualification remain separate; composed execution and sensor joins remain later
+WOH.20 obligations.
 
 ## Scope and prerequisites
 
@@ -193,13 +193,21 @@ Do not qualify only a fixed example while ignoring the requested rule.
 
 **RKA-05 — History stays history.** Decode exact v3 proof fields, obligations
 and hashes without requiring a producer, clock, current grant or new proof.
-Current admission requires rebuilt v4 equality. Old rule admissions and their
-origin/request/causal rows remain readable and unchanged. A stale old active
-rule cannot create or dispatch work; normal current re-admission and activation
-are required. Old temporal artifacts remain historically valid; their current
-proposal/runtime comparison can withdraw an obsolete schedule under RTR-04.
-There is no receipt rewrite, schema migration, root refund, new original or
-synthetic proof upgrade on restart or restored data. Existing quarantine holds.
+Current admission requires rebuilt v4 equality. Old rule admissions, immutable
+origins and causal spend remain readable and unchanged. Request receipts may
+advance only through their owning documented cancellation/recovery transitions;
+existing journal entries remain append-only. Restart after handoff or ACK
+records outcome_unknown/crash_after_handoff while preserving handoff clocks and
+attempts. It cannot resend or refund. Queued cancellation may remove its execution
+row but preserves the spent causal root. These are the existing
+[durable execution](WOH.14-durable-execution.md) and
+[recovery](WOH.16-release-recovery.md) rules, not a proof-format conversion.
+A stale old active rule cannot create or dispatch work; normal current
+re-admission and activation are required. Old temporal artifacts remain
+historically valid; their current proposal/runtime comparison can withdraw an
+obsolete schedule under RTR-04. There is no receipt rewrite into a new proof
+profile, schema migration, root refund, new original or synthetic proof upgrade
+on restart or restored data. Existing quarantine holds.
 
 The admission document's proposal_basis encodes every native field using its
 known string key; result, scope and the ordered obligations use their known
@@ -325,7 +333,7 @@ compiler options, stop owned Stores and remove disposable directories.
 | RKA-T5 | 06–07 | Authority and compatibility API call Kernel outside writer, one actual held original/root; concurrent same-original invocations/lost replies recover that original without duplicate work | Durable software |
 | RKA-T6 | 06–08 | Mutate actor/author grant, epoch/generation, source/declaration/profile, invariant/override or runtime between prepare/calculate/commit and final publication; no stale held work or spent-root refund | Durable software |
 | RKA-T7 | 07–08 | Inject publication/final-guard SQL faults: receipt/origin/root/revision all roll back, history stays exact, writer disables; semantic denial stays usable | Durable software |
-| RKA-T8 | 05–08 | Actual retained v3 admissions/origins through restart and current refusal; byte-identical history and original recovery with producer absent; old uncertain work never replays | Durable software |
+| RKA-T8 | 05–08 | Actual v3 held/queued/claimed/handoff/ACK history through restart and producer absence; immutable admissions/origins/spend stay exact, only owning recovery/cancellation transitions append; uncertain work never replays; restored history stays quarantined | Durable software |
 | RKA-T9 | 06–08 | Existing framed/local socket invoke operation returns same scoped receipt/refusal; no new external preparation/commit route or raw-message bypass | Adapter software |
 
 Commit the authored contract before implementation. Deliver pure mapping/result,

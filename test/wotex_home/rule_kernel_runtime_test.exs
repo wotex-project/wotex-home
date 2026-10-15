@@ -194,6 +194,120 @@ defmodule WotexHome.RuleKernelRuntimeTest do
     )
   end
 
+  for phase <- [:queued, :claimed, :dispatching, :protocol_accepted] do
+    @phase phase
+    @tag timeout: 120_000
+    test "actual v3 #{@phase} work preserves spend and refuses replay through restart and producer loss" do
+      isolated(
+        """
+        modules = [WotexHome.Rules.RestrictedBasis, WotexHome.Rules.AdmissionArtifact,
+          WotexHome.Durable.Store.RuleWriter, WotexHome.Durable.Store, WotexHome.Authority]
+        originals = Map.new(modules, fn module ->
+          path = Path.join(paths[:wotex_home], Atom.to_string(module) <> ".beam")
+          {module, {path, File.read!(path)}}
+        end)
+        for {module, source_path} <- legacy_sources do
+          :ok = F.load_matching(module, File.read!(source_path), paths[:wotex_home])
+        end
+        c = F.qualified(Path.join(directory, "historical-#{@phase}.sqlite"))
+        {:ok, %{disposition: :held}} = F.invoke(c, "retained:v3")
+        {:ok, %{disposition: #{inspect(@phase)}}} = F.phase(c, #{inspect(@phase)}, "retained:v3")
+        old = F.snapshot(c)
+        [[_, _, _, _, _, document | _]] = old["rule_admissions"]
+        true = JSON.decode!(document)["proposal_basis"]["profile"] == "explicit-boolean-light-v3"
+        [[_, _, _, "explicit_request", _, 1, reservation, 7, 1]] = old["request_causal_roots"]
+        true = is_integer(reservation)
+        :ok = F.intact(c)
+        :ok = GenServer.stop(c.store)
+        for module <- modules do
+          {path, bytes} = Map.fetch!(originals, module)
+          File.write!(path, bytes)
+          {:module, ^module} = :code.load_binary(module, String.to_charlist(path), bytes)
+          :code.purge(module)
+        end
+        {:ok, store} = Store.start_link([path: c.path] ++ c.options)
+        current = %{c | store: store, authority: WotexHome.Authority.new(store: store)}
+        {:ok, receipt} = F.invoke(current, "retained:v3")
+        before = F.snapshot(current)
+        if #{inspect(@phase)} in [:dispatching, :protocol_accepted] do
+          true = receipt.disposition == :outcome_unknown and receipt.reason == "crash_after_handoff"
+          :ok = F.recovery_only!(old, before)
+        else
+          true = receipt.disposition == #{inspect(@phase)}
+          true = before == old
+        end
+        {:error, :stale_rule_admission} = F.invoke(current, "new:current")
+        true = F.snapshot(current) == before
+        {:ok, %{writable: true}} = Store.health(store)
+        :ok = F.intact(current)
+        :ok = GenServer.stop(store)
+        true = Application.load(:wotex_routines) in [:ok, {:error, {:already_loaded, :wotex_routines}}]
+        routines = Application.spec(:wotex_routines, :modules)
+        true = :code.del_path(String.to_charlist(paths[:wotex_routines]))
+        for module <- routines do :code.purge(module); :code.delete(module) end
+        :ok = Application.unload(:wotex_routines)
+        false = Code.ensure_loaded?(Wotex.Routines.Kernel)
+        {:ok, restarted} = Store.start_link([path: c.path] ++ c.options)
+        current = %{current | store: restarted, authority: WotexHome.Authority.new(store: restarted)}
+        {:ok, ^receipt} = F.invoke(current, "retained:v3")
+        {:ok, ^receipt} = Store.invoke_rule(restarted, current.control, 1, "retained:v3", 1, "rule:runtime")
+        true = F.snapshot(current) == before
+        {:error, reason} = F.invoke(current, "new:absent")
+        true = reason in [:unsupported_admission_profile, :runtime_artifact_unavailable]
+        true = F.snapshot(current) == before
+        if #{inspect(@phase)} == :queued do
+          {:ok, %{disposition: :rejected, reason: "cancelled_before_claim"} = cancelled} =
+            Store.cancel_request(restarted, current.control, 1, "retained:v3")
+          {:ok, ^cancelled} = F.invoke(current, "retained:v3")
+        else
+          unchanged = F.snapshot(current)
+          {:error, :request_not_held} = Store.cancel_request(restarted, current.control, 1, "retained:v3")
+          true = F.snapshot(current) == unchanged
+        end
+        {:error, _} = Store.claim_lifx_power(restarted, "operator:runtime", 1, "retained:v3", "boot:1", 101)
+        after_attempt = F.snapshot(current)
+        true = after_attempt["request_causal_roots"] == before["request_causal_roots"]
+        true = after_attempt["rule_admissions"] == old["rule_admissions"]
+        true = after_attempt["request_rule_origins"] == old["request_rule_origins"]
+        true = Enum.take(after_attempt["request_journal"], length(old["request_journal"])) == old["request_journal"]
+        [old_execution] = old["request_execution"]
+        if #{inspect(@phase)} == :queued do
+          [] = after_attempt["request_execution"]
+          true = Enum.at(old_execution, 15) == nil
+        else
+          [current_execution] = after_attempt["request_execution"]
+          true = Enum.slice(current_execution, 15, 2) == Enum.slice(old_execution, 15, 2)
+          true = Enum.slice(current_execution, 18, 2) == Enum.slice(old_execution, 18, 2)
+        end
+        {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(restarted)
+        :ok = F.intact(current)
+        if #{inspect(@phase)} == :protocol_accepted do
+          key = :crypto.strong_rand_bytes(32)
+          archive = Path.join(directory, "historical-v3.wohb")
+          restored = Path.join(directory, "quarantine.sqlite")
+          {:ok, _} = F.read(c.path, &WotexHome.Durable.Backup.export(&1, archive, key))
+          {:ok, _} = WotexHome.Durable.Backup.verify(archive, key)
+          {:ok, _} = WotexHome.Durable.Backup.stage_restore(archive, key, restored)
+          :ok = F.read(restored, &WotexHome.Durable.Store.Integrity.validate_snapshot/1)
+          F.read(restored, fn db ->
+            for table <- ~w(rule_admissions request_causal_roots request_rule_origins request_journal request_execution) do
+              {:ok, rows} = WotexHome.Durable.Store.SQL.query(db, "SELECT * FROM " <> table <> " ORDER BY rowid")
+              true = rows == after_attempt[table]
+            end
+            {:ok, [[1]]} = WotexHome.Durable.Store.SQL.query(db, "SELECT value FROM meta WHERE key='restore_quarantine'")
+          end)
+          Process.flag(:trap_exit, true)
+          {:error, {:store_open_failed, :restore_requires_transfer}} = Store.start_link(path: restored)
+        end
+        :ok = GenServer.stop(restarted)
+        IO.puts("actual v3 #{@phase} spent history passed")
+        """,
+        1,
+        legacy: true
+      )
+    end
+  end
+
   defp isolated(body, expected, options \\ []) do
     directory =
       Path.join(
@@ -218,6 +332,15 @@ defmodule WotexHome.RuleKernelRuntimeTest do
 
         {app, private}
       end)
+
+    if options[:legacy] do
+      for relative <- ["lifx/products.json", "qualification/lifx-old-eu-v1.json"] do
+        original = Application.app_dir(:wotex_home, "priv/" <> relative)
+        private = Path.join([directory, "wotex_home", "priv", relative])
+        File.mkdir_p!(Path.dirname(private))
+        File.cp!(original, private)
+      end
+    end
 
     legacy_sources =
       if options[:legacy] do

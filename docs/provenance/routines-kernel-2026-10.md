@@ -379,3 +379,110 @@ Source SHA-256 values for this corpus:
 | --- | --- |
 | test/support/rule_kernel_runtime_fixture.exs | 80b59f29650f261bf5c6ee1650de93979a61483da6a2b430835e2b4bfde5610b |
 | test/wotex_home/rule_kernel_runtime_test.exs | 51d30bbc02da411276e8d9a7bdf5baf536a2a963d94adce6a9260fda74093a92 |
+
+## Historical spent-work and software adoption milestone
+
+The actual prior consumer modules at **cf65675** now create v3 originals through
+four additional real ledger phases: queued, claimed, dispatching and
+protocol_accepted. The shared LIFX qualification fixture is synthetic software
+evidence only; it exercises guarded ledger APIs without device transport or
+physical dispatch. Its six data attributes, qualification installer, digest
+and SQL helper bodies were compared as normalized ASTs against their previous
+definitions in durable_enrollment_test.exs and matched exactly. The existing
+suite delegates to that installer rather than maintaining a second copy.
+
+Each private VM admits, activates and invokes using the actual old modules,
+reserves the root through the real queue API, and advances the requested phase
+through actual claim/handoff/ACK calls. After restoring current consumer BEAMs
+and restarting, queued/claimed snapshots remain exact. Handoff and ACK recover
+through one documented outcome_unknown/crash_after_handoff transition: one
+revision, receipt/execution outcome changes and one appended journal entry.
+The other sixteen retained tables and schema remain equal. Admissions, origins,
+spent roots, attempts and handoff timestamps are preserved.
+
+After producer removal and another restart, both public invocation APIs recover
+the same scoped original. New use refuses. Queued cancellation retains spend
+while removing execution state; claimed/unknown work refuses cancellation
+unchanged. A further claim refuses in every case. The ACK case also exports,
+verifies and stages an encrypted backup. Staged immutable history remains exact,
+integrity passes, quarantine is set, and ordinary Store opening refuses
+restore_requires_transfer. Keys are generated inside the child VM and never
+enter command arguments. RKA-05 now explicitly distinguishes immutable proof
+history from these owning recovery/cancellation transitions.
+
+Additional current-state cases exercise actual replacement-source admission and
+activation, selected portable-profile byte loss, and epoch scope. A prepared
+true-valued proposal refuses after replacement by an active false-valued source;
+a fresh invocation creates only that new value and admission/generation root.
+A valid inert epoch-2 proposal cannot commit against epoch 1. This checks current
+epoch refusal, not a controller-transfer campaign. Removing selected custody
+bytes after calculation makes preparation and commit refuse with every main-table
+row unchanged. Restoring those exact bytes permits one held original with its
+current profile pin and unspent root. A real private socket now invokes, repeats
+and recovers the same original through framed/direct interfaces; a fresh stale
+generation refuses without publication.
+
+Executed with WOTEX_HOME_GIT_DEPS=1 and the pinned Elixir/OTP versions:
+
+- Initial three-phase run: seed **974405**, 13.5 seconds; queued/claimed passed,
+  while recovery comparison exposed a fixture-only list-to-map conversion
+  error. Explicit key/value row conversion corrected that comparison.
+- The next selected ten cases had no test failures, seed **933565**, 26.5
+  seconds, but warnings-as-errors failed on two unused extraction aliases.
+  Removing them corrected the fixture; that command is not green evidence.
+- Corrected runtime/invocation/execution subset: **43 passed**, seed
+  **652523**, 99.4 seconds, 611 unrelated cases excluded.
+- All four spent-history cases, including ACK/archive: **4 passed**, seed
+  **677685**, 19.5 seconds, six excluded.
+- Replacement source: **1 passed**, seed **112873**, 1.6 seconds, 27 excluded.
+  Epoch and profile-custody cases: **2 passed**, seed **229282**, 3.3 seconds,
+  71 excluded.
+- Full formatting and development compilation with warnings as errors: passed.
+- Owning milestone command below: **115 passed**, seed **827870**, **141.0
+  seconds** (96.5 async, 44.4 sync), 653 unrelated cases excluded.
+- The additional real-socket invocation case was added after that gate:
+  `mix test test/wotex_home/durable_rule_invocation_test.exs:346 --warnings-as-errors`
+  passed **1 test**, seed **135536**, 1.3 seconds, 29 excluded. The unchanged
+  cases were not rerun. No socket exclusion was requested in either command.
+
+```sh
+WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/rule_kernel_proposal_test.exs test/wotex_home/restricted_basis_test.exs test/wotex_home/rule_kernel_runtime_test.exs test/wotex_home/durable_rule_invocation_test.exs test/wotex_home/durable_rule_activation_test.exs test/wotex_home/schedule_admission_artifact_test.exs test/wotex_home/authority_profile_review_test.exs:1538:1652 test/wotex_home/durable_enrollment_test.exs:2514:2597 --warnings-as-errors
+```
+
+| Acceptance | Milestone evidence and scope |
+| --- | --- |
+| RKA-T1–T3 | Complete pure projection/result corpus and actual producer mutants; independent draft shadow evidence stays separately scoped |
+| RKA-T4 | Warm proof mutations, cold closing drift, safe historical decoding and 120 actual Store boundary runtime vectors |
+| RKA-T5 | Caller-process calculation, concurrent original recovery, real held receipt/origin/root and restart |
+| RKA-T6 | Actor/author/grant, generation, source, declaration, profile custody, epoch, invariant/override, maintenance and runtime refusals; late permission/runtime drift rolls back tentative work |
+| RKA-T7 | Five publication and six final-read SQL faults, unchanged data/schema, writer-disabled failure versus usable semantic refusal |
+| RKA-T8 | Actual old held plus four spent phases, absent producer, preserved spend/attempts/uncertainty and quarantined encrypted restore |
+| RKA-T9 | Actual framed/private-socket invoke and scoped receipt recovery, closed external routes, rejected raw-message bypass and compatibility API |
+
+This closes the restricted initial-proposal software adoption milestone. It
+does not close WOH.20 stage 6: qualified sensor continuity, complete-set
+collection, composed run/step persistence, durable completion and wider
+admission still require their owning specifications and implementation. No full
+application suite, Dialyzer, installed-host, release/image, minimum-window load
+or physical campaign ran. No production code, dependency, durable schema or
+dispatch default changed in this milestone.
+
+Latest source SHA-256 values (earlier tables retain their checkpoint identities):
+
+| File | SHA-256 |
+| --- | --- |
+| test/support/lifx_qualification_fixture.exs | a599e84aaa10b55232c4d9655c1f0b5dfc002cb5b094dd1ddc485f2c26a7d5e3 |
+| test/support/rule_kernel_runtime_fixture.exs | f65d29940b2e5ec6aa75d301e5f2d1a6a8f3f229c44b7c365e026d8df0496cab |
+| test/wotex_home/durable_enrollment_test.exs | 195b74b150c23518a52e25432d956588335a825d5f88589fad28ddda0027de65 |
+| test/wotex_home/rule_kernel_runtime_test.exs | ffac063fd0b5f52a8f6d94b36e5fc6a4c0f6e1197bb3d57dc03d8cb4df3f9eae |
+| test/wotex_home/durable_rule_invocation_test.exs | 26ea730d13afeaa164e4d7d2210403f40aaa27ba4ea04bea6ea78fe52a637d89 |
+| test/wotex_home/authority_profile_review_test.exs | 8c0bcaf93db4b61bf6206fd52268a439c17dcd4b1e043ced7b17bfbdf82dcb96 |
+
+Working and staged catalogue checks passed **22/21 contracts** respectively.
+All **46** staged local references resolve, all **21** latest checkpoint source
+hashes match, and all changed test/helper modules retain moduledoc false with
+the required following blank line. The nine extracted attribute/helper ASTs
+match the previous fixture. Final formatting and both Git whitespace checks
+passed. Post-check scans found **zero** owned test or staged-spec scratch paths;
+approximately **58 GiB** remained free on the shared volume. No Docker resource
+was created. Reusable dependency/native caches and unrelated data were preserved.

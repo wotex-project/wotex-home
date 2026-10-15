@@ -1,3 +1,5 @@
+Code.require_file(Path.expand("lifx_qualification_fixture.exs", __DIR__))
+
 defmodule WotexHome.TestSupport.RuleKernelRuntimeFixture do
   @moduledoc false
 
@@ -56,6 +58,116 @@ defmodule WotexHome.TestSupport.RuleKernelRuntimeFixture do
     %{store: store, authority: authority, manager: manager, control: control, path: path}
   end
 
+  def qualified(path) do
+    data = WotexHome.TestSupport.LifxQualificationFixture.data()
+    {:ok, candidate} = WotexHome.Discovery.Candidate.new(data.candidate)
+    {:ok, interview} = WotexHome.Discovery.Interview.new(data.interview, candidate)
+    {:ok, profile} = WotexHome.Discovery.Profile.new(data.profile)
+
+    {:ok, thing} =
+      Thing.new(%{
+        "id" => "light:desk",
+        "role" => "Light",
+        "profile_ref" => "lifx.old-eu:1.0.0",
+        "capabilities" => [data.power]
+      })
+
+    {:ok, initial} = Store.start_link(path: path)
+    {:ok, owner, 1} = Store.provision_principal(initial, "owner:1", ["enroll:review"], [])
+
+    {:ok, 2} =
+      Store.commit_enrollment(
+        initial,
+        owner,
+        [candidate],
+        interview,
+        [profile],
+        thing,
+        data.selection
+      )
+
+    {:ok, control, 3} =
+      Store.provision_principal(initial, "operator:runtime", ["control:ordinary"], [thing.id])
+
+    {:ok, report} =
+      WotexHome.Semantics.Observation.new(
+        %{
+          "thing_id" => thing.id,
+          "capability_key" => "power",
+          "value" => %{"type" => "boolean", "value" => false},
+          "quality" => "reported",
+          "trust" => "unauthenticated_local",
+          "source_epoch" => "device:1",
+          "source_sequence" => 1,
+          "boot_epoch" => "boot:1",
+          "source_time_utc_ms" => nil,
+          "received_time_utc_ms" => 1_000_100,
+          "received_monotonic_ms" => 100
+        },
+        thing.capabilities["power"]
+      )
+
+    {:ok, 4} = Store.record(initial, report, thing.capabilities["power"])
+    :ok = GenServer.stop(initial)
+    options = WotexHome.TestSupport.LifxQualificationFixture.install(path, 5, thing)
+    {:ok, store} = Store.start_link([path: path] ++ options)
+
+    {:ok, manager, 6} =
+      Store.provision_principal(
+        store,
+        "manager:runtime",
+        ~w(rule:review rule:manage control:ordinary),
+        [thing.id]
+      )
+
+    authority = Authority.new(store: store)
+    source = put_in(source(), ["effect", "target_id"], thing.id)
+
+    {:ok, %{revision: 7}} =
+      Authority.admit_rule(authority, manager, 1, "admit:runtime", 6, [source])
+
+    {:ok, %{rule_generation: 1}} =
+      Authority.activate_rule(authority, manager, 1, "activate:runtime", 7, 7)
+
+    %{
+      store: store,
+      authority: authority,
+      manager: manager,
+      control: control,
+      path: path,
+      options: options,
+      thing: thing
+    }
+  end
+
+  def phase(c, :held, operation), do: Store.request_status(c.store, c.control, 1, operation)
+
+  def phase(c, phase, operation)
+      when phase in [:queued, :claimed, :dispatching, :protocol_accepted] do
+    {:ok, %{disposition: :queued}} =
+      Store.admit_held_power(c.store, c.control, 1, operation, "boot:1", 101)
+
+    if phase == :queued do
+      Store.request_status(c.store, c.control, 1, operation)
+    else
+      {:ok, claim} =
+        Store.claim_lifx_power(c.store, "operator:runtime", 1, operation, "boot:1", 101)
+
+      if phase in [:dispatching, :protocol_accepted] do
+        {:ok, %{disposition: :dispatching}} =
+          Store.handoff_claimed_power(c.store, "operator:runtime", 1, operation, claim.token, 101)
+
+        if phase == :protocol_accepted do
+          Store.accept_power_ack(c.store, "operator:runtime", 1, operation, claim.token)
+        else
+          Store.request_status(c.store, c.control, 1, operation)
+        end
+      else
+        Store.request_status(c.store, c.control, 1, operation)
+      end
+    end
+  end
+
   def source do
     %{
       "version" => 1,
@@ -90,7 +202,7 @@ defmodule WotexHome.TestSupport.RuleKernelRuntimeFixture do
   def snapshot(c) do
     read(c.path, fn db ->
       tables =
-        ~w(meta enrolled_things principals principal_targets rule_admissions rule_activations authority_journal request_receipts request_outbox request_journal request_causal_roots request_rule_origins request_execution profile_request_pins)
+        ~w(meta enrolled_things principals principal_targets rule_admissions rule_activations authority_journal request_receipts request_outbox request_journal request_causal_roots request_rule_origins request_execution profile_request_pins enrollment_bindings enrollment_review_history profile_qualifications profile_qualification_history journal observation_current)
 
       Map.new(tables, fn table ->
         {:ok, rows} = SQL.query(db, "SELECT * FROM " <> table <> " ORDER BY rowid")
@@ -107,6 +219,49 @@ defmodule WotexHome.TestSupport.RuleKernelRuntimeFixture do
         )
       )
     end)
+  end
+
+  def recovery_only!(old, current) do
+    changed = ["meta", "request_receipts", "request_journal", "request_execution"]
+    true = Map.drop(current, changed) == Map.drop(old, changed)
+    old_meta = Map.new(old["meta"], fn [key, value] -> {key, value} end)
+    new_revision = old_meta["revision"] + 1
+
+    true =
+      Map.new(current["meta"], fn [key, value] -> {key, value} end) ==
+        Map.put(old_meta, "revision", new_revision)
+
+    [receipt] = old["request_receipts"]
+
+    expected =
+      receipt
+      |> List.replace_at(10, "outcome_unknown")
+      |> List.replace_at(11, "crash_after_handoff")
+      |> List.replace_at(12, new_revision)
+
+    true = current["request_receipts"] == [expected]
+    [execution] = old["request_execution"]
+
+    expected =
+      execution |> List.replace_at(12, "outcome_unknown") |> List.replace_at(17, new_revision)
+
+    true = current["request_execution"] == [expected]
+
+    true =
+      current["request_journal"] ==
+        old["request_journal"] ++
+          [
+            [
+              new_revision,
+              "operator:runtime",
+              1,
+              "retained:v3",
+              "outcome_unknown",
+              "crash_after_handoff"
+            ]
+          ]
+
+    :ok
   end
 
   def intact(c), do: read(c.path, &Integrity.validate_snapshot/1)

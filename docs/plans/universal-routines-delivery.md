@@ -50,8 +50,9 @@ catalogue retains partial status for execution joins and independent adoption.
 Home's restricted read-only archive comparison now passes 360 finite cases
 and duplicate/blocked-root/forged-source checks; see the
 [shadow profile](../specs/routine-shadow-v1.md). The restricted kernel runtime
-consumer remains planned. Routines is now selected for the separately bounded
-temporal calculation path recorded in the current checkpoint below.
+consumer is implemented under the bounded initial-proposal contract below;
+composed execution remains a later stage. Routines is also selected for the
+separately bounded temporal calculation path.
 
 WoTEx now implements source/IR regeneration, qualified snapshots, retained
 composition and staged receipts, reported-edge qualification, complete
@@ -167,19 +168,19 @@ admissions or originals; same-owner restart creates no new authorization,
 clock custody or claim token. The targeted 73-case runtime/current-guard
 milestone passed; no full application suite, Dialyzer or host build is inferred.
 
-Next, define and adopt the restricted generic kernel runtime seam before wider
-sensor/composition admission. The archive shadow profile remains its independent
-comparison evidence. Stage 6 still requires qualified fact continuity, complete
-sets, multi-root/step schema and a concrete admission proof. Installed host,
+The restricted generic kernel's initial-proposal software milestone is recorded
+below. The archive shadow profile remains its independent comparison evidence.
+Continue stage 6 with qualified fact continuity, complete sets, multi-root/step
+schema and a concrete admission proof. Installed host,
 minimum-window load and physical campaigns remain separate obligations.
 
 ## Explicit kernel adoption order
 
-The [kernel successor](../specs/routine-kernel-adoption-v1.md) is the next runtime
-entry contract. Current admitted invocation builds held work directly; the
-credential-free draft Sandbox is a separate path. Adopt the actual public
-Compiler/Kernel initial proposal without changing that distinction or widening
-admission. All generic mapping data stays in Home; no household policy enters
+The [kernel successor](../specs/routine-kernel-adoption-v1.md) owns the restricted
+runtime entry contract. Admitted invocation now calculates the actual public
+Compiler/Kernel initial proposal before creating held work. The credential-free
+draft Sandbox remains a separate path; this join does not widen admission.
+All generic mapping data stays in Home; no household policy enters
 WoTEx or ExBooking. The selected public producer APIs already cover this join.
 
 1. Implement the bounded Home installed mapping, source/program conversion and
@@ -208,5 +209,10 @@ publication faults, capacity, raw-route refusal and producer-absent restart.
 Step 4 now adds 120 all-member runtime mutations across preparation, commit
 and final publication, six final-read SQL faults, three actual producer failures
 and unchanged actual-v3 held history across current restart/producer absence.
-Continue with retained-v3 spent/handoff uncertainty and the owning rule/temporal
-adoption milestone. Wider stage 6 remains required.
+Actual retained-v3 queued/claimed/handoff/ACK cases now preserve spend and
+uncertainty through current restart and producer absence, including cancellation
+and quarantined encrypted restore. Real selected-profile custody loss, active
+source replacement and foreign-epoch proposals refuse without publication.
+The owning rule/temporal software milestone passed 115 tests. Stage 6 still
+requires qualified facts/continuity, complete-set collection, composed run/step
+roots, durable completion and wider admission; those contracts are next.

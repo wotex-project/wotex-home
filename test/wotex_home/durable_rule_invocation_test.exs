@@ -7,7 +7,7 @@ defmodule WotexHome.DurableRuleInvocationTest do
   alias WotexHome.{Authority, Mutation}
   alias WotexHome.Durable.Store
   alias WotexHome.Durable.Store.{Integrity, SQL}
-  alias WotexHome.LocalAPI.Server
+  alias WotexHome.LocalAPI.{Client, Server}
   alias WotexHome.Rules.InvocationPreparation
   alias WotexHome.Semantics.Thing
 
@@ -129,6 +129,70 @@ defmodule WotexHome.DurableRuleInvocationTest do
              Store.provision_principal(c.store, "observer:other", ["rule:review"], [c.thing.id])
 
     assert {:ok, %{disposition: :held, revision: 7}} = commit(c, preparation, projection)
+  end
+
+  test "replacing the active source fences the calculated old value and admits only the new source",
+       c do
+    {:ok, preparation} = prepare(c)
+    {:ok, projection} = InvocationPreparation.proposal(preparation)
+
+    replacement =
+      rule() |> Map.put("source_revision", 2) |> put_in(["effect", "value", "value"], false)
+
+    assert {:ok, %{revision: 6}} =
+             Authority.admit_rule(c.authority, c.manager, 1, "admit:replacement", 5, [replacement])
+
+    assert {:ok, %{rule_generation: 2}} =
+             Authority.activate_rule(c.authority, c.manager, 1, "activate:replacement", 6, 6)
+
+    before = snapshot(c)
+    assert {:error, :stale_rule_generation} = commit(c, preparation, projection)
+    assert snapshot(c) == before
+
+    assert {:ok, %{disposition: :held, revision: 8}} =
+             Authority.invoke_rule(c.authority, c.control, 1, "invoke:kernel", 2, "rule:kernel")
+
+    assert [["0"]] =
+             read(c, fn db ->
+               {:ok, rows} =
+                 SQL.query(
+                   db,
+                   "SELECT value_a FROM request_receipts WHERE operation_id='invoke:kernel'"
+                 )
+
+               rows
+             end)
+
+    assert roots(c) == [[6, 2, 0]]
+    assert :ok = integrity(c)
+  end
+
+  test "a valid inert proposal for a different epoch cannot authorize a current Store original",
+       c do
+    {:ok, preparation} = prepare(c)
+    changed = %{preparation | authority_epoch: 2}
+    changed = %{changed | preparation_digest: preparation_digest(changed)}
+    assert :ok = InvocationPreparation.identity(changed)
+    assert {:ok, projection} = InvocationPreparation.proposal(changed)
+    before = snapshot(c)
+
+    assert {:error, :stale_authority_epoch} = commit(c, changed, projection)
+
+    assert {:error, :stale_authority_epoch} =
+             Store.prepare_rule_invocation(
+               c.store,
+               c.control,
+               2,
+               "invoke:kernel",
+               1,
+               "rule:kernel"
+             )
+
+    assert snapshot(c) == before
+    assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(c.store)
+    assert :ok = integrity(c)
+    assert {:ok, %{disposition: :held}} = invoke(c, "invoke:kernel")
+    assert roots(c) == [[4, 1, 0]]
   end
 
   test "malformed preparations, foreign credentials and malformed results publish nothing", c do
@@ -284,6 +348,53 @@ defmodule WotexHome.DurableRuleInvocationTest do
     assert {:error, :receipt_capacity} = commit(c, preparation, projection)
     assert snapshot(c) == before
     assert {:ok, %{writable: true}} = Store.health(c.store)
+  end
+
+  @tag :requires_socket
+  test "the actual private socket invokes and recovers the same original while refusing stale work",
+       c do
+    root =
+      Path.join(
+        if(:os.type() == {:unix, :darwin}, do: "/private/tmp", else: System.tmp_dir!()),
+        "woh-rule-api-" <> Base.encode16(:crypto.strong_rand_bytes(8))
+      )
+
+    File.mkdir!(root)
+    File.chmod!(root, 0o700)
+    on_exit(fn -> File.rm_rf!(root) end)
+    socket = Path.join(root, "ipc/home.sock")
+    start_supervised!({Server, authority: c.authority, socket_path: socket})
+
+    request = %{
+      "api_version" => 1,
+      "operation" => "invoke_rule",
+      "credential" => Base.url_encode64(c.control, padding: false),
+      "authority_epoch" => 1,
+      "operation_id" => "invoke:socket",
+      "rule_generation" => 1,
+      "rule_id" => "rule:kernel"
+    }
+
+    assert {:ok, %{"outcome" => "ok", "receipt" => %{"disposition" => "held"}} = response} =
+             Client.request(socket, request)
+
+    before = snapshot(c)
+    assert {:ok, ^response} = Client.request(socket, request)
+    assert Server.route(c.authority, request) == response
+    assert {:ok, %{disposition: :held}} = invoke(c, "invoke:socket")
+
+    assert {:ok, %{"outcome" => "error", "reason" => "stale_rule_generation"}} =
+             Client.request(
+               socket,
+               Map.merge(request, %{
+                 "operation_id" => "invoke:socket-stale",
+                 "rule_generation" => 2
+               })
+             )
+
+    assert snapshot(c) == before
+    assert roots(c) == [[4, 1, 0]]
+    assert :ok = integrity(c)
   end
 
   test "legacy raw messages and external preparation routes cannot bypass the join", c do
