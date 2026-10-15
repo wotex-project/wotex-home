@@ -2,8 +2,21 @@ defmodule WotexHome.Durable.Store.ObservationCodec do
   @moduledoc """
   Closed SQLite representation for semantic observations.
 
-  The codec is pure: it validates persisted rows and translates values without
-  owning a database handle or advancing durable state.
+  `encode_value/1` maps an already validated `WotexHome.Semantics.Value` or `nil`
+  to the three SQLite value columns. `decode_value/3` returns `{:ok, value}`,
+  including `{:ok, nil}` for three null columns, or `{:error, :corrupt_value}`
+  for an unsupported storage shape. This primitive decoder reconstructs values;
+  it does not check their semantic ranges.
+
+  `decode_current/3` takes a Thing ID, capability key and the ordered 14-column
+  current-observation row. It validates IDs, nonnegative signed-64-bit receipt
+  coordinates, quality/trust tags and value validity, returning
+  `{:ok, observation, revision}` or `{:error, :corrupt_value}`. Unknown quality
+  requires a null value; reported quality requires a valid semantic value.
+
+  The codec is pure and owns no database handle or revision. Store must establish
+  declaration/profile correspondence and apply current boot/freshness checks
+  before using a retained observation as current evidence.
   """
 
   alias WotexHome.Id

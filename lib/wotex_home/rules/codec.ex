@@ -2,9 +2,22 @@ defmodule WotexHome.Rules.Codec do
   @moduledoc """
   Bounded canonical storage for the complete supported closed draft grammar.
 
-  Encoding revalidates structs and preserves rule and predicate-list order.
+  `encode/1` revalidates a list of 1 to 64 `WotexHome.Rules.Rule` values and
+  returns `{:ok, document}` within a 65,536-byte ceiling. Invalid inputs return
+  `{:error, :invalid_rule_set}`; valid inputs exceeding the byte ceiling return
+  `{:error, :rule_set_too_large}`. Rule and predicate-list order are preserved.
   Duplicate rule IDs remain representable so review can retain their rejection.
-  No serialized rule is an admission or scheduler registration.
+
+  `decode/1` returns `{:ok, rules}` only for the exact canonical encoder bytes.
+  Malformed, unsupported, oversized or noncanonical documents return
+  `{:error, :invalid_rule_document}`. `encode_predicate/1` and
+  `decode_predicate/1` apply the same byte ceiling to one
+  `WotexHome.Rules.Predicate`, returning `{:ok, document}` and `{:ok, predicate}`
+  respectively, or `{:error, :invalid_predicate_document}`. Oversized predicate
+  encoding returns `{:error, :predicate_too_large}`.
+
+  These documents retain draft structure. Encoding or decoding performs no
+  admission, current-state evaluation or scheduler registration.
   """
 
   alias WotexHome.Rules.{Predicate, Rule}
