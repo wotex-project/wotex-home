@@ -55,6 +55,7 @@ final class NativeControllerSessionDriver: ObservableObject {
     private let persistence: Persistence
     nonisolated private let fence: ControllerSelectionFence
     private let certificateClock: (@Sendable () throws -> NativeControllerCertificateClock)?
+    private let certificateClockAvailable: @Sendable () -> Bool
     private let local: NativeControllerLocalReadClient
     @Published private(set) var snapshot: NativeControllerAssociationSnapshot?
     @Published private(set) var busy = false
@@ -64,7 +65,8 @@ final class NativeControllerSessionDriver: ObservableObject {
     var changesAllowed: () -> Bool = { true }
     var selectionChanged: () -> Void = {}
 
-    init(certificateClock: (@Sendable () throws -> NativeControllerCertificateClock)? = nil, directory: URL? = nil,
+    init(certificateClock: (@Sendable () throws -> NativeControllerCertificateClock)? = nil,
+         certificateClockAvailable: @escaping @Sendable () -> Bool = { true }, directory: URL? = nil,
          local: NativeControllerLocalReadClient = NativeControllerLocalReadClient()) {
         let persistence: Persistence
         if let directory {
@@ -80,12 +82,13 @@ final class NativeControllerSessionDriver: ObservableObject {
         }
         self.persistence = persistence; fence = ControllerSelectionFence(check: persistence.check)
         self.certificateClock = certificateClock
+        self.certificateClockAvailable = certificateClockAvailable
         self.local = local
     }
     var selection: NativeControllerSelection? { snapshot?.document.selection }
     var records: [NativeControllerPublicAssociation] { snapshot?.document.records ?? [] }
     var localSelected: Bool { selection == .local && !needsReload }
-    var pairedRecoveryAvailable: Bool { certificateClock != nil && snapshot != nil && !needsReload }
+    var pairedRecoveryAvailable: Bool { certificateClock != nil && certificateClockAvailable() && snapshot != nil && !needsReload }
     var label: String {
         guard let snapshot, !needsReload else { return "Controller selection unavailable" }
         switch snapshot.document.selection {
@@ -96,7 +99,7 @@ final class NativeControllerSessionDriver: ObservableObject {
     var status: String {
         if needsReload || snapshot == nil { return "Reload saved controller metadata before making requests." }
         if localSelected { return "Local session on this Mac." }
-        return certificateClock == nil ? "Selected paired controller · Trusted certificate clock unavailable" : "Selected paired controller · Refresh to authenticate current access"
+        return certificateClock == nil || !certificateClockAvailable() ? "Selected paired controller · Trusted certificate clock unavailable" : "Selected paired controller · Refresh to authenticate current access"
     }
     nonisolated func installLocalFence() {
         NativeLocalControllerRequestGuard.install { [fence] in try fence.beginLocal() }
@@ -132,7 +135,7 @@ final class NativeControllerSessionDriver: ObservableObject {
         if checkMetadata { try persistence.check(original) }
     }
     private func selected(_ original: NativeControllerAssociationSnapshot, additionalCheck: @escaping @Sendable () throws -> Void = {}) async throws -> NativePairedControllerSession {
-        guard let certificateClock else { throw NativeControllerDriverError.clockUnavailable }
+        guard let certificateClock, certificateClockAvailable() else { throw NativeControllerDriverError.clockUnavailable }
         return try await NativePairedControllerSession.selected(expected: original, clock: certificateClock, additionalCheck: additionalCheck)
     }
     private var pairedSelected: Bool {
@@ -647,7 +650,7 @@ final class NativeControllerSessionDriver: ObservableObject {
                       let association = selected.document.records.first(where: { $0.id == id }),
                       entry.custody.matches(association: association, context: entry.context) else { throw NativeControllerDriverError.unavailable }
             }
-            guard let clock = certificateClock else { throw NativeControllerDriverError.clockUnavailable }
+            guard let clock = certificateClock, certificateClockAvailable() else { throw NativeControllerDriverError.clockUnavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation
             let publication = try await workspace.performPaired(entry, action: action, journal: journal, associations: selected, clock: clock)
@@ -1351,7 +1354,7 @@ final class NativeControllerSessionDriver: ObservableObject {
     func readPowerReceipt(_ entry: NativePendingEntry) async throws -> NativePairedPowerReceiptRead {
         return try await metadataChecked {
             guard !busy, !needsReload, let original = snapshot else { throw NativeControllerDriverError.unavailable }
-            guard let certificateClock else { throw NativeControllerDriverError.clockUnavailable }
+            guard let certificateClock, certificateClockAvailable() else { throw NativeControllerDriverError.clockUnavailable }
             busy = true; defer { busy = false }
             let captured = generation
             let value = try await NativePairedControllerSession.readPowerReceipt(entry, associations: original, clock: certificateClock)

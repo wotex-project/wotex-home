@@ -127,6 +127,9 @@ struct HomeWindow: View {
             HomeSection(title: "Controller") {
                 NativeControllerSelectionPanel(controller: application.controller, changesAllowed: changesAllowed)
             }
+            HomeSection(title: "Trusted certificate clock") {
+                NativeCertificateClockPanel(clock: application.certificateClock)
+            }
             HomeSection(title: "Local controller") {
                 HomeSettingToggle(title: "Background controller",
                     detail: "Start Home at login and keep it running when this window closes.",

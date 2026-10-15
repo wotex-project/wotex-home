@@ -11,6 +11,7 @@ final class HomeApplicationModel: ObservableObject {
     let profiles: ProfilesViewModel
     let network = NativeNetworkViewModel()
     let mqtt = NativeMQTTSetupViewModel()
+    let certificateClock = NativeCertificateClockViewModel()
     let access: NativeAccessViewModel
     let rules: NativeRuleViewModel
     let schedules: NativeScheduleViewModel
@@ -28,17 +29,25 @@ final class HomeApplicationModel: ObservableObject {
     var busy: Bool {
         pending.busy || health.busy || health.stageBusy || health.receiptBusy || health.overrideBusy ||
             health.ruleBusy || health.enrollmentBusy || maintenance.busy || profiles.busy || access.busy ||
-            rules.busy || schedules.busy || things.busy || externalReports.busy || externalProfiles.busy || authoring.busy || authoringOperations.busy || generation.busy || generation.workspace.busy || setup.busy || network.busy || mqtt.busy || controller.busy
+            rules.busy || schedules.busy || things.busy || externalReports.busy || externalProfiles.busy || authoring.busy || authoringOperations.busy || generation.busy || generation.workspace.busy || setup.busy || network.busy || mqtt.busy || certificateClock.busy || controller.busy
     }
     var canChangeSession: Bool {
-        !controller.busy && !setup.busy && !network.busy && mqtt.canChangeSession && pending.canStart && health.canChangeSession &&
+        !controller.busy && !setup.busy && !network.busy && !certificateClock.busy && mqtt.canChangeSession && pending.canStart && health.canChangeSession &&
             maintenance.canChangeSession && profiles.canChangeSession && access.canChangeSession &&
             rules.canChangeSession && schedules.canChangeSession && things.canChangeSession && externalReports.canChangeSession && externalProfiles.canChangeSession && authoring.canChangeSession && authoringOperations.canChangeSession && generation.canChangeSession
     }
+    var canPrepareCertificateClock: Bool {
+        // Renewing this app-scoped source changes no session or original. It
+        // must remain possible when an expired clock blocks original recovery.
+        !busy && pending.snapshot != nil && !pending.needsReload
+    }
 
     init(pending: NativePendingCoordinator = .shared, health: HealthViewModel? = nil,
-         things: NativeThingViewModel? = nil, controller: NativeControllerSessionDriver = NativeControllerSessionDriver()) {
+         things: NativeThingViewModel? = nil, controller: NativeControllerSessionDriver? = nil) {
         self.pending = pending
+        let certificateClock = self.certificateClock
+        let controller = controller ?? NativeControllerSessionDriver(certificateClock: { try certificateClock.clock() },
+            certificateClockAvailable: { certificateClock.hasConfidence() })
         self.controller = controller
         self.health = health ?? HealthViewModel(journal: pending, selectedReader: { try await controller.readHome() },
             pairedPowerSender: { try await controller.submitPower(view: $0, thing: $1, on: $2, operation: $3, journal: pending) },
@@ -69,7 +78,7 @@ final class HomeApplicationModel: ObservableObject {
         controller.installLocalFence()
         bind()
         let publishers: [ObservableObjectPublisher] = [setup.objectWillChange, self.health.objectWillChange,
-            maintenance.objectWillChange, profiles.objectWillChange, network.objectWillChange, mqtt.objectWillChange,
+            maintenance.objectWillChange, profiles.objectWillChange, network.objectWillChange, mqtt.objectWillChange, certificateClock.objectWillChange,
             pending.objectWillChange, access.objectWillChange, rules.objectWillChange,
             schedules.objectWillChange, self.things.objectWillChange, externalReports.objectWillChange, externalProfiles.objectWillChange, authoring.objectWillChange, authoringOperations.objectWillChange, generation.objectWillChange, generation.workspace.objectWillChange, controller.objectWillChange]
         for publisher in publishers {
@@ -85,7 +94,9 @@ final class HomeApplicationModel: ObservableObject {
     }
     private func bind() {
         controller.changesAllowed = { [weak self] in self?.canChangeSession == true }
-        controller.selectionChanged = { [weak self] in self?.invalidateSessionViews() }
+        controller.selectionChanged = { [weak self] in self?.certificateClock.selectionChanged(); self?.invalidateSessionViews() }
+        certificateClock.workAllowed = { [weak self] in self?.canPrepareCertificateClock == true }
+        certificateClock.didChange = { [weak self] in self?.invalidateSessionViews() }
         health.manualImported = { [weak self] in self?.setup.manualImported() }
         health.powerRequestsAllowed = { [weak self] in self?.canChangeSession == true }
         setup.changesAllowed = { [weak self] in self?.controller.localSelected == true && self?.canChangeSession == true }
@@ -106,7 +117,7 @@ final class HomeApplicationModel: ObservableObject {
         mqtt.localSelected = { [weak self] in self?.controller.localSelected == true }
         self.health.receiptRequestsAllowed = { [weak self] in self?.busy == false }
         self.health.localReceiptAllowed = { [weak self] in self?.controller.localSelected == true }
-        setup.selectionChanged = { [weak self] in self?.invalidateSessionViews() }
+        setup.selectionChanged = { [weak self] in self?.certificateClock.selectionChanged(); self?.invalidateSessionViews() }
         access.didChangeAccess = { [weak self] in
             guard let self else { return }
             health.invalidateSessionView(); profiles.invalidateSessionView(); rules.invalidateSessionView()
@@ -132,6 +143,7 @@ final class HomeApplicationModel: ObservableObject {
         access.invalidateSessionView(); rules.invalidateSessionView(); schedules.invalidateSessionView(); things.invalidateSessionView(); externalReports.invalidateSessionView(); externalProfiles.invalidate(clearReads: true); authoring.invalidateSessionView(); authoringOperations.invalidateSessionView(); generation.invalidate()
     }
     func hostAvailabilityChanged() {
+        certificateClock.withdraw()
         mqtt.invalidate()
         health.invalidateSessionView()
         things.hostDidWake()

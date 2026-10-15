@@ -68,6 +68,17 @@ struct NativeControllerSessionDriverSmoke {
             await controller.reload()
             try require(controller.selection == .remote(association.id) && !controller.localSelected && application.health.things.isEmpty)
             let captures = source.captures
+            let unavailableClock = NativeControllerSessionDriver(certificateClock: {
+                _ = source.capture(); throw DriverAssertion.failed(#line)
+            }, certificateClockAvailable: { false }, directory: metadata,
+                local: NativeControllerLocalReadClient(capture: { source.capture() }, socket: { socket }))
+            await unavailableClock.reload()
+            try require(!unavailableClock.pairedRecoveryAvailable && unavailableClock.status.contains("clock unavailable"))
+            do { _ = try await unavailableClock.readHome(); throw DriverAssertion.failed(#line) }
+            catch NativeControllerDriverError.clockUnavailable {}
+            do { _ = try await unavailableClock.readPowerReceipt(retained.entry); throw DriverAssertion.failed(#line) }
+            catch NativeControllerDriverError.clockUnavailable {}
+            try require(source.captures == captures && unavailableClock.selection == .remote(association.id) && !unavailableClock.needsReload)
             do { _ = try await controller.readHome(); throw DriverAssertion.failed(#line) }
             catch NativeControllerDriverError.clockUnavailable {}
             do { _ = try await controller.readThing(target: thing.id, probe: true); throw DriverAssertion.failed(#line) }
