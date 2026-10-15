@@ -1,6 +1,6 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.15. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.16. Updated: 2026-10-16. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition,
 signed-review verifier, retained codecs, schema-38 history/migration/recovery and
@@ -395,9 +395,15 @@ original recovery/status may read a retired or unhealthy controller when this
 domain and current actor/grant remain valid. A missing original is new work:
 retired controllers refuse source_retired and unhealthy writers store_unavailable.
 Only new work checks current authority epoch, maintenance and slot CAS, in that
-order; check expected install revision before expected generation. A new revoke
-of a missing/revoked slot refuses external_input_not_installed. Revoke needs no
-active source, current producer, reviewer key or fresh signed decision.
+order; check expected install revision before expected generation. Canonical
+revoke inputs require positive expected installation revision and generation;
+zero/zero revoke refuses invalid_external_input at the codec. A missing slot's
+actual zero counters therefore refuse a canonical positive-counter revoke as
+stale_external_input_revision. A revoked slot with matching counters refuses
+external_input_not_installed. Revoke needs no active source, current producer,
+reviewer key or fresh signed decision. Install input must match its package's
+target/key/authority epoch before actor/admission checks; a stale authority epoch
+test must retain that canonical correspondence or use a canonical revoke.
 
 Every new install, including replacement and reinstallation, requires signed
 decision data unequal to every decision previously installed for that target/key.

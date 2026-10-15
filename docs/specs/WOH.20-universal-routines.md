@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.30. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.31. Updated: 2026-10-16. Status: accepted target.
 Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context and durable input withdrawal.
 Evidence: finite software subset; full acceptance cases remain open.
 
