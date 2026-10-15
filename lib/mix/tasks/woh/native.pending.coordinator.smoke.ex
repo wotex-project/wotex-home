@@ -19,7 +19,7 @@ defmodule Woh.Tool.NativePendingCoordinatorSmoke do
 
     try do
       sources =
-        ~w(LocalHealthClient SignedSetupPeer NativeSetupSocket NativeBrokerClient NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativeGenerationOriginalWire NativePendingCodec NativePendingStorage NativePendingCoordinator NativeAuthoringMutationClient NativePendingRecoveryOperations NativePendingPanel)
+        ~w(LocalHealthClient SignedSetupPeer NativeSetupSocket NativeBrokerClient NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativeGenerationOriginalWire NativeGenerationClient NativePendingCodec NativePendingStorage NativePendingCoordinator NativeAuthoringMutationClient NativePendingRecoveryOperations NativePendingPanel)
 
       sources = Enum.uniq(sources ++ Woh.Tool.NativePairedRecoverySources.names())
 
@@ -43,7 +43,7 @@ defmodule Woh.Tool.NativePendingCoordinatorSmoke do
             executable
           ]
 
-      with {:ok, _} <- Command.run("swiftc", args, 1_048_576, 60_000),
+      with {:ok, _} <- Command.run_diagnostic("swiftc", args, 1_048_576, 90_000),
            :ok <- check(executable, private_directory(root, "lookup"), "lookup"),
            :ok <- check(executable, private_directory(root, "retry"), "retry"),
            :ok <- check(executable, private_directory(root, "recover-lookup"), "recover-lookup"),

@@ -92,5 +92,46 @@ for family in ("temperature", "research"):
         status = {"original": attempt["receipt"], "state": result["disposition"], "result": result, "result_revision": 14}
         case(family, "authoring_generation_attempt_status", "authoring_generation_attempt", status, originals["attempt"], result)
 
+    # Allocate the inclusive assessment byte ceiling independently. Canonical
+    # backslash escaping adds one byte without widening decoded text slots.
+    boundary = copy.deepcopy(results[-1])
+    diagnostics = boundary["assessment"]["report"]["diagnostics"]
+    for d in diagnostics:
+        d.update(code="x" * 128, instance_path="x" * 512, rule_id="x" * 128, repair="x" * 128)
+    remaining = 65536 - len(encode(assessment_values(boundary["assessment"])).encode())
+    assert 0 <= remaining <= 64 * 128
+    for d in diagnostics:
+        n = min(128, remaining)
+        d["code"] = "\\" * n + "x" * (128 - n)
+        remaining -= n
+    assert remaining == 0 and len(encode(assessment_values(boundary["assessment"])).encode()) == 65536
+    status = {"original": attempt["receipt"], "state": "candidate", "result": boundary, "result_revision": 14}
+    case(family, "authoring_generation_attempt_status", "authoring_generation_attempt", status, originals["attempt"], boundary)
+    oversized = copy.deepcopy(boundary["assessment"])
+    for d in oversized["report"]["diagnostics"]:
+        if "x" in d["code"]:
+            d["code"] = d["code"].replace("x", "\\", 1)
+            break
+    oversized_document = encode(assessment_values(oversized))
+    assert len(oversized_document.encode()) == 65537
+    cases[-1]["oversized_assessment_document"] = oversized_document
+
+    case(family, "authoring_generation_options", "authoring_generation_options",
+         dict(operators[family]["options"], policies=[]))
+    maximum = copy.deepcopy(operators[family]["options"])
+    maximum["policies"] = []
+    for i in range(32):
+        p = copy.deepcopy(operators[family]["options"]["policies"][0])
+        p["provider"]["id"] = "generator:" + str(i).zfill(3)
+        provider = [p["provider"][k] for k in ("id", "model_id", "adapter_sha256", "locality")]
+        p["provider_sha256"] = digest("wotex-home.generation-provider@1\n" + encode(provider))
+        passages = [[r["reference"]["object_digest"], r["reference"]["first_revision"], r["offset"], r["length"]] for r in p["passages"]]
+        examples = [[r["object_digest"], r["first_revision"]] for r in p["examples"]]
+        limits = [p["limits"][k] for k in ("max_passages", "max_passage_bytes", "max_passages_bytes", "max_examples", "max_examples_bytes", "max_input_bytes")]
+        p["policy_sha256"] = digest("wotex-home.generation-policy@1\n" + encode([maximum["principal_id"], provider, p["remote_export"], passages, examples, limits]))
+        p["provider_present"] = False
+        maximum["policies"].append(p)
+    case(family, "authoring_generation_options", "authoring_generation_options", maximum)
+
 (FIXTURES / "native-generation-sdk.json").write_text(json.dumps({"oracle": "Independent Python field allocation from frozen owning vectors; no Home/Swift calls.", "cases": cases}, ensure_ascii=False, indent=2) + "\n")
 print(len(cases), "independent native SDK responses")

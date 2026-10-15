@@ -1164,8 +1164,10 @@ Swift/Elixir correspondence and malformed/boundary corpus. The fixture opens no
 credential or model and publishes no pending record. The separate
 [v7 pending custody contract](../../docs/specs/native-pending-generation-v7.md)
 now retains complete generation originals through the shared private file and
-whole-file CAS. Selected-session SDK, status/cancellation and presentation remain
-the next dependencies; the v6 authoring and schedule slots keep their own grammar. The new source is included in the app compiler list,
+whole-file CAS. The [native SDK](../../docs/specs/native-generation-sdk-v1.md) now reads checked
+options/full result status, submits exact originals and supports local original
+lookup/retry. First-submission editing and selected-session presentation remain
+next; v6 authoring and schedule slots keep their own grammar. The new source is included in the app compiler list,
 but this pure check builds no installed app or signed artifact.
 
 
@@ -1173,6 +1175,25 @@ Run `mix woh.native.pending.storage.smoke --generation` for focused v7 byte,
 private publication, restart and concurrent upgrade checks. Omit the flag for
 the older journal/storage cohorts too. `mix woh.native.pending.coordinator.smoke`
 checks actual recovery refusal before capture/transport and compiles the shared
-pending panel. A retained generation original has disabled recovery until its
-typed SDK/runner exists; startup load sends no request. These software fixtures
+pending panel. Local generation lookup/retry now uses the retained original. Running and
+unsettled unknown attempts stay pending. Clearing an unknown requires the explicit
+confirmation dialog and another existing-only status read; it sends no new attempt.
+Startup load sends no request. These software fixtures
 build no installed app and establish no signed custody or disk power-loss survival.
+
+
+Run `mix woh.native.generation.sdk.smoke` for independent options/status/full
+assessment/result codecs and both families through real private Store/socket
+processes, publication before mutation, committed replies deliberately dropped,
+queued-result races, cancellation and Store/native process restart. It uses a
+scripted provider and fixture data, with no Keychain or external model.
+`--wire-only` runs representation and JSON-peer checks without the Store/process
+cohorts, useful while iterating on wire grammar. All new checks are registered in
+the macOS CI job; local passes do not establish a new hosted CI result.
+
+The SDK keeps model reservation and settlement separate. A complete mechanics
+assessment still has source review and Home consumption not assessed. The pending
+panel can acknowledge uncertainty after explicit confirmation; a later result may
+remain at the controller. Native first-submission editing, confirmation, candidate
+review composition, signed paired generation and installed qualification remain
+later delivery work.

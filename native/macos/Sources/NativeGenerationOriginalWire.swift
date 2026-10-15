@@ -192,6 +192,10 @@ enum NativeGenerationOriginalWire {
         revisions[sha] = revision; return [sha, revision]
     }
     private static func integer(_ value: Any?, minimum: Int64) -> Int64? {
+        if let value, type(of: value) == Int64.self {
+            let integer = value as! Int64
+            return integer >= minimum ? integer : nil
+        }
         guard let value = LocalHealthClient.profileInteger(value).map(Int64.init), value >= minimum else { return nil }; return value
     }
     private static func boundedInteger(_ value: Any?, maximum: Int64) -> Int64? {

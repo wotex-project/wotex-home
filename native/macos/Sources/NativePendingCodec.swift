@@ -17,14 +17,19 @@ enum NativePendingError: LocalizedError {
 enum NativePendingCategory: String, CaseIterable, Sendable { case maintenance, override, power, profile, rule, access, schedule, authoring, generation }
 
 enum NativePendingRecoveryAction: Equatable, Sendable {
-    case lookup, retry, cancelReview
+    case lookup, retry, cancelReview, acknowledgeUnknown
     func permits(_ entry: NativePendingEntry) -> Bool {
-        if entry.category == .generation { return false }
+        if self == .acknowledgeUnknown {
+            guard !entry.custody.isPaired, case .generation(let original) = entry.input else { return false }
+            return original.kind == .attempt
+        }
+        if entry.category == .generation { return !entry.custody.isPaired && self != .cancelReview }
         if entry.category == .authoring { return !entry.custody.isPaired && self != .cancelReview }
         switch self {
         case .lookup: return true
         case .retry: return !entry.phase.isHeldReview
         case .cancelReview: return entry.phase.isHeldReview || entry.phase.isCancellation
+        case .acknowledgeUnknown: return false
         }
     }
 }

@@ -37,7 +37,7 @@ defmodule Mix.Tasks.Woh.Native.Paired.Session.Smoke do
         SignedSetupPeer NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences
         NativePrivateDocuments LocalHealthClient NativeBrokerClient NativeSetupSocket
         NativeThingClient NativeRuleOperationWire NativeRuleClient NativeScheduleClient NativeScheduleWire
-        NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativeGenerationOriginalWire NativePendingCodec NativePendingStorage NativePendingPairedCustody NativeAuthoringMutationClient NativePendingRecoveryOperations
+        NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativeGenerationOriginalWire NativeGenerationClient NativePendingCodec NativePendingStorage NativePendingPairedCustody NativeAuthoringMutationClient NativePendingRecoveryOperations
         NativePairedPendingRecoveryOperations NativePairedRecoveryCorrespondence)
 
       sources = Enum.uniq(sources ++ Woh.Tool.NativePairedRecoverySources.names())

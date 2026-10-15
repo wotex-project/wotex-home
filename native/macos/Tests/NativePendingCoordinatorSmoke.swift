@@ -48,7 +48,7 @@ struct NativePendingCoordinatorSmoke {
             await coordinator.reload()
             let before = try Data(contentsOf: directory.appendingPathComponent("native-pending-v1.json"))
             try require(coordinator.entries == [entry] && source.calls == 0)
-            for action in [NativePendingRecoveryAction.lookup, .retry, .cancelReview] {
+            for action in [NativePendingRecoveryAction.cancelReview, .acknowledgeUnknown] {
                 await coordinator.recover(entry, action: action, custody: { _ in source.capture().bytes },
                     execute: { _, _, _, _ in _ = source.capture(); throw CoordinatorSmokeError.failed })
                 do {

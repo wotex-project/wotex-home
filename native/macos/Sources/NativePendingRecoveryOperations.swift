@@ -166,7 +166,29 @@ enum NativePendingRecoveryOperations {
                 throw NativePendingError.invalidRecord
             }
             return profile(try LocalHealthClient.changeProfile(socketPath: socketPath, credential: credential, input: input))
-        case .generation: throw NativePendingError.unavailable
+        case .generation:
+            let original = try entry.generationOperation()
+            let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socketPath, credential: credential)
+            guard entry.context.matches(before) else { throw LocalHealthError.nativeGuardConflict }
+            let result = try NativeGenerationClient.deliver(socketPath: socketPath, credential: credential, original: original,
+                lookup: action == .lookup || action == .acknowledgeUnknown)
+            let after = try LocalHealthClient.fetchControllerIdentity(socketPath: socketPath, credential: credential)
+            guard entry.context.matches(after), after.revision >= before.revision,
+                  Int64(after.revision) >= (result?.knownRevision ?? 0) else { throw LocalHealthError.nativeGuardConflict }
+            guard let result else { return missing }
+            if original.kind == .preparation {
+                return .resolved("Original preparation confirmed · \(result.state). No completed draft or approval follows.")
+            }
+            if result.state == "running" && result.result == nil {
+                return .retained("Original handoff reservation confirmed. The model is running; its original remains retained for status.")
+            }
+            if result.state == "unknown" && result.result == nil {
+                if action == .acknowledgeUnknown {
+                    return .resolved("Unknown generation outcome acknowledged. A result may appear later at the controller; this does not stop a model or send another attempt.")
+                }
+                return .retained("Original handoff confirmed with an unknown outcome. Its original remains retained; a result may appear later.")
+            }
+            return .resolved("Original generation attempt · \(result.state). Draft mechanics, source review and approval remain separate; this does not prove that a remote model stopped.")
         case .authoring:
             let (original, payload) = try entry.authoringOperation()
             let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socketPath, credential: credential)

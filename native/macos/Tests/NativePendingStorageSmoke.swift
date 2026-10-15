@@ -489,7 +489,8 @@ struct NativePendingStorageSmoke {
             try check(value.kind.rawValue == $0["kind"] as! String && value.canonical == Data(($0["document"] as! String).utf8))
             try check(try NativePendingDocument(revision: 1, entries: [entry]).encoded() == bytes)
             try check(Mirror(reflecting: entry).children.isEmpty && Mirror(reflecting: entry.input).children.isEmpty)
-            for action in [NativePendingRecoveryAction.lookup, .retry, .cancelReview] { try check(!action.permits(entry)) }
+            try check(NativePendingRecoveryAction.lookup.permits(entry) && NativePendingRecoveryAction.retry.permits(entry) && !NativePendingRecoveryAction.cancelReview.permits(entry))
+            try check(NativePendingRecoveryAction.acknowledgeUnknown.permits(entry) == (value.kind == .attempt))
             return entry
         }
     }

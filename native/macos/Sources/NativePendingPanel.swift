@@ -1,9 +1,15 @@
 import SwiftUI
 
+@MainActor
+private final class NativePendingConfirmation: ObservableObject {
+    @Published var entry: NativePendingEntry?
+}
+
 struct NativePendingPanel: View {
     @ObservedObject var journal: NativePendingCoordinator
     var recoveryAllowed: Bool
     var pairedRecover: ((NativePendingEntry, NativePendingRecoveryAction) async -> Void)? = nil
+    @StateObject private var confirmation = NativePendingConfirmation()
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Pending operations").font(.headline)
@@ -15,10 +21,10 @@ struct NativePendingPanel: View {
             ForEach(Array(journal.entries.enumerated()), id: \.offset) { _, entry in
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(entry.category.rawValue.capitalized) · \(entry.input.operationID)").font(.callout).textSelection(.enabled)
-                    Text("Authority \(entry.context.epoch) · \(phase(entry.phase))").font(.caption).foregroundStyle(.secondary)
+                    Text("Authority \(entry.context.epoch) · \(entry.category == .generation ? "Original status needs confirmation" : phase(entry.phase))").font(.caption).foregroundStyle(.secondary)
                     if let detail = detail(entry) { Text(detail).font(.callout).fixedSize(horizontal: false, vertical: true) }
                     if entry.category == .generation {
-                        Text("Generation original · Recovery unavailable").font(.caption).foregroundStyle(.secondary)
+                        Text("Generation original · Recovery uses retained bytes; reservation is separate from draft completion").font(.caption).foregroundStyle(.secondary)
                     }
                     if entry.category == .authoring {
                         Text("Authoring original · Lookup and retry use its retained bytes").font(.caption).foregroundStyle(.secondary)
@@ -38,6 +44,14 @@ struct NativePendingPanel: View {
                     .font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
         }
+        .confirmationDialog("Clear if the original generation outcome is unknown?",
+            isPresented: Binding(get: { confirmation.entry != nil }, set: { if !$0 { confirmation.entry = nil } }),
+            presenting: confirmation.entry) { entry in
+                Button("Acknowledge Unknown Outcome") { recover(entry, .acknowledgeUnknown); confirmation.entry = nil }
+                Button("Keep Original", role: .cancel) { confirmation.entry = nil }
+            } message: { _ in
+                Text("This clears the pending record only after checking an unknown outcome. A model may still be working, and a result may appear later. No new attempt is sent.")
+            }
     }
     private func recoveryControls(_ entry: NativePendingEntry) -> some View {
         Group {
@@ -47,6 +61,9 @@ struct NativePendingPanel: View {
             }
             if NativePendingRecoveryAction.cancelReview.permits(entry) {
                 Button("Cancel Original Review") { recover(entry, .cancelReview) }
+            }
+            if NativePendingRecoveryAction.acknowledgeUnknown.permits(entry) {
+                Button("Acknowledge Unknown Outcome…") { confirmation.entry = entry }
             }
         }
     }

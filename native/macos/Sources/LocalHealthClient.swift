@@ -1400,6 +1400,19 @@ enum LocalHealthClient {
         return try request(socketPath: socketPath, credential: credential, operation: operation, fields: fields, allowNotFound: true)
     }
 
+    static func generationTransport(socketPath: String, credential: Data, operation: String,
+                                    fields: [String: Any]) throws -> [String: Any] {
+        guard ["authoring_generation_options", "authoring_generation_prepare", "authoring_generation_status", "authoring_generation_start", "authoring_generation_attempt_status", "authoring_generation_cancel"].contains(operation) else { throw LocalHealthError.invalidProfileRequest }
+        do {
+            return try request(socketPath: socketPath, credential: credential, operation: operation, fields: fields, allowNotFound: true)
+        } catch LocalHealthError.server(let reason) {
+            let bytes = Array(reason.utf8)
+            guard (1...128).contains(bytes.count), (97...122).contains(bytes[0]),
+                  bytes.allSatisfy({ (97...122).contains($0) || (48...57).contains($0) || $0 == 95 }) else { throw LocalHealthError.invalidResponse }
+            throw LocalHealthError.server(reason)
+        }
+    }
+
     static func scheduleTransport(socketPath: String, credential: Data, operation: String,
                                   fields: [String: Any], allowNotFound: Bool = false) throws -> [String: Any] {
         guard ["schedule_review", "schedule_admit", "schedule_activate", "schedule_suspend", "schedule_original_status", "schedule_status", "schedule_timezone", "schedule_source"].contains(operation) else {
