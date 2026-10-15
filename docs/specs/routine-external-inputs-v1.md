@@ -1,6 +1,6 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.8. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.9. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition,
 signed-review verifier, retained codecs and SQLite graph foundations. Evidence:
@@ -651,7 +651,12 @@ an uncertain enclosing effect.
 
 The full schema-38 snapshot commitment covers the actual 62 user tables and 68
 non-internal schema objects (six existing explicit indexes, no new explicit
-index). Its existing row/byte ceilings remain unchanged. For the normalized v1
+index). The schema-object enumeration ceiling is 69, preserving room for one
+additional retained non-domain schema object, including a controlled SQL fault
+trigger in acceptance fixtures. Hash every object's exact type/name/table/SQL;
+never omit that object from source/quarantine correspondence. Input-domain DDL
+and index checks still refuse additional objects on those three owned tables.
+The existing row/byte ceilings remain unchanged. For the normalized v1
 retained transfer commitment, omit all three input-domain tables when no input
 history exists at or before the source retirement revision. This preserves
 existing schema-37 commitments after an empty migration. Otherwise include exact
