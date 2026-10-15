@@ -1,18 +1,33 @@
 defmodule WotexHome.CLI do
   @moduledoc """
-  Headless client for the private Home socket.
+  Runs bounded authenticated commands against Home's private Unix socket.
 
-  The credential is read from a 0600 file, not a command-line argument. This
-  client has no provisioning, profile-qualification or device command
-  authority. Its opt-in LIFX enrollment command can select only a host-held
-  capture and immutable packaged profile; it cannot supply evidence or a
-  capability declaration. Its explicit LIFX refresh command supplies only an
-  enrolled Home Thing ID; the host resolves current identity and routing.
+  `main/1` accepts exactly one absolute `--socket` and `--credential-file`
+  selection plus a command; `main(["--help"])` prints the complete command
+  syntax. The mode-0600 credential file contains the canonical encoded bearer,
+  keeping the credential value out of command-line arguments. The selected
+  socket's private custody and peer identity are checked by
+  `WotexHome.LocalAPI.Client`.
 
-  `main/1` parses one command, sends a framed request to the selected Unix
-  socket and prints a bounded result. Use the `receipt` command with the
-  original operation ID after a lost mutation response; submitting a new ID
-  can create a distinct request.
+  Commands cover current reads, explicit request/rule/schedule operations, inert
+  profile authoring and generator originals. `build_request/2` returns
+  `{:ok, request}` or `{:error, reason}` without opening a socket, although
+  file-based commands still validate their explicit input files. `main/1` prints
+  successful responses as bounded JSON or delivery summaries and returns an
+  exit status: 0 for success/help, 1 for failure/refusal, 2 for invalid usage,
+  3 for an uncertain mutation outcome and 4 for a missing original/result.
+
+  Keep the exact original and operation identity after a lost mutation reply.
+  Use the command-specific status lookup printed by the client; `receipt` applies
+  to request receipts, while profile, authoring and generation operations have
+  their own original status commands. A new operation ID can create distinct
+  work, and status lookup does not authorize a replay or repair.
+
+  The client owns no provisioning, qualification or independent dispatch
+  authority. LIFX enrollment selects only host-held capture/profile references;
+  refresh names an enrolled Thing and lets the host resolve routing.
+  `WotexHome.Authority` and `WotexHome.Durable.Store` retain current actor, grant,
+  revision and device-effect decisions.
   """
 
   import Bitwise

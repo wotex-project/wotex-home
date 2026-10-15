@@ -1,17 +1,21 @@
 defmodule WotexHome.Application do
   @moduledoc """
-  Application lifecycle for the opt-in local host.
+  Starts Home's supervisor and its explicitly configured local host.
 
-  An installed per-user process sets WOTEX_HOME_DATA_DIR to its private
-  absolute data directory. An embedded release may set the trusted
-  `:wotex_home, :data_dir` application configuration before applications
-  start. No host starts when both settings are absent.
+  At application startup, the trusted `:wotex_home, :data_dir` setting takes
+  precedence over `WOTEX_HOME_DATA_DIR`. If both are absent, `start/2` supervises
+  no Host children, so code and pure domain tools can load without claiming a
+  household database. A selected value is passed to
+  `WotexHome.Host.start_link/1`, which validates the absolute private root and
+  its startup configuration before acquiring the single Store.
 
-  This distinction lets tests and tools load pure domain modules without
-  taking ownership of a household database. A packaged host must set one
-  private directory before startup and keep its process under supervision.
-  Host may select its sealed private authoring-only configuration at startup;
-  this adds no capture, source publisher or physical dispatch.
+  The application owns its top-level supervisor; the installed per-user or
+  embedded host owns process lifecycle and supplies private configuration before
+  startup. Changing a setting is not hot reload of a running Host.
+  `WotexHome.Host` separately selects sealed profile-authoring and generator
+  policy data; neither file creates a live device capture, source publisher or
+  model adapter. Dispatch still requires the explicit host setting and current
+  Store qualification guards.
   """
 
   use Application
