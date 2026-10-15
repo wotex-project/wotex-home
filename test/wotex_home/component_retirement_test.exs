@@ -120,63 +120,81 @@ defmodule WotexHome.ComponentRetirementTest do
     end
   end
 
-  @tag :requires_socket
-  test "a disposable VM fences admission after retirement-owner loss even after original exit",
-       c do
-    write_worker(c.root, "delayed")
-    script = Path.join(c.root, "owner_loss.exs")
+  for fault <- [:owner, :port] do
+    @fault fault
+    @tag :requires_socket
+    test "a disposable VM fences admission after #{@fault} loss even after original exit", c do
+      write_worker(c.root, "delayed")
+      script = Path.join(c.root, "owner_loss.exs")
 
-    File.write!(script, """
-    alias WotexHome.Plugins.{Runner, RetirementOwner}
-    root = #{inspect(c.root)}
-    digest = #{inspect(c.digest)}
-    wait = fn fun ->
-      retry = fn retry, n ->
-        cond do
-          fun.() -> :ok
-          n == 0 -> raise "fixture wait expired"
-          true -> Process.sleep(10); retry.(retry, n - 1)
+      File.write!(script, """
+      alias WotexHome.Plugins.{Runner, RetirementOwner}
+      root = #{inspect(c.root)}
+      digest = #{inspect(c.digest)}
+      fault = #{inspect(@fault)}
+      wait = fn fun ->
+        retry = fn retry, n ->
+          cond do
+            fun.() -> :ok
+            n == 0 -> raise "fixture wait expired"
+            true -> Process.sleep(10); retry.(retry, n - 1)
+          end
         end
+        retry.(retry, 300)
       end
-      retry.(retry, 300)
-    end
-    alive = fn pid -> elem(System.cmd("/bin/kill", ["-0", Integer.to_string(pid)], stderr_to_stdout: true), 1) == 0 end
-    {:ok, runner} = Runner.start_link(root: root, executable: Path.join(root, "worker.py"), deadline_ms: 2000)
-    task = Task.async(fn -> Runner.preview(runner, digest, :decode_power, <<0, 0>>) end)
-    try do
-      wait.(fn -> File.exists?(Path.join(root, "worker.pid")) and File.read!(Path.join(root, "worker.pid")) != "" end)
-      pid = String.to_integer(File.read!(Path.join(root, "worker.pid")))
-      Process.exit(Process.whereis(RetirementOwner), :kill)
-      {:error, :native_crash} = Task.await(task)
-      {:ok, owner} = RetirementOwner.ensure_started()
-      true = :sys.get_state(owner).fenced
-      for _ <- 1..25, do: ({:error, :component_capacity} = Runner.preview(runner, digest, :decode_power, <<0, 0>>))
-      File.write!(Path.join(root, "release"), "")
-      wait.(fn -> not alive.(pid) end)
-      {:error, :component_capacity} = Runner.preview(runner, digest, :decode_power, <<0, 0>>)
-      1 = length(File.read!(Path.join(root, "launches")) |> String.split("\\n", trim: true))
-      IO.puts("retirement owner loss remains fenced")
-    after
-      File.write!(Path.join(root, "release"), "")
-    end
-    """)
+      alive = fn pid -> elem(System.cmd("/bin/kill", ["-0", Integer.to_string(pid)], stderr_to_stdout: true), 1) == 0 end
+      {:ok, runner} = Runner.start_link(root: root, executable: Path.join(root, "worker.py"), deadline_ms: 2000)
+      task = Task.async(fn -> Runner.preview(runner, digest, :decode_power, <<0, 0>>) end)
+      try do
+        wait.(fn -> File.exists?(Path.join(root, "worker.pid")) and File.read!(Path.join(root, "worker.pid")) != "" end)
+        pid = String.to_integer(File.read!(Path.join(root, "worker.pid")))
+        original_owner = Process.whereis(RetirementOwner)
+        if fault == :port do
+          Port.close(:sys.get_state(original_owner).active.port)
+          wait.(fn -> File.exists?(Path.join(root, "cancelled")) end)
+          "" = File.read!(Path.join(root, "cancelled"))
+          for _ <- 1..25, do: ({:error, :component_capacity} = Runner.preview(runner, digest, :decode_power, <<0, 0>>))
+          File.write!(Path.join(root, "release"), "")
+          wait.(fn -> not alive.(pid) end)
+          {:error, :component_timeout} = Task.await(task)
+          {:error, :component_capacity} = Runner.preview(runner, digest, :decode_power, <<0, 0>>)
+          Process.exit(original_owner, :kill)
+          wait.(fn -> not Process.alive?(original_owner) end)
+          wait.(fn -> :sys.get_state(runner).active == nil end)
+        else
+          Process.exit(original_owner, :kill)
+          {:error, :native_crash} = Task.await(task)
+        end
+        {:ok, owner} = RetirementOwner.ensure_started()
+        true = :sys.get_state(owner).fenced
+        for _ <- 1..25, do: ({:error, :component_capacity} = Runner.preview(runner, digest, :decode_power, <<0, 0>>))
+        File.write!(Path.join(root, "release"), "")
+        wait.(fn -> not alive.(pid) end)
+        {:error, :component_capacity} = Runner.preview(runner, digest, :decode_power, <<0, 0>>)
+        1 = length(File.read!(Path.join(root, "launches")) |> String.split("\\n", trim: true))
+        IO.puts("retirement owner loss remains fenced")
+      after
+        File.write!(Path.join(root, "release"), "")
+      end
+      """)
 
-    assert {:ok, output} =
-             Woh.Tool.Command.run_diagnostic(
-               System.find_executable("elixir"),
-               [
-                 System.find_executable("mix"),
-                 "run",
-                 "--no-start",
-                 "--no-compile",
-                 "--no-deps-check",
-                 script
-               ],
-               16_384,
-               12_000
-             )
+      assert {:ok, output} =
+               Woh.Tool.Command.run_diagnostic(
+                 System.find_executable("elixir"),
+                 [
+                   System.find_executable("mix"),
+                   "run",
+                   "--no-start",
+                   "--no-compile",
+                   "--no-deps-check",
+                   script
+                 ],
+                 16_384,
+                 12_000
+               )
 
-    assert output =~ "retirement owner loss remains fenced"
+      assert output =~ "retirement owner loss remains fenced"
+    end
   end
 
   test "bundle load refusal and normal exit release the unused or proven-retired slot", c do
@@ -188,6 +206,36 @@ defmodule WotexHome.ComponentRetirementTest do
     refute File.exists?(Path.join(c.root, "launches"))
     for _ <- 1..3, do: assert({:ok, %{result: {:ok, false}}} = preview(runner, c))
     assert launches(c.root) == 3
+  end
+
+  test "an actual loader exception before Port creation releases only the unused slot", c do
+    {:ok, owner} = RetirementOwner.ensure_started()
+    token = make_ref()
+    deadline = System.monotonic_time(:millisecond) + 2_000
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        # Trusted fault injection: the actual loader raises on missing root.
+        RetirementOwner.submit(
+          owner,
+          self(),
+          self(),
+          token,
+          %{},
+          c.digest,
+          :decode_power,
+          <<0, 0>>,
+          deadline
+        )
+
+        assert_receive {:component_retired, ^owner, ^token, {:error, :native_crash}}, 1_000
+      end)
+
+    assert log =~ "KeyError"
+    refute File.exists?(Path.join(c.root, "launches"))
+    runner = start_runner(c, "success", 2_000)
+    assert {:ok, %{result: {:ok, false}}} = preview(runner, c)
+    assert launches(c.root) == 1
   end
 
   defp preview(runner, c), do: Runner.preview(runner, c.digest, :decode_power, <<0, 0>>)
