@@ -1,6 +1,6 @@
 # Last resolved paired power receipt
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted implementation contract.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted implementation contract.
 Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Implementation/evidence: planned.
 
 ## Observable result
@@ -46,6 +46,10 @@ server's existing principal-scoped status route decides visibility. Compare
 scope identity, exact permissions/targets and nondecreasing revision before/after
 the status read. Existing closed receipt decoding checks epoch and operation;
 found receipt revision must not exceed final authenticated Store revision.
+Verify the raw receipt's principal against the original principal before the
+ordinary power DTO discards that field. Missing or substituted principal refuses;
+do not normalize the response. The fixed raw transport seam also repeats exact
+entry/association and credential-verifier correspondence before any status read.
 Not found means absent in that current authenticated original scope, not proof
 that the earlier submission was never sent. No API or Store schema changes.
 
