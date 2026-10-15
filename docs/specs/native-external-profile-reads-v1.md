@@ -1,6 +1,6 @@
 # Native external-profile catalogue and original reads
 
-Version: 0.1.4. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.5. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09 and H08-T1/T5/T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08 and H18-T6/T8/T11/T12.
 Implementation: typed catalogue and original reads implemented.
@@ -20,8 +20,9 @@ No producer, schema or dependency addition is needed.
 [Complete inspection/trust/target originals](native-external-profile-originals-v1.md)
 now have pure codec and owning parity evidence. The [v9 journal](native-pending-external-profiles-v9.md)
 and [fixed local SDK/recovery](native-external-profile-sdk-v1.md) have executed
-evidence. Explicit selected preparation/confirmation, panel composition and signed
-paired consumption remain successors. This read component creates no mutation route, file write,
+evidence. [Selected local complete-file preparation/confirmation and panel composition](native-external-profile-panel-v1.md)
+also have executed evidence. Guided construction and signed paired consumption
+remain successors. This read component creates no mutation route, file write,
 source publisher, grant or signing capability. Source/protocol and installed-host
 qualification remain separate; historical reads need no live producer or publisher.
 
@@ -123,5 +124,5 @@ revision. A historical select is not evidence that the target is currently selec
 | NXR-T2 | 02/03 | Empty/full/sorted catalogue, generation edges and every closed receipt; wrong fields/kind/epoch/ID/hash, float/bool/overflow, future receipt, reordered/duplicate rows and malformed errors. Accepted malformed/current-state claim fails. | Native independent vectors |
 | NXR-T3 | 01–03 | Actual private socket/Store original history, catalogue after revoke/author withdrawal, current grant denial and changed identity/revision; no write/provider prerequisite. Fixture-only success cannot establish this case. | Native/Store plus installed separately |
 
-Installed selection/custody, UI accessibility, physical source truth, selected first
-confirmations and signed paired publication require their own later evidence.
+Installed selection/custody, UI accessibility, physical source truth, guided
+construction and signed paired publication require their own later evidence.

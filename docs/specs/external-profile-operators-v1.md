@@ -1,6 +1,6 @@
 # External profile, target and reported-value operators
 
-Version: 0.1.7. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.8. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18-07/08, H18-T6/T8/T11/T12; WOH.08 H08-03.
 Implementation: inspection/trust/target and reported-value read socket/CLI adapters implemented. Evidence:
 [executed real-socket and original recovery cases](../provenance/external-profile-operators-2026-10.md).
@@ -13,8 +13,9 @@ in the same software record.
 [executed byte/hash and owning parity evidence](../provenance/native-external-profile-originals-2026-10.md).
 The [fixed native SDK and local pending recovery](native-external-profile-sdk-v1.md)
 now have [independent/framed/Store evidence](../provenance/native-external-profile-sdk-2026-10.md).
-Selected first confirmations/presentation, signed paired consumption and installed
-host adoption remain open.
+[Selected local first confirmations/presentation](native-external-profile-panel-v1.md)
+now have executed evidence. Guided construction, signed paired consumption and
+installed host adoption remain open.
 
 ## Result and ownership
 

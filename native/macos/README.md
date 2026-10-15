@@ -1467,8 +1467,8 @@ inspection/trust/target originals and an authenticated expected controller ident
 It checks status before retry, verifies full original/receipt correspondence and
 retains uncertainty after possible mutation or final identity failure. Local v9
 recovery enables lookup/retry and separately confirmed missing acknowledgement.
-Paired metadata remains unavailable to the ordinary runner; selected first
-confirmations and signed paired delivery are separate successors.
+Paired metadata remains unavailable to the ordinary runner. Selected local
+confirmations use the panel below; signed paired delivery remains separate.
 
 Run `mix woh.native.external.mutation.smoke` for 176 independent receipt cases and
 172 framed delivery cases. Add `--live` for both quantity families against actual
@@ -1476,3 +1476,27 @@ SQLite/private sockets: lost commit replies, separate-process pending recovery,
 source shutdown, revocation, absence, stale CAS and failed publication. Credentials
 travel only on stdin/private custody. [Executed evidence](../../docs/provenance/native-external-profile-sdk-2026-10.md)
 records the exact boundary and remaining installed/source/physical obligations.
+
+## Selected external-profile review
+
+The Things task's External profiles section offers explicit catalogue/history
+reads and [complete-file decision review](../../docs/specs/native-external-profile-panel-v1.md).
+Choose inspection, digest trust or read-only target and a same-user 0600 regular
+one-link decision file. Prepare checks the complete original and current selected
+identity/CAS/catalogue basis without publishing or sending a mutation. Review the
+exact action, handles/digests and consequences, check confirmation and Submit.
+The reviewed bytes are retained before send; changes require a new preparation.
+Uncertain/refused submissions keep their original for Activity recovery.
+
+Paired selection remains selected and refuses this local consumer without fallback.
+Opening, file choice and editing send no request. Session/access/sleep/wake/input
+changes retire prepared work, and request checks prevent a retired/cancelled decision
+from progressing from status to mutation. Guided construction still needs current
+reader/source/target-basis read contracts; this panel does not infer those values.
+
+Run `mix woh.native.external.panel.smoke` for real two-family first decisions,
+lost-reply/restart recovery, held-reply retirement/cancellation, changed Store basis,
+failed publication/resolution and shared app guards. Mounted state renders under
+`_build/native/external-profile-*.png` cover all responsive edges and explicit1.4×
+content enlargement. [Executed evidence](../../docs/provenance/native-external-profile-panel-2026-10.md)
+separates this layout stress from installed OS accessibility, signing and qualification.

@@ -158,9 +158,10 @@ The [v9 external-profile journal](../specs/native-pending-external-profiles-v9.m
 has [executed independent/private-process evidence](../provenance/native-pending-external-profiles-2026-10.md).
 The [fixed external-profile SDK](../specs/native-external-profile-sdk-v1.md) now has
 [executed complete-receipt, framed and Store/restart evidence](../provenance/native-external-profile-sdk-2026-10.md).
-Build the [selected external decision panel](../specs/native-external-profile-panel-v1.md)
-with explicit reads, read-only first preparation, one-way retirement and fresh
-confirmation/publication, then signed paired consumption;
+The [selected external decision panel](../specs/native-external-profile-panel-v1.md) now has
+[executed driver/Store/retirement and mounted layout evidence](../provenance/native-external-profile-panel-2026-10.md).
+Continue with guided current reader/source/target-basis read contracts and signed
+paired consumption;
 no read receipt or structurally encoded input grants current trust, selection or
 source qualification.
 
