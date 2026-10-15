@@ -102,6 +102,7 @@ jobs:
       - run: mix woh.native.generation.original.smoke
       - run: mix woh.native.generation.sdk.smoke
       - run: mix woh.native.generation.workspace.smoke
+      - run: mix woh.native.generation.flow.smoke
       - run: mix woh.native.pending.coordinator.smoke
       - run: mix woh.native.pending.paired.smoke
       - run: mix woh.native.schedule.recovery.smoke

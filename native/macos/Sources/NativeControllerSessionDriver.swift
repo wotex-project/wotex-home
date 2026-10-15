@@ -368,6 +368,292 @@ final class NativeControllerSessionDriver: ObservableObject {
         }
     }
 
+    func loadGenerationContext() async throws -> NativeGenerationContext {
+        try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
+            let value = try await Task.detached {
+                let capture = try local.capture()
+                let (identity, contract, options) = try Self.generationBasis(socket: local.socket(), capture: capture)
+                try completion()
+                return NativeGenerationContext(options: options, contract: contract, identity: identity,
+                    capture: capture, selection: selected, generation: capturedGeneration)
+            }.value
+            try current(selected, generation: capturedGeneration); return value
+        }
+    }
+    func prepareGeneration(_ context: NativeGenerationContext, fields: NativeGenerationDraftFields) async throws -> NativeGenerationDecision {
+        guard !busy, !needsReload, snapshot == context.selection, generation == context.generation else { throw NativeControllerDriverError.unavailable }
+        let original = try fields.original(context, operation: "generation:prepare:" + UUID().uuidString.lowercased())
+        return NativeGenerationDecision(original: original, context: context, previous: nil)
+    }
+    func loadGenerationWorkspace(_ entries: [NativeGenerationWorkspaceEntry]) async throws -> NativeGenerationWorkspaceEntry? {
+        try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
+            let entry = try await Task.detached {
+                let capture = try local.capture(), identity = try LocalHealthClient.fetchControllerIdentity(socketPath: local.socket(), credential: capture.bytes)
+                try Self.nativeCapture(capture.nativeReference, credential: capture.bytes, identity: identity)
+                let entry = entries.first { $0.context.matches(identity) && $0.custody.matches(capture.bytes) }
+                if let entry { try Self.workspaceCapture(entry, capture, identity) }
+                try completion(); return entry
+            }.value
+            try current(selected, generation: capturedGeneration); return entry
+        }
+    }
+    nonisolated private static func generationBasis(socket: String, capture: LocalCredentialCapture) throws -> (HomeControllerIdentity, HomeAuthoringContractRead, HomeGenerationOptions) {
+        let (before, contract) = try manualBasis(socket: socket, capture: capture)
+        let options = try NativeGenerationClient.fetchOptions(socketPath: socket, credential: capture.bytes)
+        let after = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: capture.bytes)
+        try nativeCapture(capture.nativeReference, credential: capture.bytes, identity: after)
+        guard before.matchesAuthority(after), before.revision == after.revision, Int64(after.revision) == options.revision,
+              options.epoch == after.authorityEpoch, options.principal == after.principalID else { throw LocalHealthError.nativeGuardConflict }
+        return (after, contract, options)
+    }
+    nonisolated private static func generationCustody(_ context: NativeGenerationContext) throws -> NativePendingCustody {
+        if let reference = context.capture.nativeReference {
+            guard case .recover(let original) = try NativeBrokerWire.request(reference), original.receipt.role == .operator else { throw LocalHealthError.nativeGuardConflict }
+            return .native(role: .operator, creationRevision: original.receipt.revision, verifier: context.capture.verifier)
+        }
+        return .manual(verifier: context.capture.verifier)
+    }
+    nonisolated private static func workspaceCapture(_ entry: NativeGenerationWorkspaceEntry, _ capture: LocalCredentialCapture,
+                                                    _ identity: HomeControllerIdentity) throws {
+        _ = try entry.checked()
+        guard entry.context.matches(identity), entry.custody.matches(capture.bytes) else { throw LocalHealthError.nativeGuardConflict }
+        try nativeCapture(capture.nativeReference, credential: capture.bytes, identity: identity)
+        if case .native = entry.custody {
+            guard let reference = capture.nativeReference,
+                  case .recover(let original) = try NativeBrokerWire.request(reference),
+                  try entry.custody.nativeOriginal(context: entry.context) == original else { throw LocalHealthError.nativeGuardConflict }
+        } else { guard capture.nativeReference == nil else { throw LocalHealthError.nativeGuardConflict } }
+    }
+    func readGeneration(_ entry: NativeGenerationWorkspaceEntry) async throws -> (HomeGenerationStatus?, HomeGenerationStatus?) {
+        try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
+            let value = try await Task.detached {
+                let capture = try local.capture(), before = try LocalHealthClient.fetchControllerIdentity(socketPath: local.socket(), credential: capture.bytes)
+                try Self.workspaceCapture(entry, capture, before)
+                let root = try NativeGenerationClient.status(socketPath: local.socket(), credential: capture.bytes, kind: .preparation,
+                    epoch: entry.preparation.epoch, operation: entry.preparation.operation, original: entry.preparation)
+                let attempt: HomeGenerationStatus?
+                if let original = entry.attempts.last {
+                    attempt = try NativeGenerationClient.status(socketPath: local.socket(), credential: capture.bytes, kind: .attempt,
+                        epoch: original.epoch, operation: original.operation, original: original)
+                } else { attempt = nil }
+                let after = try LocalHealthClient.fetchControllerIdentity(socketPath: local.socket(), credential: capture.bytes)
+                try Self.workspaceCapture(entry, capture, after)
+                guard after.revision >= before.revision, Int64(after.revision) >= max(root?.knownRevision ?? 0, attempt?.knownRevision ?? 0) else { throw LocalHealthError.nativeGuardConflict }
+                try completion(); return (root, attempt)
+            }.value
+            try current(selected, generation: capturedGeneration); return value
+        }
+    }
+    func prepareGenerationAttempt(_ entry: NativeGenerationWorkspaceEntry, feedbackConsent: Bool) async throws -> NativeGenerationDecision {
+        try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local, !entry.cancellationPending else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
+            let decision = try await Task.detached {
+                let capture = try local.capture()
+                let (identity, contract, options) = try Self.generationBasis(socket: local.socket(), capture: capture)
+                try Self.workspaceCapture(entry, capture, identity)
+                guard entry.basisSHA == contract.basisSHA else { throw LocalHealthError.nativeGuardConflict }
+                let fields = try entry.preparation.fields()
+                let policies = try options.fields()["policies"] as! [[String: Any]]
+                guard let policy = policies.first(where: { $0["policy_sha256"] as? String == fields["policy_sha256"] as? String }),
+                      policy["provider_present"] as? Bool == true,
+                      let root = try NativeGenerationClient.status(socketPath: local.socket(), credential: capture.bytes, kind: .preparation,
+                        epoch: entry.preparation.epoch, operation: entry.preparation.operation, original: entry.preparation), root.state == "prepared" else { throw LocalHealthError.server("generation_unavailable") }
+                let previous = entry.attempts.last, index = entry.attempts.count + 1
+                let budget = fields["budget"] as! [String: Any]
+                guard index <= LocalHealthClient.profileInteger(budget["attempts"])! else { throw LocalHealthError.invalidProfileRequest }
+                var feedbackDraft: String?, feedbackAssessment: HomeGenerationAssessment?
+                if let previous {
+                    guard feedbackConsent, let status = try NativeGenerationClient.status(socketPath: local.socket(), credential: capture.bytes, kind: .attempt,
+                        epoch: previous.epoch, operation: previous.operation, original: previous), status.state == "candidate",
+                          let result = status.result, result.assessment?.disposition == "invalid" else { throw LocalHealthError.invalidProfileRequest }
+                    let resultFields = try result.fields(), draft = resultFields["draft_ref"] as! [String: Any]
+                    guard let object = try NativeAuthoringReadClient.fetchObject(socketPath: local.socket(), credential: capture.bytes, digest: draft["object_digest"] as! String),
+                          object.summary.kind == "draft", object.firstRevision == Int64(LocalHealthClient.profileInteger(draft["first_revision"])!),
+                          object.summary.payloadSHA == result.assessment?.draftSHA, let text = String(data: object.payload, encoding: .utf8) else { throw LocalHealthError.invalidResponse }
+                    feedbackDraft = text; feedbackAssessment = result.assessment
+                }
+                let after = try LocalHealthClient.fetchControllerIdentity(socketPath: local.socket(), credential: capture.bytes)
+                guard after.matchesAuthority(identity), after.revision == identity.revision else { throw LocalHealthError.nativeGuardConflict }
+                let original = try NativeGenerationOriginalWire.encode(["authority_epoch": identity.authorityEpoch,
+                    "operation_id": "generation:attempt:" + UUID().uuidString.lowercased(), "expected_revision": identity.revision,
+                    "preparation_operation_id": entry.preparation.operation, "preparation_sha256": entry.preparation.sha,
+                    "attempt": index, "previous_operation_id": previous.map { $0.operation as Any } ?? NSNull(), "repair_export": previous != nil], kind: .attempt)
+                _ = try entry.appending(original)
+                try completion()
+                return NativeGenerationDecision(original: original, context: NativeGenerationContext(options: options, contract: contract,
+                    identity: identity, capture: capture, selection: selected, generation: capturedGeneration), previous: entry, feedbackDraft: feedbackDraft, feedbackAssessment: feedbackAssessment)
+            }.value
+            try current(selected, generation: capturedGeneration); return decision
+        }
+    }
+    func submitGeneration(_ decision: NativeGenerationDecision, workspace: NativeGenerationWorkspaceCoordinator,
+                          journal: NativePendingCoordinator) async throws -> NativeGenerationWorkspaceEntry {
+        try await metadataChecked {
+            let context = decision.context
+            guard !busy, !needsReload, snapshot == context.selection, generation == context.generation, journal.canStart else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let local = local, completion = try fence.beginLocal()
+            let capture = try await Task.detached {
+                let fresh = try local.capture()
+                guard fresh.bytes == context.capture.bytes, fresh.nativeReference == context.capture.nativeReference else { throw LocalHealthError.sessionChanged }
+                let (identity, contract, options) = try Self.generationBasis(socket: local.socket(), capture: fresh)
+                guard identity.matchesAuthority(context.identity), identity.revision == context.identity.revision,
+                      contract.basisSHA == context.contract.basisSHA, options == context.options else { throw LocalHealthError.nativeGuardConflict }
+                try completion(); return fresh
+            }.value
+            try current(context.selection, generation: context.generation)
+            let entry: NativeGenerationWorkspaceEntry
+            if let previous = decision.previous {
+                try workspace.current(previous); entry = try previous.appending(decision.original)
+                try await workspace.replace(previous, with: entry)
+            } else {
+                entry = try NativeGenerationWorkspaceEntry(context: NativePendingContext(deployment: context.identity.deploymentID,
+                    owner: context.identity.ownerID, epoch: Int64(context.identity.authorityEpoch), principal: context.identity.principalID),
+                    custody: Self.generationCustody(context), basisSHA: context.contract.basisSHA,
+                    preparation: decision.original, attempts: [], cancellationPending: false).checked()
+                try await workspace.retain(entry)
+            }
+            try current(context.selection, generation: context.generation); try workspace.current(entry)
+            let pending = try await journal.begin(.generation(decision.original), authorityEpoch: Int(decision.original.epoch),
+                expectedController: context.identity, expectedCapture: capture)
+            let currentOriginal = try journal.currentOriginal(pending)
+            _ = try await Task.detached {
+                try completion()
+                let receipt = try NativeGenerationClient.submit(socketPath: local.socket(), credential: currentOriginal.bytes, original: decision.original)
+                let after = try LocalHealthClient.fetchControllerIdentity(socketPath: local.socket(), credential: currentOriginal.bytes)
+                guard after.matchesAuthority(context.identity), Int64(after.revision) >= receipt.revision else { throw LocalHealthError.nativeGuardConflict }
+                try completion(); return receipt
+            }.value
+            try current(context.selection, generation: context.generation); try workspace.current(entry)
+            if decision.original.kind == .preparation { try await journal.resolving(currentOriginal) }
+            return entry
+        }
+    }
+    func cancelGeneration(_ entry: NativeGenerationWorkspaceEntry, workspace: NativeGenerationWorkspaceCoordinator, retry: Bool) async throws -> NativeGenerationWorkspaceEntry {
+        try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
+            let capture = try await Task.detached {
+                let capture = try local.capture(), identity = try LocalHealthClient.fetchControllerIdentity(socketPath: local.socket(), credential: capture.bytes)
+                try Self.workspaceCapture(entry, capture, identity); try completion(); return capture
+            }.value
+            try current(selected, generation: capturedGeneration); try workspace.current(entry)
+            var retained = entry
+            if retry {
+                retained = try entry.cancellation(true); try await workspace.replace(entry, with: retained)
+            }
+            let root = try await Task.detached {
+                try completion()
+                let result = try retry ? NativeGenerationClient.cancel(socketPath: local.socket(), credential: capture.bytes, original: entry.preparation) :
+                    NativeGenerationClient.status(socketPath: local.socket(), credential: capture.bytes, kind: .preparation,
+                        epoch: entry.preparation.epoch, operation: entry.preparation.operation, original: entry.preparation)
+                let after = try LocalHealthClient.fetchControllerIdentity(socketPath: local.socket(), credential: capture.bytes)
+                try Self.workspaceCapture(entry, capture, after)
+                guard Int64(after.revision) >= (result?.knownRevision ?? 0) else { throw LocalHealthError.nativeGuardConflict }
+                try completion(); return result
+            }.value
+            try current(selected, generation: capturedGeneration)
+            if root?.state == "cancelled" && retained.cancellationPending {
+                let cleared = try retained.cancellation(false); try await workspace.replace(retained, with: cleared); return cleared
+            }
+            return retained
+        }
+    }
+
+    // Restore only retained bytes. Mutation and existing-only lookup remain
+    // separate, explicit actions in the shared pending recovery panel.
+    func restoreGenerationPending(_ entry: NativeGenerationWorkspaceEntry, workspace: NativeGenerationWorkspaceCoordinator,
+                                  journal: NativePendingCoordinator) async throws {
+        try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local,
+                  journal.canStart, !entry.cancellationPending else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
+            try workspace.current(entry)
+            let (capture, identity, original) = try await Task.detached {
+                let capture = try local.capture(), before = try LocalHealthClient.fetchControllerIdentity(socketPath: local.socket(), credential: capture.bytes)
+                try Self.workspaceCapture(entry, capture, before)
+                let root = try NativeGenerationClient.status(socketPath: local.socket(), credential: capture.bytes, kind: .preparation,
+                    epoch: entry.preparation.epoch, operation: entry.preparation.operation, original: entry.preparation)
+                guard root != nil || entry.attempts.isEmpty else { throw LocalHealthError.nativeGuardConflict }
+                let original = entry.attempts.last ?? entry.preparation
+                var knownRevision = root?.knownRevision ?? 0
+                if original.kind == .attempt {
+                    let status = try NativeGenerationClient.status(socketPath: local.socket(), credential: capture.bytes, kind: .attempt,
+                        epoch: original.epoch, operation: original.operation, original: original)
+                    knownRevision = max(knownRevision, status?.knownRevision ?? 0)
+                }
+                let after = try LocalHealthClient.fetchControllerIdentity(socketPath: local.socket(), credential: capture.bytes)
+                try Self.workspaceCapture(entry, capture, after)
+                guard after.revision >= before.revision, Int64(after.revision) >= knownRevision else { throw LocalHealthError.nativeGuardConflict }
+                try completion(); return (capture, after, original)
+            }.value
+            try current(selected, generation: capturedGeneration); try workspace.current(entry)
+            _ = try await journal.begin(.generation(original), authorityEpoch: Int(original.epoch), expectedController: identity, expectedCapture: capture)
+            try current(selected, generation: capturedGeneration); try workspace.current(entry)
+        }
+    }
+
+    func prepareGeneratedDraftAssessment(_ entry: NativeGenerationWorkspaceEntry, instruction: String) async throws -> NativeAuthoringPreparedDecision {
+        try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local,
+                  let attempt = entry.attempts.last else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
+            let decision = try await Task.detached {
+                let capture = try local.capture(), initial = try LocalHealthClient.fetchControllerIdentity(socketPath: local.socket(), credential: capture.bytes)
+                try Self.workspaceCapture(entry, capture, initial)
+                guard let status = try NativeGenerationClient.status(socketPath: local.socket(), credential: capture.bytes, kind: .attempt,
+                    epoch: attempt.epoch, operation: attempt.operation, original: attempt), let result = status.result,
+                      result.disposition == "candidate", let assessment = result.assessment else { throw LocalHealthError.invalidProfileRequest }
+                let resultFields = try result.fields(), draft = resultFields["draft_ref"] as! [String: Any]
+                let digest = draft["object_digest"] as! String, first = LocalHealthClient.profileInteger(draft["first_revision"])!
+                let bytes = try JSONSerialization.data(withJSONObject: [entry.context.principal, attempt.epoch, attempt.operation, "draft"], options: [.withoutEscapingSlashes])
+                let importID = "ga:" + LocalHealthClient.profileSHA(Data("wotex-home.generation-object-operation@1\n".utf8) + bytes)
+                guard let imported = try NativeAuthoringReadClient.fetchOriginal(socketPath: local.socket(), credential: capture.bytes, kind: .import,
+                    epoch: attempt.epoch, operation: importID), imported.object?.kind == "draft", imported.object?.digest == digest,
+                      imported.firstRevision == Int64(first), imported.object?.payloadSHA == assessment.draftSHA,
+                      let object = try NativeAuthoringReadClient.fetchObject(socketPath: local.socket(), credential: capture.bytes, digest: digest),
+                      object.summary == imported.object, object.firstRevision == Int64(first) else { throw LocalHealthError.invalidResponse }
+                let projection = try entry.preparation.fields()["projection"] as! [String: Any]
+                var sources: [String: NativeAuthoringObjectHandle] = [:]
+                for row in projection["passages"] as! [[String: Any]] {
+                    let ref = row["reference"] as! [String: Any], digest = ref["object_digest"] as! String
+                    sources[digest] = NativeAuthoringObjectHandle(digest: digest, firstRevision: LocalHealthClient.profileInteger(ref["first_revision"])!)
+                }
+                let fixtures = (projection["examples"] as! [[String: Any]]).map {
+                    NativeAuthoringObjectHandle(digest: $0["object_digest"] as! String, firstRevision: LocalHealthClient.profileInteger($0["first_revision"])!)
+                }
+                let selections = NativeAuthoringSelections(sources: sources.values.sorted { $0.digest < $1.digest }, fixtures: fixtures)
+                let (identity, contract) = try Self.manualBasis(socket: local.socket(), capture: capture, selections: selections)
+                try Self.workspaceCapture(entry, capture, identity)
+                var limits: [String: Any] = contract.limits.authoring.mapValues { Int($0) as Any }
+                limits["reader"] = contract.limits.reader.mapValues(Int.init)
+                let original = try NativeAuthoringOriginalWire.encode(["authority_epoch": identity.authorityEpoch, "expected_revision": identity.revision,
+                    "operation_id": "authoring:generated-assess:" + UUID().uuidString.lowercased(),
+                    "request": ["mode": "manual", "contract_digest": contract.contractSHA,
+                        "base_draft_ref": ["object_digest": digest, "first_revision": first], "source_refs": selections.sources.map(\.fields),
+                        "fixture_refs": selections.fixtures.map(\.fields), "instruction": instruction, "limits": limits]], kind: .candidate)
+                try completion()
+                return NativeAuthoringPreparedDecision(original: original, payload: nil, capture: capture, identity: identity,
+                    selection: selected, generation: capturedGeneration, manualBasis: contract.basisSHA)
+            }.value
+            try current(selected, generation: capturedGeneration); return decision
+        }
+    }
+
     func loadMappingEditorContext() async throws -> NativeMappingEditorContext {
         try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }

@@ -131,6 +131,12 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
         if clearContext { mappingContext = nil }
         receipt = ownedDraft?.receipt
     }
+    func useGeneratedCandidate(_ value: HomeAuthoringOriginalRead) {
+        guard value.kind == .candidate, !busy else { return }
+        invalidate(clearOwned: true, clearContext: true)
+        entryMode = .review; candidateEpochInput = String(value.epoch); candidateOperationInput = value.operation
+        status = "Fresh manual candidate selected. Enter explicit source attribution and review."
+    }
     func invalidateSessionView() { invalidate(clearOwned: true, clearContext: true); status = "Prepare a new decision under the selected local session." }
     func hostDidWake() { invalidate(clearOwned: true, clearContext: true); status = "Host availability changed. Prepare the original again." }
 

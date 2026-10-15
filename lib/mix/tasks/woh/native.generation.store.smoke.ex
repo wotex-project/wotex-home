@@ -2,12 +2,16 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke.Provider do
   @moduledoc false
 
   use GenServer
-  def init(draft), do: {:ok, %{draft: draft, calls: 0}}
+
+  def init({draft, invalid_first}),
+    do: {:ok, %{draft: draft, calls: 0, invalid_first: invalid_first}}
+
   def handle_call(:calls, _, state), do: {:reply, state.calls, state}
 
   def handle_call({:generate_profile, _document, _maximum}, _, state) do
     Process.sleep(500)
-    {:reply, {:ok, state.draft}, %{state | calls: state.calls + 1}}
+    draft = if state.invalid_first && state.calls == 0, do: "{}", else: state.draft
+    {:reply, {:ok, draft}, %{state | calls: state.calls + 1}}
   end
 end
 
@@ -27,8 +31,9 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
     ProducerIdentity
   }
 
-  def run(executable, root) do
-    for family <- ~w(temperature research), scenario <- ~w(complete restart) do
+  def run(executable, root, flow \\ false) do
+    for family <- ~w(temperature research),
+        scenario <- if(flow, do: ["complete"], else: ~w(complete restart)) do
       directory = Path.join(root, "s-" <> family <> "-" <> scenario)
       File.mkdir!(directory)
       File.chmod!(directory, 0o700)
@@ -41,7 +46,7 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
       {:ok, provider_pid} =
         GenServer.start_link(
           __MODULE__.Provider,
-          fixture("authoring-mechanics")[family]["draft_bytes"]
+          {fixture("authoring-mechanics")[family]["draft_bytes"], flow}
         )
 
       policy_input = fixture("generation-preparations")[family]["policy"]
@@ -102,7 +107,8 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
             evidence,
             Path.join(directory, "journal"),
             store,
-            scenario == "complete"
+            scenario == "complete" && !flow,
+            flow
           )
         end)
 
@@ -128,17 +134,29 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
 
         case Command.run_diagnostic(
                executable,
-               [if(scenario == "restart", do: "--start-only", else: "--store"), proxy_path],
+               [
+                 if(flow,
+                   do: "--flow",
+                   else: if(scenario == "restart", do: "--start-only", else: "--store")
+                 ),
+                 proxy_path
+               ],
                16_384,
                15_000,
                JSON.encode!(input) <> "\n"
              ) do
           {:ok, output} ->
             expected =
-              if scenario == "restart",
-                do: "native generation restart reservation retained",
-                else:
+              cond do
+                flow ->
+                  "native generation first decisions, publication, repair, manual assessment and cancellation passed"
+
+                scenario == "restart" ->
+                  "native generation restart reservation retained"
+
+                true ->
                   "native generation Store original publication, candidate and cancellation passed"
+              end
 
             unless String.trim(output) == expected,
               do: Mix.raise("native generation Store fixture did not complete")
@@ -191,16 +209,16 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
           end
         end
 
-        unless GenServer.call(provider_pid, :calls) == 1,
+        unless GenServer.call(provider_pid, :calls) == if(flow, do: 2, else: 1),
           do: Mix.raise("native generation replay called its provider")
 
         state = Agent.get(evidence, & &1)
 
-        unless MapSet.size(state.dropped) == 2 &&
+        unless MapSet.size(state.dropped) == if(flow, do: 3, else: 2) &&
                  Enum.all?(state.mutations, fn {_, count} -> count == 1 end),
                do: Mix.raise("native generation lost-reply recovery repeated a mutation")
 
-        if scenario == "complete" && !state.raced,
+        if scenario == "complete" && !flow && !state.raced,
           do: Mix.raise("native generation queued-result race did not execute")
 
         if scenario == "complete", do: {:ok, %{dispatch_enabled: false}} = Store.health(store)
@@ -229,7 +247,7 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
     :ok
   end
 
-  defp proxy(listener, socket, evidence, journal, store, race?) do
+  defp proxy(listener, socket, evidence, journal, store, race?, workspace?) do
     case :gen_tcp.accept(listener, 20_000) do
       {:ok, peer} ->
         try do
@@ -239,6 +257,20 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
                {:ok, request} <- Frame.decode_request(bytes) do
             operation = request["operation"]
             mutation = operation in ~w(authoring_generation_prepare authoring_generation_start)
+            workspace_path = Path.join(journal, "native-generation-workspace-v1.json")
+
+            cancellation =
+              operation == "authoring_generation_cancel" && workspace?
+
+            if cancellation do
+              ["wotex-home.native-generation-workspace.v1", _, workspaces] =
+                JSON.decode!(File.read!(workspace_path))
+
+              unless Enum.any?(workspaces, fn [_, _, _, root, _, intent] ->
+                       intent && String.contains?(root, request["operation_id"])
+                     end),
+                     do: Mix.raise("native generation cancellation preceded retained intent")
+            end
 
             if mutation do
               codec =
@@ -255,6 +287,16 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
                        category == "generation" && Enum.at(input, 2) == original
                      end),
                      do: Mix.raise("native generation mutation preceded original publication")
+
+              if workspace? do
+                ["wotex-home.native-generation-workspace.v1", _, workspaces] =
+                  JSON.decode!(File.read!(workspace_path))
+
+                unless Enum.any?(workspaces, fn [_, _, _, root, attempts, _] ->
+                         original == root || original in attempts
+                       end),
+                       do: Mix.raise("native generation mutation preceded workspace publication")
+              end
             end
 
             current = Agent.get(evidence, & &1)
@@ -277,11 +319,13 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
               end
 
             drop =
-              mutation && is_map(response) && response["outcome"] == "ok" &&
+              (mutation || cancellation) && is_map(response) && response["outcome"] == "ok" &&
                 !MapSet.member?(Agent.get(evidence, & &1.dropped), operation)
 
-            if mutation do
-              key = {operation, request["input"]["operation_id"]}
+            if mutation || cancellation do
+              key =
+                {operation,
+                 if(mutation, do: request["input"]["operation_id"], else: request["operation_id"])}
 
               Agent.update(evidence, fn state ->
                 %{
@@ -302,7 +346,7 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
           :gen_tcp.close(peer)
         end
 
-        proxy(listener, socket, evidence, journal, store, race?)
+        proxy(listener, socket, evidence, journal, store, race?, workspace?)
 
       _ ->
         :ok

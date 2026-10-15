@@ -217,6 +217,7 @@ struct HomeWindow: View {
             }
             HomeSection(title: "Selected Thing") { NativeThingPanel(things: thingView) }
             HomeSection(title: "External reported values") { NativeExternalReportPanel(reports: application.externalReports) }
+            HomeSection(title: "Generation drafts") { NativeGenerationPanel(generation: application.generation) }
             HomeSection(title: "Local authoring") { NativeAuthoringPanel(authoring: application.authoringOperations) }
                 .disabled(!application.controller.localSelected)
             HomeSection(title: "Authoring history") { NativeAuthoringReadPanel(authoring: application.authoring) }

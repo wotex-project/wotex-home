@@ -118,6 +118,8 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativeGenerationOriginalWire.swift"),
         Path.join(native, "Sources/NativeGenerationClient.swift"),
         Path.join(native, "Sources/NativeGenerationWorkspace.swift"),
+        Path.join(native, "Sources/NativeGenerationFlow.swift"),
+        Path.join(native, "Sources/NativeGenerationPanel.swift"),
         Path.join(native, "Sources/NativeMappingDraft.swift"),
         Path.join(native, "Sources/NativePendingAuthoring.swift"),
         Path.join(native, "Sources/NativeAuthoringMutationClient.swift"),
