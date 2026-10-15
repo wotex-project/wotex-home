@@ -208,7 +208,7 @@ producer archives, with no application startup, Store or dispatch.
 The [executed cohort record](../provenance/routines-shadow-2026-10.md) records
 360 finite cases, duplicate/blocked-root release, unsupported/forged refusals
 and fresh code identity. This establishes a narrow software comparison subset;
-Home kernel dependency selection, temporal Store joins, composed journal/
+Home production kernel delegation, temporal Store joins, composed journal/
 admission/model proof and installed/physical evidence remain open.
 
 ## Immutable timezone calculation join
@@ -236,6 +236,8 @@ guard union, v4 correspondence, historical-proof refusal and current writer
 boundaries. The RCC provider and public pure calendar candidate now have
 [exact archive evidence](../provenance/routines-civil-2026-10.md): all 230 local
 labels, 112 recurrence vectors and bounded ambiguity/order/refusal cases pass.
-Complete current-runtime/Store adoption remains pending. Both successors retain
-their separately stated implementation scope. Existing single-active admission
-and physical qualification requirements remain intact.
+Exact dependency selection, production calendar delegation and complete v4
+runtime inventory now have [focused runtime and Store evidence](../provenance/routines-runtime-2026-10.md).
+Expanded durable phase-fault/historical acceptance remains open. Both successors
+retain their separately stated scope. Existing single-active admission and
+physical qualification requirements remain intact.

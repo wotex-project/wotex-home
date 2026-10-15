@@ -148,3 +148,21 @@ changes, delayed handoff, lost original response and cancelled/unknown branch.
 Record software, installed-host, physical and ecosystem evidence separately.
 Existing [local product delivery](local-controller-delivery.md) remains the
 installed-host/transfer critical path; generic extraction cannot weaken it.
+
+## Current temporal runtime checkpoint
+
+The [runtime successor](../specs/routine-temporal-runtime-v1.md) now selects the
+exact civil producer cohort, delegates production calendar calculation through
+its public join, binds the complete ten-application v4 proof and closes an
+eleven-application Store inventory. The complete 541-module Home application
+required the authored 1024-module bound; no module filtering is permitted.
+[Executed evidence](../provenance/routines-runtime-2026-10.md) includes independent
+calendar/source mutations, all-member runtime/guard mutations, producer absence,
+actual SQLite retention/restart, calendar activation and qualified-clock polling.
+
+Next, complete the actual writer phase campaign: queue/claim/handoff and poll
+preparation with producer drift at opening/closing/final checks, rollback faults
+and retained spent/unknown roots; then historical v1–v3 active-row withdrawal,
+restart and unchanged mutable current guards. These are incomplete acceptance
+obligations, not a reason to rewrite old receipts. Full mechanism and host/physical
+qualification remain separate milestones.

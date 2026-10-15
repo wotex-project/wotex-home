@@ -1,31 +1,35 @@
 defmodule WotexHome.RuntimeArtifacts do
   @moduledoc """
-  Bounded compiled-code inventories for fixed trusted Home qualification scopes.
+  Inventories retained BEAM artifacts for trusted Home runtime checks.
 
-  Callers name their application closure and digest domain explicitly. The
-  module owns no long-lived process, never accepts an external application/plugin
-  name and never turns a checksum into admission authority. Each retained BEAM
-  file is SHA-256 bound; OTP's code checksum only detects loaded/file-code drift.
-  Old code, incomplete metadata and unavailable artifacts fail closed. Native
-  libraries, ERTS/OS qualification and coordinated upgrades remain separate.
+  `manifest/1` accepts an explicit list of up to eleven distinct application
+  atoms and returns `{:ok, manifest}` with application versions and module
+  digests. `digest/2` binds that inventory to the supplied digest domain.
+  Invalid inputs, incomplete metadata, unavailable artifacts, old code or
+  loaded/file-code disagreement return `{:error, :runtime_artifact_unavailable}`.
+  Callers own the trusted application selection; these APIs are not an
+  external application or plugin admission boundary.
 
-  A bounded process-local memo reuses parsed file-code checksums only after a
-  fresh complete-byte SHA-256 match. It retains no artifact bytes or authority.
-  Every pass still reads the retained file, checks old code and compares the
-  current loaded checksum; metadata and the full manifest remain freshly bound.
-  Ordinary-directory inventories use a fresh, bounded filename index and at
-  most four temporary readers. Neither that index nor file bytes survive a pass.
-  Unsupported code-path layouts retain OTP's sequential artifact lookup.
+  Temporal proofs use the fixed ten-application calculation cohort, including
+  its producer dependencies. The internal Store guard adds `:wotex_udp`, forming
+  an eleven-application inventory. It may reuse that complete inventory within
+  one guard invocation, then freshly compares it before the final unscoped
+  execution guards. Drift leaves the callback result unpublished for the
+  Store's refusal or withdrawal path; no inventory survives the invocation.
 
-  Store execution transactions may reuse one complete Home/UDP inventory only
-  inside a bounded guard invocation. A fresh comparison closes it before the
-  final, unscoped execution guards. Drift returns the unpublished result for
-  the Store's refusal/withdrawal path; no inventory survives the invocation.
-  This is internal trusted orchestration, not a receipt or control capability.
+  Complete retained BEAM bytes are SHA-256 bound. A bounded process-local memo
+  reuses parsed code checksums only after a fresh complete-byte digest match;
+  loaded-code checks and application metadata remain fresh. Ordinary-directory
+  lookup uses a bounded filename index and at most four temporary readers.
+  Unsupported layouts retain OTP's sequential artifact lookup.
+
+  An inventory establishes compiled-code correspondence, not admission
+  authority or a durable receipt. Native libraries, ERTS/OS qualification,
+  coordinated upgrades and physical effects require separate evidence.
   """
 
-  @max_applications 4
-  @max_modules 512
+  @max_applications 11
+  @max_modules 1024
   @max_artifact_bytes 16_777_216
   @checksum_cache_key {__MODULE__, :file_code_checksums}
   @max_cached_modules @max_applications * @max_modules
@@ -35,7 +39,22 @@ defmodule WotexHome.RuntimeArtifacts do
   @reader_timeout_ms 5_000
   @read_chunk_bytes 65_536
   @guard_key {__MODULE__, :guard_inventory}
-  @guard_applications [:wotex_home, :wotex_udp]
+  @temporal_applications [
+    :wotex_home,
+    :wotex_routines,
+    :wotex_continuum,
+    :wotex,
+    :ex_booking,
+    :decimal,
+    :jason,
+    :ex_json_schema,
+    :nimble_options,
+    :tz
+  ]
+  @guard_applications @temporal_applications ++ [:wotex_udp]
+
+  @doc false
+  def temporal_applications, do: @temporal_applications
 
   @doc false
   def with_guard(callback) when is_function(callback, 0) do

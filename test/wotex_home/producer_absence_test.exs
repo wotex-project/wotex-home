@@ -20,6 +20,6 @@ defmodule WotexHome.ProducerAbsenceTest do
       )
 
     assert status == 0, output
-    assert output =~ "4 tests, 0 failures"
+    assert output =~ "5 tests, 0 failures"
   end
 end

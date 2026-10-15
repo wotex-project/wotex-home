@@ -2,9 +2,10 @@
 
 Version: 0.1.1. Updated: 2026-10-15. Status: accepted target.
 Owner: WOH.20 H20-02/07/08 and H20-T7; WOH.04 owns temporal admission.
-Implementation: RCC-01–05 pure provider/candidate and extracted archive join implemented.
-Evidence: 27 focused Home tests, 14 civil/provider archive cases and the retained
-restricted corpus pass. Runtime selection/current Store acceptance remains open.
+Implementation: RCC-01–05 provider, public join and production calendar delegation implemented.
+Evidence: [pure/archive comparison](../provenance/routines-civil-2026-10.md) and
+[pinned production/runtime checks](../provenance/routines-runtime-2026-10.md).
+Expanded durable phase-fault/current-history acceptance remains open under RTR.
 
 ## Purpose and dependencies
 
@@ -227,3 +228,9 @@ Closed output faults and exact producer error outcomes refuse without fallback.
 The five original SP.08 archive cases and the restricted 360-scenario corpus
 remain green. Actual dependency selection and replacing Recurrence belong to
 RTR; these finite software results do not authorize a schedule or device.
+
+The current [runtime checkpoint](../provenance/routines-runtime-2026-10.md) now
+records exact dependency selection, production delegation with the old loop
+removed, and v4 complete runtime correspondence. The candidate archive record
+above remains its dated source comparison; expanded durable boundary acceptance
+is owned separately by RTR.

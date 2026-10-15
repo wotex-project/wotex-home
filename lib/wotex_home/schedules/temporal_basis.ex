@@ -2,15 +2,27 @@ defmodule WotexHome.Schedules.TemporalBasis do
   @moduledoc """
   Checks finite calculation and guard correspondence for one schedule source.
 
-  `qualify/4` joins exact source/rule documents, declarations and optional timezone
-  with the restricted proposal basis and current compiled-code inventory. It
-  checks the enumerated finite obligations and retains their source/runtime
-  digests. `current/5` recomputes correspondence against the supplied current
-  content rather than trusting a historical basis.
+  `qualify/4` joins encoded source/rule documents, one target declaration and
+  the optional exact timezone with restricted proposal evidence and the current
+  ten-application temporal runtime inventory. It returns `{:ok, basis}` for the
+  current `single-schedule-temporal-v4` profile or `{:error, reason}`.
+  The retained digests bind the supplied content, finite obligations and
+  compiled-code cohort, including generic civil calendar calculation.
 
-  The scope is finite calculation and guard evidence. It does not establish
-  trusted time, admit a durable schedule, support composed activation or qualify
-  physical effects.
+  `valid?/1` checks the closed shape, profile-specific obligations and hashes
+  of v1, v2, v3 and v4 records. Historical validity does not establish current
+  correspondence. `current/5` qualifies the supplied current inputs again and
+  requires exact equality, returning `:ok` or
+  `{:error, :stale_temporal_basis}`. Earlier profiles are not silently upgraded
+  or accepted as current v4 evidence.
+
+  One positive correspondence result may be memoized per caller process.
+  Every lookup follows a fresh complete runtime inventory; a cold verification
+  also checks that inventory again after the finite verifier finishes.
+  The memo contains no current grant, clock trust or admission decision.
+
+  This scope is finite calculation and guard evidence. It does not admit a
+  durable schedule, support composed activation or qualify physical effects.
   """
 
   import Bitwise
@@ -28,16 +40,19 @@ defmodule WotexHome.Schedules.TemporalBasis do
     Window
   }
 
-  @profile "single-schedule-temporal-v3"
+  @profile "single-schedule-temporal-v4"
+  @calendar_profile "single-schedule-temporal-v3"
   @source_profile "single-schedule-temporal-v2"
   @legacy_profile "single-schedule-temporal-v1"
   @scope "calculation_and_guard_correspondence"
-  @domain "wotex-home.single-schedule-runtime.v1"
+  @domain "wotex-home.single-schedule-runtime.v2"
   @fields ~w(profile scope source_digest rule_document_digest declaration_digest proposal_basis_digest timezone_digest runtime_digest obligations basis_digest)
   @legacy_obligations ~w(exact_source_effect single_absolute_effect one_candidate_per_window zero_early_half_open_window whole_interval_tolerance original_boot_generation monotonic_considered_cursor bounded_missed_range no_uncertain_retry finite_guard_precedence original_author_required no_composed_activation)
   @source_obligations @legacy_obligations ++
                         ~w(actual_source_window_correspondence actual_source_cursor_correspondence)
-  @obligations @source_obligations ++ ~w(independent_calendar_recurrence_correspondence)
+  @calendar_obligations @source_obligations ++ ~w(independent_calendar_recurrence_correspondence)
+  @obligations @calendar_obligations ++
+                 ~w(generic_civil_calculation complete_temporal_runtime_cohort)
   @flags ~w(maintenance active_generation current_admission current_author current_target current_profile capacity_available considered)a
   @hash ~r/\A[0-9a-f]{64}\z/
   @cache_key {__MODULE__, :positive_correspondence}
@@ -55,7 +70,8 @@ defmodule WotexHome.Schedules.TemporalBasis do
          {:ok, source, rule} <- OperationInput.source("review", input),
          :ok <- Planner.cadence(source, zone),
          {:ok, declaration} <- Registry.encode_thing(things[source["target_id"]]),
-         {:ok, runtime} <- RuntimeArtifacts.digest([:wotex_home], @domain) do
+         {:ok, runtime} <-
+           RuntimeArtifacts.digest(RuntimeArtifacts.temporal_applications(), @domain) do
       bindings = %{
         "profile" => @profile,
         "scope" => @scope,
@@ -93,7 +109,8 @@ defmodule WotexHome.Schedules.TemporalBasis do
 
         with :ok <- correspondence(source, zone),
              {:ok, proposal} <- RestrictedBasis.qualify([rule], things),
-             {:ok, runtime} <- RuntimeArtifacts.digest([:wotex_home], @domain),
+             {:ok, runtime} <-
+               RuntimeArtifacts.digest(RuntimeArtifacts.temporal_applications(), @domain),
              true <- runtime == bindings["runtime_digest"] do
           basis =
             Map.put(
@@ -114,7 +131,7 @@ defmodule WotexHome.Schedules.TemporalBasis do
 
   def valid?(basis) do
     Codec.exact?(basis, @fields) and
-      basis["profile"] in [@profile, @source_profile, @legacy_profile] and
+      basis["profile"] in [@profile, @calendar_profile, @source_profile, @legacy_profile] and
       basis["scope"] == @scope and
       basis["obligations"] ==
         obligations(basis["profile"]) and
@@ -127,6 +144,7 @@ defmodule WotexHome.Schedules.TemporalBasis do
   end
 
   defp obligations(@profile), do: @obligations
+  defp obligations(@calendar_profile), do: @calendar_obligations
   defp obligations(@source_profile), do: @source_obligations
   defp obligations(@legacy_profile), do: @legacy_obligations
 

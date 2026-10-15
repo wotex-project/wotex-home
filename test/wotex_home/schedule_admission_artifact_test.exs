@@ -19,12 +19,15 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
     assert decoded.source["resource_revision"] == 4
     assert decoded.rule.ownership_ms == 1
     assert decoded.temporal_basis["scope"] == "calculation_and_guard_correspondence"
-    assert decoded.temporal_basis["profile"] == "single-schedule-temporal-v3"
+    assert decoded.temporal_basis["profile"] == "single-schedule-temporal-v4"
     assert "actual_source_cursor_correspondence" in decoded.temporal_basis["obligations"]
     assert decoded.temporal_basis["declaration_digest"] == Codec.hash(hd(resources)["document"])
 
     assert {:ok, runtime} =
-             RuntimeArtifacts.digest([:wotex_home], "wotex-home.single-schedule-runtime.v1")
+             RuntimeArtifacts.digest(
+               RuntimeArtifacts.temporal_applications(),
+               "wotex-home.single-schedule-runtime.v2"
+             )
 
     assert decoded.temporal_basis["runtime_digest"] == runtime
     assert {:ok, ^decoded} = AdmissionArtifact.current(document)
@@ -44,8 +47,9 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
     data = JSON.decode!(document)
 
     for {profile, extra} <- [
-          {"single-schedule-temporal-v1", 3},
-          {"single-schedule-temporal-v2", 1}
+          {"single-schedule-temporal-v1", 5},
+          {"single-schedule-temporal-v2", 3},
+          {"single-schedule-temporal-v3", 2}
         ] do
       basis =
         data["temporal_basis"]
@@ -137,7 +141,7 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
       """
 
       assert {"source defect rejected\n", 0} =
-               System.cmd(System.find_executable("elixir"), ["-pa", ebin, "-e", script],
+               System.cmd(System.find_executable("elixir"), runtime_arguments(ebin, script),
                  stderr_to_stdout: true
                )
     end
@@ -151,7 +155,7 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
     records = JSON.decode!(File.read!(@fixture))["zones"]
 
     mutations = [
-      {"Fixture/Stockholm", "02:30:00", "lib/wotex_home/schedules/recurrence.ex",
+      {"Fixture/Stockholm", "02:30:00", "lib/wotex_home/schedules/routine_calendar.ex",
        "first = List.first(instants)",
        "first = if date == ~D[2026-10-25], do: List.last(instants), else: List.first(instants)"},
       {"Fixture/Julian", "12:00:00", "lib/wotex_home/schedules/tzif_footer.ex",
@@ -196,7 +200,7 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
       """
 
       assert {"calendar defect rejected\n", 0} =
-               System.cmd(System.find_executable("elixir"), ["-pa", ebin, "-e", script],
+               System.cmd(System.find_executable("elixir"), runtime_arguments(ebin, script),
                  stderr_to_stdout: true
                )
     end
@@ -512,7 +516,7 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
       assert {"mutant rejected\n", 0} =
                System.cmd(
                  System.find_executable("elixir"),
-                 ["-pa", ebin, "-e", script],
+                 runtime_arguments(ebin, script),
                  stderr_to_stdout: true
                )
     end
@@ -547,9 +551,87 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
     """
 
     assert {"missing rejected\n", 0} =
-             System.cmd(System.find_executable("elixir"), ["-pa", ebin, "-e", script],
+             System.cmd(System.find_executable("elixir"), runtime_arguments(ebin, script),
                stderr_to_stdout: true
              )
+  end
+
+  test "every producer and dependency changes or refuses a warmed v4 basis" do
+    {source, rule, resources, _} = inputs()
+    {:ok, things} = WotexHome.Rules.CandidateArtifact.things(resources)
+    applications = RuntimeArtifacts.temporal_applications()
+    paths = Enum.map(applications, &{&1, Application.app_dir(&1, "ebin")})
+
+    script = """
+    alias WotexHome.Schedules.TemporalBasis
+    alias WotexHome.RuntimeArtifacts
+    root = Path.join(System.tmp_dir!(), "home-temporal-cohort-" <> Base.encode16(:crypto.strong_rand_bytes(12)))
+    File.mkdir!(root)
+    File.chmod!(root, 0o700)
+    try do
+      paths = Map.new(#{inspect(paths)}, fn {app, original} ->
+        private = Path.join(root, Atom.to_string(app))
+        File.mkdir!(private)
+        for path <- Path.wildcard(Path.join(original, "*")), File.regular?(path), do: File.cp!(path, Path.join(private, Path.basename(path)))
+        true = :code.del_path(String.to_charlist(original))
+        true = :code.add_patha(String.to_charlist(private))
+        {app, private}
+      end)
+      source = #{inspect(source)}
+      rule = #{inspect(rule)}
+      things = #{inspect(things)}
+      qualify = fn -> TemporalBasis.qualify(source, rule, things) end
+      {:ok, basis} = qualify.()
+      {:ok, ^basis} = qualify.()
+      for app <- RuntimeArtifacts.temporal_applications() do
+        {:ok, [entry]} = RuntimeArtifacts.manifest([app])
+        {module, _} = hd(entry.modules)
+        directory = Map.fetch!(paths, app)
+        path = Path.join(directory, Atom.to_string(module) <> ".beam")
+        original = File.read!(path)
+        {:ok, ^module, chunks} = :beam_lib.all_chunks(original)
+        {:ok, changed} = :beam_lib.build_module(chunks ++ [{~c"TEST", "same code checksum, changed complete bytes"}])
+        {:ok, {^module, checksum}} = :beam_lib.md5(original)
+        {:ok, {^module, ^checksum}} = :beam_lib.md5(changed)
+        File.write!(path, changed)
+        {:ok, different} = qualify.()
+        true = different["runtime_digest"] != basis["runtime_digest"]
+        {:error, :stale_temporal_basis} = TemporalBasis.current(basis, source, rule, things)
+        File.write!(path, original)
+        {:ok, ^basis} = qualify.()
+        File.rm!(path)
+        {:error, :runtime_artifact_unavailable} = qualify.()
+        File.write!(path, original)
+        {:ok, ^basis} = qualify.()
+        {:ok, [{:application, ^app, properties}]} = :file.consult(String.to_charlist(Path.join(directory, Atom.to_string(app) <> ".app")))
+        for modified <- [Keyword.put(properties, :vsn, ~c"changed"), Keyword.update!(properties, :modules, &tl/1)] do
+          :ok = Application.unload(app)
+          :ok = :application.load({:application, app, modified})
+          {:error, :stale_temporal_basis} = TemporalBasis.current(basis, source, rule, things)
+          :ok = Application.unload(app)
+          :ok = :application.load({:application, app, properties})
+          {:ok, ^basis} = qualify.()
+        end
+      end
+      IO.puts("cohort verified")
+    after
+      File.rm_rf!(root)
+    end
+    """
+
+    arguments = Enum.flat_map(paths, fn {_app, path} -> ["-pa", path] end) ++ ["-e", script]
+
+    assert {"cohort verified\n", 0} =
+             System.cmd(System.find_executable("elixir"), arguments, stderr_to_stdout: true)
+  end
+
+  defp runtime_arguments(home, script) do
+    paths =
+      RuntimeArtifacts.temporal_applications()
+      |> Enum.reject(&(&1 == :wotex_home))
+      |> Enum.map(&Application.app_dir(&1, "ebin"))
+
+    Enum.flat_map([home | paths], &["-pa", &1]) ++ ["-e", script]
   end
 
   defp inputs do

@@ -5,6 +5,43 @@ defmodule WotexHome.RuntimeArtifactsTest do
 
   alias WotexHome.RuntimeArtifacts
 
+  test "the full ordered temporal closure and eleven-application guard preserve caller subset order" do
+    applications = [
+      :wotex_home,
+      :wotex_routines,
+      :wotex_continuum,
+      :wotex,
+      :ex_booking,
+      :decimal,
+      :jason,
+      :ex_json_schema,
+      :nimble_options,
+      :tz
+    ]
+
+    assert RuntimeArtifacts.temporal_applications() == applications
+    applications = applications ++ [:wotex_udp]
+    assert {:ok, expected} = RuntimeArtifacts.manifest(applications)
+    assert Enum.map(expected, & &1.application) == applications
+    home = hd(expected)
+    assert length(home.modules) == length(Application.spec(:wotex_home, :modules))
+    assert length(home.modules) > 512
+    reversed = Enum.reverse(expected)
+
+    assert {:ok, :complete} =
+             RuntimeArtifacts.with_guard(fn ->
+               assert {:ok, ^expected} = RuntimeArtifacts.manifest(applications)
+               assert {:ok, ^reversed} = RuntimeArtifacts.manifest(Enum.reverse(applications))
+
+               for entry <- expected,
+                   do: assert(RuntimeArtifacts.manifest([entry.application]) == {:ok, [entry]})
+
+               assert :ok = RuntimeArtifacts.finish_guard()
+               assert {:ok, ^expected} = RuntimeArtifacts.manifest(applications)
+               :complete
+             end)
+  end
+
   test "one guarded invocation preserves domain identities and releases its inventory before final checks" do
     assert {:ok, [home, udp] = expected} = RuntimeArtifacts.manifest([:wotex_home, :wotex_udp])
 
@@ -98,24 +135,86 @@ defmodule WotexHome.RuntimeArtifactsTest do
     """)
   end
 
+  test "every temporal member and UDP closes the guard on byte or metadata drift and is read after closure" do
+    isolated_guard("""
+    applications = RuntimeArtifacts.temporal_applications() ++ [:wotex_udp]
+    {:ok, expected} = RuntimeArtifacts.manifest(applications)
+    for entry <- expected do
+      app = entry.application
+      directory = Map.fetch!(private_applications, app)
+      {module, _} = hd(entry.modules)
+      path = Path.join(directory, Atom.to_string(module) <> ".beam")
+      original = File.read!(path)
+      {:ok, ^module, chunks} = :beam_lib.all_chunks(original)
+      {:ok, changed} = :beam_lib.build_module(chunks ++ [{~c"TEST", "changed complete member bytes"}])
+      {:ok, {^module, checksum}} = :beam_lib.md5(original)
+      {:ok, {^module, ^checksum}} = :beam_lib.md5(changed)
+      {:error, :runtime_artifact_unavailable, :unpublished} = RuntimeArtifacts.with_guard(fn ->
+        File.write!(path, changed)
+        {:ok, ^expected} = RuntimeArtifacts.manifest(applications)
+        :unpublished
+      end)
+      File.write!(path, original)
+      {:ok, :final_read} = RuntimeArtifacts.with_guard(fn ->
+        :ok = RuntimeArtifacts.finish_guard()
+        File.write!(path, changed)
+        {:ok, different} = RuntimeArtifacts.manifest(applications)
+        true = different != expected
+        File.write!(path, original)
+        :final_read
+      end)
+      File.rm!(path)
+      {:error, :runtime_artifact_unavailable} = RuntimeArtifacts.with_guard(fn -> raise "opened incomplete cohort" end)
+      File.write!(path, original)
+      Code.ensure_loaded!(module)
+      forms = [{:attribute, 1, :module, module}, {:attribute, 1, :export, [{:fixture, 0}]},
+        {:function, 1, :fixture, 0, [{:clause, 1, [], [], [{:integer, 1, 1}]}]}]
+      {:ok, ^module, replacement, []} = :compile.forms(forms, [:binary, :return_errors, :return_warnings])
+      {:error, :runtime_artifact_unavailable, :unpublished} = RuntimeArtifacts.with_guard(fn ->
+        {:module, ^module} = :code.load_binary(module, String.to_charlist(path), replacement)
+        :unpublished
+      end)
+      true = :erlang.check_old_code(module)
+      :code.purge(module)
+      false = :erlang.check_old_code(module)
+      {:error, :runtime_artifact_unavailable} = RuntimeArtifacts.with_guard(fn -> raise "opened mismatched loaded code" end)
+      {:module, ^module} = :code.load_binary(module, String.to_charlist(path), original)
+      :code.purge(module)
+      {:ok, [{:application, ^app, properties}]} = :file.consult(String.to_charlist(Path.join(directory, Atom.to_string(app) <> ".app")))
+      for modified <- [Keyword.put(properties, :vsn, ~c"changed"), Keyword.update!(properties, :modules, &tl/1)] do
+        {:error, :runtime_artifact_unavailable, :unpublished} = RuntimeArtifacts.with_guard(fn ->
+          :ok = Application.unload(app)
+          :ok = :application.load({:application, app, modified})
+          :unpublished
+        end)
+        :ok = Application.unload(app)
+        :ok = :application.load({:application, app, properties})
+      end
+      {:ok, ^expected} = RuntimeArtifacts.manifest(applications)
+    end
+    """)
+  end
+
   defp isolated_guard(body) do
-    home = RuntimeArtifacts |> :code.which() |> List.to_string() |> Path.dirname()
-    udp = Application.app_dir(:wotex_udp, "ebin")
+    applications = RuntimeArtifacts.temporal_applications() ++ [:wotex_udp]
+    paths = Enum.map(applications, &{&1, Application.app_dir(&1, "ebin")})
 
     script = """
     alias WotexHome.RuntimeArtifacts
     directory = Path.join(System.tmp_dir!(), "woh-guard-artifacts-" <> Base.encode16(:crypto.strong_rand_bytes(12)))
     File.mkdir!(directory)
     File.chmod!(directory, 0o700)
-    [private_home, _private_udp] = for {original, name} <- [{#{inspect(home)}, "home"}, {#{inspect(udp)}, "udp"}] do
-      private = Path.join(directory, name)
-      File.mkdir!(private)
-      for path <- Path.wildcard(Path.join(original, "*")), File.regular?(path), do: File.cp!(path, Path.join(private, Path.basename(path)))
-      true = :code.del_path(String.to_charlist(original))
-      true = :code.add_patha(String.to_charlist(private))
-      private
-    end
     try do
+      private_applications = Map.new(#{inspect(paths)}, fn {app, original} ->
+        private = Path.join(directory, Atom.to_string(app))
+        File.mkdir!(private)
+        for path <- Path.wildcard(Path.join(original, "*")), File.regular?(path), do: File.cp!(path, Path.join(private, Path.basename(path)))
+        true = :code.del_path(String.to_charlist(original))
+        true = :code.add_patha(String.to_charlist(private))
+        {app, private}
+      end)
+      private_home = Map.fetch!(private_applications, :wotex_home)
+      _ = private_home
       #{body}
       IO.puts("verified")
     after
@@ -123,10 +222,10 @@ defmodule WotexHome.RuntimeArtifactsTest do
     end
     """
 
+    arguments = Enum.flat_map(paths, fn {_app, path} -> ["-pa", path] end) ++ ["-e", script]
+
     assert {"verified\n", 0} =
-             System.cmd(System.find_executable("elixir"), ["-pa", home, "-pa", udp, "-e", script],
-               stderr_to_stdout: true
-             )
+             System.cmd(System.find_executable("elixir"), arguments, stderr_to_stdout: true)
   end
 
   test "fixed application manifests are complete, domain-separated and preserve the LIFX identity" do
@@ -165,7 +264,20 @@ defmodule WotexHome.RuntimeArtifactsTest do
           [:wotex_home, :wotex_home],
           ["wotex_home"],
           [:home_runtime_missing_application],
-          [:wotex_home, :wotex_udp, :crypto, :elixir, :logger],
+          [
+            :wotex_home,
+            :wotex_udp,
+            :crypto,
+            :elixir,
+            :logger,
+            :kernel,
+            :stdlib,
+            :compiler,
+            :sasl,
+            :exqlite,
+            :db_connection,
+            :decimal
+          ],
           nil
         ] do
       assert {:error, :runtime_artifact_unavailable} = RuntimeArtifacts.manifest(apps)
@@ -183,7 +295,7 @@ defmodule WotexHome.RuntimeArtifactsTest do
     for {version, modules} <- [
       {~c"1", []}, {~c"1", [RuntimeArtifacts, RuntimeArtifacts]},
       {~c"1", ["not-a-module"]}, {~c"1", [WotexHome.MissingRuntimeArtifact]},
-      {~c"1", List.duplicate(RuntimeArtifacts, 513)}, {~c"1", [RuntimeArtifacts | :bad_tail]},
+      {~c"1", List.duplicate(RuntimeArtifacts, 1025)}, {~c"1", [RuntimeArtifacts | :bad_tail]},
       {[], [RuntimeArtifacts]}, {"1", [RuntimeArtifacts]},
       {List.duplicate(?x, 129), [RuntimeArtifacts]}, {[-1], [RuntimeArtifacts]}
     ] do
@@ -382,7 +494,7 @@ defmodule WotexHome.RuntimeArtifactsTest do
   test "parallel reads visit each module once with four finished readers and a bounded parsed memo" do
     isolated_many("""
     key = {RuntimeArtifacts, :file_code_checksums}
-    Process.put(key, Map.new(1..2048, &{&1, {"unused", <<0::128>>}}))
+    Process.put(key, Map.new(1..11264, &{&1, {"unused", <<0::128>>}}))
     1 = :erlang.trace_pattern({RuntimeArtifacts, :file_code_checksum, 3}, true, [:local])
     :erlang.trace(:all, true, [:call, {:tracer, self()}])
     {:ok, [_]} = RuntimeArtifacts.manifest([app])

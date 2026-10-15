@@ -2,8 +2,9 @@
 
 This record owns incremental Home evidence for the
 [temporal runtime successor](../specs/routine-temporal-runtime-v1.md).
-Dependency selection is implemented. Production Recurrence delegation, the
-complete v4 runtime identity and actual durable boundary cases remain pending.
+Dependency selection, production calendar delegation and the complete v4
+runtime identity are implemented. Expanded durable phase-fault and historical
+current-row acceptance remain pending.
 The separate [civil archive record](routines-civil-2026-10.md) retains the
 producer archive identities and all prior comparison evidence.
 
@@ -94,4 +95,65 @@ The successor contract was amended before changing the implementation bound:
 list with bounded headroom; no module is omitted or given a weaker digest.
 Artifact/path/read/timeout caps and loaded/file/old-code checks remain unchanged.
 The failed first run (31 cases, 18 failures, seed 569374) is diagnosis, not positive
-adoption evidence. The expanded-bound and complete-cohort tests remain next work.
+adoption evidence. Expanded-bound/cohort tests had not run at that finding;
+the following checkpoint records their subsequent execution.
+
+## Implemented current runtime slice
+
+Production `Recurrence` now delegates its once/daily/weekdays branches to the
+public pure `RoutineCalendar` join. Its replaced calendar resolver/search loop
+is removed; interval arithmetic and the countdown refusal remain Home-owned.
+There is no runtime switch or old-calendar fallback. A fresh Home-only VM now
+proves producer absence refuses actual production calendar calls while interval
+calculation remains usable.
+
+RuntimeArtifacts owns one exact ordered ten-application temporal closure and
+adds UDP for the eleven-application Store scope. It accepts at most eleven
+applications / 1024 modules each and retains the complete 541-module Home list.
+The parsed checksum memo is bounded to 11264 entries. Other artifact, reader,
+path, timeout and cleanup bounds remain unchanged. Existing caller domains and
+smaller-request term encoding are preserved.
+
+TemporalBasis emits `single-schedule-temporal-v4`, using the complete ten-member
+closure and domain `wotex-home.single-schedule-runtime.v2`, including for interval
+and countdown sources. The v3 obligations gain `generic_civil_calculation` and
+`complete_temporal_runtime_cohort`. Exact v1/v2/v3 obligation/hash decoding remains
+historical; current comparison requires rebuilt v4 equality. No receipt/schema
+migration, current-author cache, clock-trust change or physical dispatch is added.
+
+### Focused executed checks
+
+Root used its pinned Elixir 1.19.6 / OTP 28.5.0.6 and selected locked producers.
+All commands used `WOTEX_HOME_GIT_DEPS=1`:
+
+- `mix test test/wotex_home/routine_calendar_test.exs test/wotex_home/schedule_recurrence_test.exs test/wotex_home/schedule_timezone_test.exs test/wotex_home/schedule_calendar_reference_test.exs test/wotex_home/schedule_source_correspondence_test.exs --warnings-as-errors`: **30 passed**, seed **57954**, 9.6 seconds. Actual production recurrence passes the 112 frozen next/membership cases; pure resolution passes 230 labels. Independent raw-byte/Gregorian checks remain separate.
+- `mix test test/wotex_home/runtime_artifacts_test.exs test/wotex_home/schedule_admission_artifact_test.exs --warnings-as-errors`: **31 passed**, seed **26149**, 45.6 seconds at that test-file revision. This retains byte/loaded/old-code/path/reader checks and actual source-bound window/cursor/countdown/guard proofs, including future-fold and footer mutations. The fold mutation now targets the production RoutineCalendar owner. v1/v2/v3 records decode and refuse current use.
+- A subsequent location-filtered run selected RuntimeArtifacts lines 8/138, ScheduleAdmissionArtifact line 559, ProducerAbsenceTest, and DurableScheduleAdmission lines 65/152: seed **350577**, **five passed and one test-output assertion failed** because the isolated guard script printed an unused-variable warning. All injected eleven-member guard assertions reached their successful terminal marker. The helper binding was then made explicit.
+- `mix test test/wotex_home/runtime_artifacts_test.exs:138 --warnings-as-errors`: **one passed**, seed **833737**, 7.2 seconds, after that warning fix. Every one of the eleven applications now passes complete-byte drift with equal OTP code checksum, missing-file opening refusal, loaded mismatch/old code, declared-version/module-list drift, and fresh reads after scope closure. Callback positives remain unpublished on closing drift.
+- The other five filtered cases above establish exact eleven-member ordering and reverse/singleton subsets; warmed v4 proof changes/refuses for every temporal producer/dependency's bytes, missing artifact, version or module list; a fresh absent-producer VM runs all **five** child absence cases; and actual SQLite admission/retention plus same-owner restart retain current v4 bytes.
+- `mix test test/wotex_home/durable_schedule_occurrences_test.exs:92 test/wotex_home/durable_schedule_lifecycle_test.exs:729 --warnings-as-errors`: **two passed**, seed **449243**, 9.3 seconds. An actual qualified-clock poll creates one retained held request/root with temporal provenance and no execution; actual installed-UTC calendar content activates and the SQLite snapshot passes integrity.
+- Scoped formatting, `mix compile --warnings-as-errors` and `git diff --check`: passed after the final code changes. The docs-only agent reviewed the three affected public moduledocs; no documentation build was run.
+
+Exact source SHA-256s for this slice:
+
+| Source | SHA-256 |
+| --- | --- |
+| runtime_artifacts.ex | 7e561efdf18fee2bacba43d86fa77e505a3482a252afe883f7564302256ec0ad |
+| schedules/temporal_basis.ex | 456461bca2f5fc82e57aaeedd8fb4912187e95bfe33f50a1cf9e2a8a2adbf3a9 |
+| schedules/recurrence.ex | 18ee3a9927744fa83bc0fffb2dc3a31fb398ba813b0fbb2f44910624c90dd02c |
+
+### Remaining acceptance
+
+The actual Store queue/claim/final-handoff and poll-preparation phase-fault
+campaign must still mutate producer/dependency artifacts at opening, closing and
+final unscoped checks, including SQL withdrawal/rollback and spent/unknown roots.
+Historical v1–v3 decoding is checked in pure artifacts; actual retained old-profile
+rows, withdrawal/restart and unchanged current author/grant/profile/invariant/clock
+barriers still need their expanded durable cases. The full mechanism milestone,
+release/image/installed and physical qualification remain open. No global-green
+or complete RTR-T3/T4 claim follows from the narrow happy-path Store checks.
+
+All new isolated runtime, proof, absence and Store fixture directories were
+removed on terminal completion. No archive, standalone report, Docker resource
+or generated documentation tree remains from these checks. Dependency and normal
+compiled caches are retained to avoid unrelated rebuilds.
