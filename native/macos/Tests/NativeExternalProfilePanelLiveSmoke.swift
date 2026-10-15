@@ -31,6 +31,7 @@ struct NativeExternalProfilePanelLiveSmoke {
             await journal.reload()
             let application = HomeApplicationModel(pending: journal, controller: controller)
             let model = application.externalProfiles
+            model.entryMode = .file
             let file = root.appendingPathComponent("decision.json")
             try JSONSerialization.data(withJSONObject: fields).write(to: file); try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
             model.kind = kind; model.originalURL = file

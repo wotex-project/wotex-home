@@ -1038,6 +1038,39 @@ final class NativeControllerSessionDriver: ObservableObject {
             try current(selected, generation: capturedGeneration); return value
         }
     }
+    func readExternalProfileSources() async throws -> HomeExternalSourceCatalogue {
+        try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
+            let value = try await Task.detached {
+                let capture = try local.capture()
+                let value = try NativeExternalGuidedWorkflow.sourceChoices(socket: local.socket(), credential: capture.bytes) {
+                    try Self.nativeCapture(capture.nativeReference, credential: capture.bytes, identity: $0)
+                }
+                try completion(); return value
+            }.value
+            try current(selected, generation: capturedGeneration); return value
+        }
+    }
+    func prepareExternalProfile(draft: NativeExternalProfileDraft) async throws -> NativeExternalProfilePreparedDecision {
+        try draft.validate()
+        return try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
+            let value = try await Task.detached {
+                let capture = try local.capture()
+                let value = try NativeExternalGuidedWorkflow.prepare(draft, socket: local.socket(), credential: capture.bytes) {
+                    try Self.nativeCapture(capture.nativeReference, credential: capture.bytes, identity: $0)
+                }
+                try completion()
+                return NativeExternalProfilePreparedDecision(original: value.original, capture: capture, identity: value.identity,
+                    selection: selected, generation: capturedGeneration, draft: draft)
+            }.value
+            try current(selected, generation: capturedGeneration); return value
+        }
+    }
     func prepareExternalProfile(kind: HomeExternalProfileOriginalKind, originalURL: URL) async throws -> NativeExternalProfilePreparedDecision {
         try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
@@ -1065,7 +1098,14 @@ final class NativeControllerSessionDriver: ObservableObject {
                 try NativeLocalControllerRequestGuard.withAdditionalCheck({ try prepared.checkLifetime() }) {
                     let fresh = try local.capture()
                     guard fresh.bytes == prepared.capture.bytes, fresh.nativeReference == prepared.capture.nativeReference else { throw LocalHealthError.sessionChanged }
-                    let identity = try Self.externalDecisionBasis(prepared.original, capture: fresh, socket: local.socket())
+                    let identity: HomeControllerIdentity
+                    if let draft = prepared.draft {
+                        let rebuilt = try NativeExternalGuidedWorkflow.prepare(draft, socket: local.socket(), credential: fresh.bytes) {
+                            try Self.nativeCapture(fresh.nativeReference, credential: fresh.bytes, identity: $0)
+                        }
+                        guard rebuilt.original == prepared.original else { throw LocalHealthError.nativeGuardConflict }
+                        identity = rebuilt.identity
+                    } else { identity = try Self.externalDecisionBasis(prepared.original, capture: fresh, socket: local.socket()) }
                     guard identity.matchesAuthority(prepared.identity), identity.revision == prepared.identity.revision else { throw LocalHealthError.nativeGuardConflict }
                     try completion(); return fresh
                 }
@@ -1341,10 +1381,11 @@ fileprivate final class ExternalDecisionLifetime: @unchecked Sendable {
 struct NativeExternalProfilePreparedDecision: Sendable, CustomReflectable {
     fileprivate let original: HomeExternalProfileOriginal, capture: LocalCredentialCapture, identity: HomeControllerIdentity
     fileprivate let selection: NativeControllerAssociationSnapshot, generation: UInt64
+    fileprivate let draft: NativeExternalProfileDraft?
     private let lifetime = ExternalDecisionLifetime()
     fileprivate init(original: HomeExternalProfileOriginal, capture: LocalCredentialCapture, identity: HomeControllerIdentity,
-                     selection: NativeControllerAssociationSnapshot, generation: UInt64) {
-        self.original = original; self.capture = capture; self.identity = identity; self.selection = selection; self.generation = generation
+                     selection: NativeControllerAssociationSnapshot, generation: UInt64, draft: NativeExternalProfileDraft? = nil) {
+        self.original = original; self.capture = capture; self.identity = identity; self.selection = selection; self.generation = generation; self.draft = draft
     }
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     func retire() { lifetime.retire() }

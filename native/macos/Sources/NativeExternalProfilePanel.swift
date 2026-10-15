@@ -10,6 +10,19 @@ final class NativeExternalProfileViewModel: ObservableObject, CustomReflectable 
     private var generation: UInt64 = 0
     private var decision: NativeExternalProfilePreparedDecision?
     var workAllowed: () -> Bool = { true }
+    @Published var entryMode: NativeExternalProfileEntryMode = .guided { didSet { if oldValue != entryMode { invalidate() } } }
+    @Published var action: NativeExternalGuidedAction = .inspection { didSet { if oldValue != action { invalidate() } } }
+    @Published var decisionOperation = "" { didSet { if oldValue != decisionOperation { invalidate() } } }
+    @Published var inspectionEpoch = "" { didSet { if oldValue != inspectionEpoch { invalidate() } } }
+    @Published var inspectionOperation = "" { didSet { if oldValue != inspectionOperation { invalidate() } } }
+    @Published var artifactDigest = "" { didSet { if oldValue != artifactDigest { invalidate() } } }
+    @Published var targetID = "" { didSet { if oldValue != targetID { invalidate() } } }
+    @Published var sourceRef = "" { didSet { if oldValue != sourceRef { invalidate() } } }
+    @Published var envelopeDigest = "" { didSet { if oldValue != envelopeDigest { invalidate() } } }
+    @Published var envelopeFirstRevision = "" { didSet { if oldValue != envelopeFirstRevision { invalidate() } } }
+    @Published var profileFields = NativeExternalGuidedObjectRow() { didSet { if oldValue != profileFields { invalidate() } } }
+    @Published var definitionFields: [NativeExternalGuidedObjectRow] = [] { didSet { if oldValue != definitionFields { invalidate() } } }
+    @Published private(set) var sources: HomeExternalSourceCatalogue?
     @Published var kind: HomeExternalProfileOriginalKind = .inspection { didSet { if oldValue != kind { invalidate() } } }
     @Published var originalURL: URL? { didSet { if oldValue != originalURL { invalidate() } } }
     @Published var epochInput = "" { didSet { if oldValue != epochInput { invalidate() } } }
@@ -26,7 +39,7 @@ final class NativeExternalProfileViewModel: ObservableObject, CustomReflectable 
     var canChangeSession: Bool { !busy }
     var localSelected: Bool { controller.localSelected }
     var canRead: Bool { !busy && workAllowed() }
-    var canPrepare: Bool { canRead && journal.canStart && originalURL != nil }
+    var canPrepare: Bool { canRead && journal.canStart && (entryMode == .file ? originalURL != nil : (try? guidedDraft()) != nil) }
     var canSubmit: Bool { canRead && journal.canStart && decision != nil && confirmed }
     private var epoch: Int64? {
         guard let value = Int64(epochInput), value > 0, String(value) == epochInput else { return nil }; return value
@@ -34,11 +47,47 @@ final class NativeExternalProfileViewModel: ObservableObject, CustomReflectable 
     var canLookup: Bool { canRead && epoch != nil && LocalHealthClient.profileID(operationInput) }
     func invalidate(clearReads: Bool = false) {
         generation &+= 1; decision?.retire(); decision = nil; details = []; confirmed = false; receipt = nil; error = nil
-        if clearReads { catalogue = nil }
+        if clearReads { catalogue = nil; sources = nil }
         status = "Prepare the decision again after changes. Retained originals remain in Activity."
     }
     private func begin() -> UInt64 {
         decision?.retire(); decision = nil; details = []; confirmed = false; receipt = nil; error = nil; busy = true; return generation
+    }
+    func newOperation() { guard !busy else { return }; decisionOperation = "external:" + UUID().uuidString.lowercased() }
+    func addDefinition() { guard !busy, definitionFields.count < 32 else { return }; definitionFields.append(NativeExternalGuidedObjectRow()) }
+    func removeDefinition(_ id: UUID) { guard !busy else { return }; definitionFields.removeAll { $0.id == id } }
+    func useRecordedInspection() {
+        guard !busy, let receipt, receipt.kind == .inspection else { return }
+        inspectionEpoch = String(receipt.epoch); inspectionOperation = receipt.operation
+    }
+    func guidedDraft() throws -> NativeExternalProfileDraft {
+        guard LocalHealthClient.profileID(decisionOperation) else { throw LocalHealthError.invalidProfileRequest }
+        let draft: NativeExternalProfileDraft
+        switch action {
+        case .inspection: draft = .inspection(operation: decisionOperation, objects: try guidedObjects())
+        case .approve:
+            guard let epoch = NativeExternalGuidedObjectRow.positive(inspectionEpoch) else { throw LocalHealthError.invalidProfileRequest }
+            draft = .approve(operation: decisionOperation, epoch: epoch, inspection: inspectionOperation)
+        case .revokeTrust: draft = .revokeTrust(operation: decisionOperation, artifact: artifactDigest)
+        case .select:
+            guard let epoch = NativeExternalGuidedObjectRow.positive(inspectionEpoch) else { throw LocalHealthError.invalidProfileRequest }
+            draft = .select(operation: decisionOperation, epoch: epoch, inspection: inspectionOperation, target: targetID, source: sourceRef, objects: try guidedObjects())
+        case .revokeTarget: draft = .revokeTarget(operation: decisionOperation, target: targetID)
+        }
+        try draft.validate(); return draft
+    }
+    private func guidedObjects() throws -> NativeExternalProfileObjects {
+        guard definitionFields.count <= 32, let first = NativeExternalGuidedObjectRow.positive(envelopeFirstRevision) else { throw LocalHealthError.invalidProfileRequest }
+        return try NativeExternalProfileObjects.checked(["envelope_ref": ["object_digest": envelopeDigest, "first_revision": first],
+            "profile": try profileFields.fields(), "definitions": try definitionFields.map { try $0.fields() }])
+    }
+    func refreshSources() async {
+        guard canRead else { return }; let current = begin(); defer { busy = false }
+        do {
+            let value = try await controller.readExternalProfileSources()
+            guard !Task.isCancelled, current == generation else { return }
+            sources = value; status = "Source choices read at revision \(value.basis.revision). Choose explicitly; Prepare checks them again."
+        } catch { if current == generation { sources = nil; self.error = error.localizedDescription; status = "Source choices unavailable." } }
     }
     func chooseFile() {
         guard !busy else { return }
@@ -62,9 +111,14 @@ final class NativeExternalProfileViewModel: ObservableObject, CustomReflectable 
         } catch { if current == generation { self.error = error.localizedDescription; status = "Original lookup unavailable." } }
     }
     func prepare() async {
-        guard canPrepare, let originalURL else { return }; let kind = kind, current = begin(); defer { busy = false }
+        guard canPrepare else { return }; let kind = kind, mode = entryMode, originalURL = originalURL, current = begin(); defer { busy = false }
         do {
-            let value = try await controller.prepareExternalProfile(kind: kind, originalURL: originalURL)
+            let value: NativeExternalProfilePreparedDecision
+            if mode == .guided { value = try await controller.prepareExternalProfile(draft: guidedDraft()) }
+            else {
+                guard let originalURL else { throw LocalHealthError.invalidProfileRequest }
+                value = try await controller.prepareExternalProfile(kind: kind, originalURL: originalURL)
+            }
             guard !Task.isCancelled, current == generation else { value.retire(); return }
             try value.checkLifetime(); decision = value; details = value.details
             status = "Review this exact decision, then confirm separately. No change has been submitted."
@@ -101,19 +155,25 @@ struct NativeExternalProfilePanel: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("\(item.id) · \(item.version) · \(item.state)")
                         Text("Artifact \(item.artifact) · Trust revision \(item.trustRevision)").font(.caption)
+                        Button("Use artifact digest") { profiles.artifactDigest = item.artifact }.disabled(profiles.busy)
                     }.fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                 }
             }
-            Picker("Decision kind", selection: $profiles.kind) {
-                Text("Inspection").tag(HomeExternalProfileOriginalKind.inspection)
-                Text("Digest trust").tag(HomeExternalProfileOriginalKind.trust)
-                Text("Read-only target").tag(HomeExternalProfileOriginalKind.target)
+            Picker("Decision entry", selection: $profiles.entryMode) {
+                Text("Guided").tag(NativeExternalProfileEntryMode.guided)
+                Text("Complete decision file").tag(NativeExternalProfileEntryMode.file)
             }.disabled(profiles.busy)
-            ViewThatFits(in: .horizontal) {
-                HStack { decisionActions }
-                VStack(alignment: .leading) { decisionActions }
+            if profiles.entryMode == .guided {
+                NativeExternalProfileGuidedForm(profiles: profiles)
+                Button("Prepare guided decision") { Task { await profiles.prepare() } }.disabled(!profiles.canPrepare)
+            } else {
+                kindPicker
+                ViewThatFits(in: .horizontal) {
+                    HStack { decisionActions }
+                    VStack(alignment: .leading) { decisionActions }
+                }
+                if let file = profiles.originalURL { Text("Decision file: " + file.lastPathComponent).font(.caption).lineLimit(2) }
             }
-            if let file = profiles.originalURL { Text("Decision file: " + file.lastPathComponent).font(.caption).lineLimit(2) }
             ForEach(Array(profiles.details.enumerated()), id: \.offset) { _, value in
                 Text(value).font(.caption).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             }
@@ -123,15 +183,24 @@ struct NativeExternalProfilePanel: View {
             }
             Divider()
             Text("Original decision history").font(.subheadline)
+            kindPicker
             TextField("Authority epoch", text: $profiles.epochInput).accessibilityLabel("Original authority epoch")
             TextField("Operation ID", text: $profiles.operationInput).accessibilityLabel("Original operation ID")
             Button("Look up original decision") { Task { await profiles.lookup() } }.disabled(!profiles.canLookup)
             if let receipt = profiles.receipt {
                 Text("\(receipt.kind.rawValue.capitalized) · Authority \(receipt.epoch) · \(receipt.operation) · Revision \(receipt.revision)").font(.caption).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                 Text("Input SHA: " + receipt.inputSHA).font(.caption).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                if receipt.kind == .inspection { Button("Use recorded inspection for guided decision") { profiles.useRecordedInspection() }.disabled(profiles.busy) }
             }
             if let error = profiles.error { Text(error).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true).textSelection(.enabled) }
         }.accessibilityElement(children: .contain).accessibilityLabel("External profile decisions")
+    }
+    private var kindPicker: some View {
+        Picker("Original kind", selection: $profiles.kind) {
+            Text("Inspection").tag(HomeExternalProfileOriginalKind.inspection)
+            Text("Digest trust").tag(HomeExternalProfileOriginalKind.trust)
+            Text("Read-only target").tag(HomeExternalProfileOriginalKind.target)
+        }.disabled(profiles.busy)
     }
     @ViewBuilder private var decisionActions: some View {
         Button("Choose decision file") { profiles.chooseFile() }.disabled(profiles.busy)
