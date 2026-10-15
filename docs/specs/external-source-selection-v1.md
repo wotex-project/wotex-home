@@ -73,6 +73,11 @@ ReaderSelection and each consumer still pass their unchanged reader limits
 before use. In particular the installed MQTT selector's nested path-item schema
 must fit after wrapping. Canonical bytes and identities are unchanged for
 previously admitted sources; no reader, decoded value or report limit increases.
+SourceOwner's byte accounting and RetainedSource's complete-input witness use
+the same plus-one wrapper allowance. Historical decode applies nine only to
+that input witness, then separately decodes its identical reader and channel
+witnesses at their existing depth eight. Other retained JSON containers remain
+at eight. Nested source-only data cannot borrow an unbounded producer envelope.
 
 ## Native output, privacy and correspondence
 
