@@ -56,6 +56,11 @@ def allocate():
     local = ["power", ["d" * 64, "e" * 64, 1, "operator:local"],
              ["manual", "f" * 64], ["submit", "power:local", "lamp:fixture", 9, True], ["pending"]]
     valid = [(name, root([record])) for name, record in rows]
+    for name, record in rows:
+        if json.loads(record[3][2])[1][2] == 9223372036854775807:
+            at_floor = copy.deepcopy(record)
+            at_floor[2][3] = 9223372036854775807
+            valid.append((name + "-creation-at-floor", root([at_floor])))
     valid.append(("mixed", root([local, rows[0][1], rows[3][1]])))
     valid.append(("empty-retained", root([], revision=9223372036854775807)))
     cases = [{"name": name, "document": canonical(value),
@@ -69,7 +74,8 @@ def allocate():
             ("epoch-bool", lambda r: r[1].__setitem__(2, True)),
             ("creation-float", lambda r: r[2].__setitem__(3, 1.0)),
             ("creation-overflow", lambda r: r[2].__setitem__(3, 9223372036854775808)),
-            ("creation-future", lambda r: r[2].__setitem__(3, 9223372036854775807)),
+            ("creation-outside-floor", lambda r: r[2].__setitem__(3,
+                0 if json.loads(r[3][2])[1][2] == 9223372036854775807 else 9223372036854775807)),
             ("principal", lambda r: r[1].__setitem__(3, "operator:wrong")),
             ("phase", lambda r: r.__setitem__(4, ["review", "token", "a" * 64])),
             ("extra-input", lambda r: r[3].append(None)),
