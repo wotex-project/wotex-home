@@ -126,6 +126,34 @@ defmodule WotexHome.ProfileByteContextTest do
     assert {:error, :profile_artifact_unavailable} = available(c, runtime)
   end
 
+  test "native input context clears prior checks without private I/O even with an active schedule",
+       c do
+    {:ok, runtime} = ProfileBasis.runtime_digest()
+    assert :ok = ProfileByteContext.prepare(c.db, c.custody, {:record, nil})
+    assert :ok = available(c, runtime)
+
+    :ok =
+      Sqlite3.execute(
+        c.db,
+        "CREATE TABLE meta (key TEXT,value INTEGER); INSERT INTO meta VALUES ('authority_epoch',1),('rule_generation',2); CREATE TABLE schedule_lifecycle_operations (kind TEXT,authority_epoch INTEGER,generation INTEGER,revision INTEGER); INSERT INTO schedule_lifecycle_operations VALUES ('activate',1,2,1); PRAGMA user_version=38"
+      )
+
+    :ok = :sys.suspend(c.custody)
+
+    try do
+      assert :ok =
+               ProfileByteContext.prepare(
+                 c.db,
+                 c.custody,
+                 {:external_routine_input_context, :untrusted, "sensor:1", "sample"}
+               )
+
+      assert {:error, :profile_artifact_unavailable} = available(c, runtime)
+    after
+      :ok = :sys.resume(c.custody)
+    end
+  end
+
   defp available(c, runtime),
     do:
       ProfileByteContext.available?(

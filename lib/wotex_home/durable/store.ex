@@ -14,6 +14,13 @@ defmodule WotexHome.Durable.Store do
   Clients must recover that identity after a lost reply rather than treating
   transport timeout as proof that nothing committed.
 
+  `external_routine_input_context/4` authenticates the credential and target/key
+  scope, then returns `{:ok, context}` or `{:error, reason}` for native input review.
+  `WotexHome.Durable.Store.ExternalInputContext` repeats the current database,
+  private owner, reader, clock and runtime basis under one preparation budget.
+  This read allocates no lease or durable operation and grants no continuing
+  authority; subsequent installation must repeat its own current guards.
+
   Held requests and pre-handoff claims carry no send authority. Store retains
   separate admission, handoff, acknowledgement and observation state and repeats
   current guards before transitions. Generator preparation likewise records an
@@ -690,6 +697,9 @@ defmodule WotexHome.Durable.Store do
 
   def external_target_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:external_target_status, credential, epoch, operation})
+
+  def external_routine_input_context(server, credential, target, key),
+    do: GenServer.call(server, {:external_routine_input_context, credential, target, key}, 15_000)
 
   def accept_external_report(server, input),
     do: GenServer.call(server, {:accept_external_report, input}, 30_000)
@@ -3171,6 +3181,40 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   end
 
+  defp handle_current_call(
+         {:external_routine_input_context, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(
+         {:external_routine_input_context, credential, target, key},
+         _from,
+         state
+       ) do
+    configuration =
+      Map.take(state, [
+        :profile_custody,
+        :external_source_owner,
+        :external_report_owner,
+        :external_target_boot,
+        :clock_epoch,
+        :clock_origin
+      ])
+
+    result =
+      WotexHome.Durable.Store.ExternalInputContext.current(
+        state.db,
+        configuration,
+        credential,
+        target,
+        key
+      )
+
+    {:reply, result, read_health(state, result)}
+  end
+
   defp handle_current_call({:inspect_external_profile, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
@@ -5186,6 +5230,7 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_external_inspections}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_external_trust}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_external_targets}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_external_inputs}), do: %{state | writable: false}
 
   defp read_health(state, {:error, :corrupt_external_observations}),
     do: %{state | writable: false}

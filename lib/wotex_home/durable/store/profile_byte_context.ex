@@ -32,6 +32,10 @@ defmodule WotexHome.Durable.Store.ProfileByteContext do
     end
   end
 
+  # This native read authenticates before private I/O under its own deadline.
+  # It commits no schedule transition and must not pre-read unrelated custody.
+  def prepare(db, _custody, {:external_routine_input_context, _, _, _}), do: clear(db)
+
   def prepare(db, custody, request) do
     with :ok <- clear(db), {:ok, active} <- active_schedule?(db) do
       # Any committed Store write repeats the active schedule basis. Its byte

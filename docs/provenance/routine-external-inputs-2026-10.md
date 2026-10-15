@@ -394,3 +394,67 @@ checks 21 contracts and 109 changed indexed Markdown references, then is removed
 Both temporary roots contain zero owned scratch paths and about 53 GiB is free.
 The dependency locks and existing local settings are unchanged. No Docker
 resource, native/release build, full application suite or Dialyzer run was used.
+
+## Measured native review context
+
+The native Authority/Store `external_routine_input_context/4` now measures the
+current selected target's real private envelope, retained read declaration,
+independent caller/selector/approver permissions and target grants, source owner,
+report-owner incarnation, Store receipt-clock origin and complete runtime. It
+rebuilds that basis twice and repeats source/report/runtime checks after private
+reads. It creates no lease, operation, revision, installed Mapping or Fact.
+
+The context uses one 10000 ms monotonic budget and requires 5000 ms remaining
+before every five-second owner/custody call. Direct verified custody reads
+allocate no lease. The shared Store preamble clears transient portable-profile
+checks without reading unrelated custody before this context authenticates,
+including when a schedule is active; write boundaries retain their existing
+schedule byte checks. SQL/retained-input corruption still fences the writer.
+
+On the pinned Elixir 1.19.6 / OTP 28.5.0.6 cohort:
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/external_input_context_test.exs test/wotex_home/profile_byte_context_test.exs test/wotex_home/external_input_test.exs test/wotex_home/external_observation_test.exs --warnings-as-errors`
+
+passes **31 tests**, seed **634413**, **30.0 seconds**. The group includes fifteen
+context cases, five byte-context cases and the existing native Definition and
+retained observation regressions. Actual private imports, inspection, artifact
+approval, target selection and explicit grants supply the Store fixture; no
+caller-authored context is substituted. Tests cover stable context under
+unrelated durable revision changes, integer scale separation, multi-channel
+resolution, every caller permission and missing grant before private reads,
+independent author grants, synthetic-lab and legacy-archive refusal, maintenance,
+actual Store restart and producer-free original selection replay without a boot
+marker, source replacement during private reads, absent owners/private bytes,
+signed clock overflow, a hung owner within the budget and corrupt-history fencing.
+
+One parent test runs **four further cases** in an isolated BEAM using private
+copies of compiled application directories. After Store opens its current basis
+and reaches a real custody read, each case adds a non-code BEAM chunk to one
+member of routines, profiles, transport or storage: wotex_home, wotex, gun and
+telemetry. The loaded-code MD5 remains unchanged; complete artifact SHA changes.
+Every case refuses runtime_artifact_unavailable and recovers after original bytes
+are restored, with Store still writable. The profile case initially exposed a
+generic-unavailability normalization; the implementation now preserves the
+runtime refusal even when private reconstruction discovers it before closing.
+This supplements the earlier all-twenty-member runtime helper matrix; it is not
+an all-twenty-member Store-context fault matrix.
+
+The documentation agent changed only the three affected module docs. Test and
+support modules have moduledoc=false and each module doc has one following blank
+line. Disposable private app copies and SQLite/custody roots are removed in
+after/on-exit cleanup. No Docker resources, native/release artifacts, full suite,
+Dialyzer or dependency updates are part of this slice.
+
+The non-lab source's authenticated_device value in these fixtures is an explicit
+synthetic host assertion, not measured device authentication. Context data is
+review metadata, not qualification. Original-first installation/revoke, atomic
+withdrawal, current requested collection, independent extracted integration,
+composed execution, installed hosts and physical obligations remain open.
+
+Final formatting, warnings-as-errors compilation, the 22-contract working
+catalogue and both Git whitespace checks pass. The disposable index projection
+checks 21 contracts and 42 indexed relative Markdown references, then removes its
+scratch directory. Both temporary roots contain zero matching owned scratch
+paths. About 53 GiB remains free; Docker still has zero containers and unchanged
+existing images/volumes/build caches. No unrelated Docker volume or reusable
+dependency/native cache was deleted.

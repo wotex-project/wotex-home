@@ -1,7 +1,7 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.26. Updated: 2026-10-15. Status: accepted target.
-Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection and pure reviewed external-input foundations.
+Version: 0.1.27. Updated: 2026-10-15. Status: accepted target.
+Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection and measured native external-input review context.
 Evidence: finite software subset; full acceptance cases remain open.
 
 ## Purpose, ownership and current subset
@@ -334,9 +334,11 @@ and every Store transaction, exact backup inventories/counts and quarantined
 source-revision recovery. Seventy-seven focused history/migration/recovery cases,
 twelve selected historical migrations and twenty-two portable Linux cohort/probe
 cases pass. Actual preceding schema-37 code confirms unchanged retained hashes
-after an empty migration. Actual context/install/revoke, proactive withdrawal
-and current collection remain open. The context contract now explicitly bounds
-preparation and repeats actual custody/source/runtime evidence, with independent
-selector and approver permissions and target grants before private reads.
-Linux-only execution, physical qualification
-and complete composed execution retain their separate obligations.
+after an empty migration. Native review context now measures the actual selected
+private reader, source, receipt clock and complete runtime twice, with independent
+caller/author permissions and target grants before private reads. Restart,
+original replay, owner timeout, source drift and corruption have focused software
+coverage; four isolated Store probes reject closing byte drift across all runtime
+groups. Installation/revoke, proactive withdrawal and current collection remain
+open. Linux-only execution, physical qualification and complete composed execution
+retain their separate obligations.

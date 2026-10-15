@@ -21,6 +21,12 @@ defmodule WotexHome.Authority do
   original or source lease and grant no approval or target selection; later mutations
   still repeat current guards rather than trusting a cached guidance snapshot.
 
+  `external_routine_input_context/4` takes the credential, target ID and capability
+  key and returns `{:ok, context}` or `{:error, reason}`. Store measures the exact
+  reader, private source, receipt-clock and current runtime basis for native input
+  review. This bounded read creates no operation or lease and installs no input;
+  its metadata grants no continuing authorization or physical qualification.
+
   After a lost reply, recover the same original operation and immutable receipt
   before deciding whether further work is needed. Staging, admission, durable
   handoff, protocol acknowledgement and observed state are distinct outcomes;
@@ -653,6 +659,10 @@ defmodule WotexHome.Authority do
 
   def external_target_status(%__MODULE__{store: store}, credential, epoch, operation),
     do: Store.external_target_status(store, credential, epoch, operation)
+
+  @doc "Measures the current native reader, private source and clock basis for input review."
+  def external_routine_input_context(%__MODULE__{store: store}, credential, target, key),
+    do: Store.external_routine_input_context(store, credential, target, key)
 
   @doc "Native host receipt admission; no socket/model report body or credential enters this boundary."
   def accept_external_report(%__MODULE__{store: store}, input),

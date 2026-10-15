@@ -1,9 +1,10 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.11. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.12. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition,
-signed-review verifier, retained codecs and schema-38 history/migration/recovery. Evidence:
+signed-review verifier, retained codecs, schema-38 history/migration/recovery and
+measured native review context. Evidence:
 entry, native correspondence, historical package/original/graph checks and software trust-mechanics
 checks pass. SQLite installation, current collection, EI-T1–T9 integration and
 physical obligations remain open.
@@ -755,6 +756,13 @@ pass. A separate probe loads the actual preceding schema-37 recovery code and
 confirms its retained hash equals the current code before and after an empty
 migration. Twenty-two portable package/update/probe cases pass under the explicit
 Linux schema-38 cohort; Linux-only and installed execution remain unverified.
-Actual context/install/revoke, proactive maintenance/author/target withdrawal and
-current collection remain next. No fixture establishes current or physical
-qualification.
+Native Authority/Store context now rebuilds the actual selected private reader,
+authors/grants, source and clock under the shared preparation budget. Repeated
+source/custody/runtime checks, actual Store restart, original replay, owner timeout
+and corruption fencing have focused software coverage. Isolated Store probes
+change complete artifact bytes in one member of each runtime group during private
+preparation; all refuse, including profile drift discovered before final inventory.
+The shared preamble clears prior byte checks without reading unrelated portable
+custody before context authentication, even with an active schedule. Installation,
+revoke, proactive maintenance/author/target withdrawal and current collection
+remain next. These fixtures establish no signed physical qualification.

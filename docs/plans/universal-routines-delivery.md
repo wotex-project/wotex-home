@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.20. Updated: 2026-10-15. Accepted build order; implementation and
+Version: 0.1.21. Updated: 2026-10-15. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -315,8 +315,10 @@ successor. Current status and remaining order:
    original schema-37 code confirms unchanged retained hashes after empty
    migration. Seventy-seven focused history/recovery cases, twelve selected
    historical migrations and twenty-two portable host cohort/probe cases pass.
-   Implement the bounded actual native context with independent author grants
-   and repeated private-source/runtime checks, original-first install/revoke and atomic
+   Bounded native review context is implemented with independent caller/author
+   grants and repeated private-source/runtime checks. Focused actual Store
+   restart, timeout, source drift and corruption probes plus four isolated runtime
+   group drift cases pass. Implement original-first install/revoke and atomic
    maintenance/author/target withdrawal before exposing installed current use.
 3. Implement Store-owned complete requested-scope collection from actual private
    custody, committed original pointer and live consumed lifetime. Exercise
