@@ -1,9 +1,11 @@
 # Native external-profile guidance reads
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08/H18-T6/T8/T11/T12.
-Implementation: planned. Evidence: missing.
+Implementation: explicit local SDK reads and closed typed decoders implemented.
+Evidence: [executed independent-peer and Store checks](../provenance/native-external-guidance-2026-10.md).
+Selected guided controls and signed paired delivery remain subsequent consumers.
 
 ## Result and owners
 
@@ -58,8 +60,11 @@ Typed values and nested values redact reflection; retain safe fields only.
   external_reader_unavailable or profiles_producer_unavailable.
 - Sources: available/lowerhex32 owner/null reason and0–32 strictly sorted/unique
   source_ref rows; or unavailable/null owner/empty rows/external_source_unavailable.
-  Rows have the exact eight fields and enums of EG-03. Source generation is
-  positive S64; source epoch lowerhex32. No stable identity/hash or capture is
+  Rows contain exactly source_ref,source_selection_sha256,reader_basis_sha256,
+  source_epoch,source_generation,method,trust,policy_sha256. Method is
+  operator_configured/legacy_tofu/physical_button/qr_install_code; trust is
+  unauthenticated_local/authenticated_device/bridge_attested/synthetic_lab.
+  Source generation is positive S64; source epoch lowerhex32. No stable identity/hash or capture is
   accepted. Availability with an empty list remains distinct from unavailability.
 - Target: requested target ID must match. State absent requires all four counters0,
   null artifact and trust0. Selected/revoked requires positive selection revision,

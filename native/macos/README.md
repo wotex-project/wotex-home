@@ -1519,4 +1519,5 @@ through actual Store/Authority/Unix sockets, including source shutdown and reade
 loss. Fixture credentials travel on stdin. These checks do not open Keychain,
 register a service, send a mutation or qualify physical hardware. They establish
 SDK inputs for subsequent guided controls; signed paired and installed delivery
-remain separate obligations.
+remain separate obligations. [Executed evidence](../../docs/provenance/native-external-guidance-2026-10.md)
+records the exact source, fixtures and remaining gates.

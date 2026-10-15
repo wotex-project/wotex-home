@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.165. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.166. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
 now defines fresh signed authorization after human review, unchanged first originals,
@@ -42,8 +42,9 @@ now exposes current reader, safe source, target-counter and owned artifact reads
 through Store/Authority and closed local socket/CLI operations, with
 [executed focused software evidence](../provenance/external-profile-guidance-2026-10.md).
 The [native guidance read consumer](native-external-guidance-reads-v1.md)
-defines strict typed bodies and current identity bracketing before guided controls.
-Its implementation/evidence and signed paired consumers remain successors.
+now has strict typed bodies and current identity bracketing, with
+[executed independent-peer and Store evidence](../provenance/native-external-guidance-2026-10.md).
+Guided controls and signed paired consumers remain successors.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)
 defines durable root/attempt workspace custody, explicit policy/consent/budget,
