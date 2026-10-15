@@ -6,13 +6,15 @@ defmodule WotexHome.Profiles.ExternalEnvelope do
   documents, installed registrations, host capture and reader limits. It checks
   raw document identities, delegates closure compilation and capture matching
   to the installed producer, then derives Home's selected read-only consumption
-  basis. The result retains raw, projection and consumption digests separately.
+  basis. Success is `{:ok, envelope}`, retaining raw, projection and consumption
+  digests separately; refusal is `{:error, reason}`.
 
   `to_map/2` reconstructs the complete native value against the same selected
-  limits and returns a summary without source bytes or capture values. Changed
-  correspondence refuses rather than substituting a later capture or producer.
-  `check_reader_limits/1` validates the complete explicit limit set against the
-  fixed Home ceilings.
+  limits and returns `{:ok, summary}` without source bytes or capture values.
+  Changed or invalid correspondence returns `{:error, reason}` instead of
+  substituting a later capture or producer. `check_reader_limits/1` returns
+  `:ok` for the complete explicit limit set within Home's fixed ceilings, or
+  `{:error, :external_profile_limit}` for malformed or excessive limits.
 
   Compilation performs no custody file read, source authentication or Store
   transition. The checked value grants no current trust, enrollment, observation

@@ -7,7 +7,8 @@ defmodule WotexHome.Policy do
   `WotexHome.Policy.Context` derived from authenticated durable state. It
   compares authority/resource revisions, target grants, capability write support,
   permissions, invariant disposition and value constraints, returning `:ok` or
-  the first typed refusal. Malformed inputs return `:invalid_context`.
+  `{:error, reason}` for the first failed check. Unsupported argument shapes or
+  invalid context return `{:error, :invalid_context}`.
 
   The function is pure and changes no state. A successful check is not a receipt
   or permission to call a driver. The owning `WotexHome.Durable.Store` operation

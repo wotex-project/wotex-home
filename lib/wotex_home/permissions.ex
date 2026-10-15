@@ -2,9 +2,9 @@ defmodule WotexHome.Permissions do
   @moduledoc """
   Validates the closed Home permission vocabulary used by storage and pure policy.
 
-  `valid?/1` returns a Boolean for a proper duplicate-free list of known
-  permission strings, bounded to the vocabulary size. Unknown strings, repeated
-  entries and improper lists refuse without creating atoms. The host-transfer
+  `valid?/1` returns `true` for a proper duplicate-free list of known permission
+  strings, bounded to the vocabulary size. Unknown strings, repeated entries
+  and improper lists return `false` without creating atoms. The host-transfer
   permission must appear alone, preserving its separate recovery role.
 
   An empty list is structurally valid for trusted policy context; principal
