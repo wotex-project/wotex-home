@@ -22,6 +22,9 @@ defmodule WotexHome.Profiles.AuthoringUpload do
     GenServer.start_link(__MODULE__, options, Keyword.take(options, [:name]))
   end
 
+  @doc "Checks the exact Store process bound to this transient owner."
+  def bound_owner(server, owner), do: GenServer.call(server, {:bound_owner, owner})
+
   def begin(server, scope, input), do: call(server, {:begin, scope, input})
 
   def append(server, scope, ref, offset, bytes),
@@ -80,6 +83,15 @@ defmodule WotexHome.Profiles.AuthoringUpload do
 
   @impl true
   def handle_call(message, from, state), do: dispatch(message, from, expire(state))
+
+  defp dispatch({:bound_owner, owner}, _, state) do
+    result =
+      if owner == state.owner and Process.alive?(owner),
+        do: :ok,
+        else: {:error, :authoring_upload_owner_changed}
+
+    {:reply, result, state}
+  end
 
   defp dispatch({:begin, scope, input}, _, state) do
     if valid_scope?(scope) and valid_input?(input) do

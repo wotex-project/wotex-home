@@ -7,6 +7,11 @@ defmodule WotexHome.ControllerConnections.Server do
   The listener limits concurrent workers and fences itself when the selected
   identity, interface or monitored owners become unavailable.
 
+  A transient authoring-upload owner is created for this listener unless
+  Authority supplies one bound to the same Store. Supplied owners are pinned
+  by PID and remain externally owned; loss fences accepted exchanges. Listener
+  restart preserves durable originals but starts no replacement upload session.
+
   `template/1` returns a public invitation template without opening a pairing
   window. Bootstrap and authenticated API exchanges remain distinct, and decoded
   requests call Authority rather than receiving a Store connection. Listener
@@ -42,11 +47,14 @@ defmodule WotexHome.ControllerConnections.Server do
          owner when is_pid(owner) <- Authority.owner(authority),
          reviews when is_pid(reviews) <- resolve(authority.pairing_reviews),
          :ok <- PairingReview.bound_owner(reviews, owner),
+         {:ok, supplied_uploads} <- supplied_uploads(authority, owner),
          %InstallationIdentity{} = identity <- Keyword.get(opts, :identity),
          binding = Keyword.get(opts, :binding),
          :ok <- Binding.check(binding),
          {:ok, options} <- InstallationIdentity.server_options(identity),
-         {:ok, listener} <- listen(binding, options) do
+         {:ok, listener} <- listen(binding, options),
+         {:ok, authority, uploads, owned_uploads} <-
+           upload_owner(authority, owner, supplied_uploads, listener) do
       Process.flag(:trap_exit, true)
       token = make_ref()
       parent = self()
@@ -55,6 +63,7 @@ defmodule WotexHome.ControllerConnections.Server do
         authority: authority,
         owner: owner,
         reviews: reviews,
+        uploads: uploads,
         identity: identity,
         binding: binding
       }
@@ -70,6 +79,8 @@ defmodule WotexHome.ControllerConnections.Server do
          token: token,
          owner_ref: Process.monitor(owner),
          reviews_ref: Process.monitor(reviews),
+         uploads_ref: Process.monitor(uploads),
+         owned_uploads: owned_uploads,
          workers: MapSet.new(),
          timer: Process.send_after(self(), :fence, 1_000)
        })}
@@ -104,7 +115,8 @@ defmodule WotexHome.ControllerConnections.Server do
   end
 
   def handle_info({:DOWN, ref, :process, _pid, _reason}, state)
-      when ref in [state.owner_ref, state.reviews_ref], do: {:stop, :normal, state}
+      when ref in [state.owner_ref, state.reviews_ref, state.uploads_ref],
+      do: {:stop, :normal, state}
 
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{acceptor_ref: ref} = state),
     do: {:stop, :controller_listener_failed, state}
@@ -122,7 +134,49 @@ defmodule WotexHome.ControllerConnections.Server do
     Process.cancel_timer(state.timer)
     :ssl.close(state.listener)
     Process.exit(state.acceptor, :kill)
+
+    if is_pid(state.owned_uploads) and Process.alive?(state.owned_uploads),
+      do: GenServer.stop(state.owned_uploads)
+
     :ok
+  end
+
+  defp supplied_uploads(%Authority{authoring_uploads: nil}, _owner), do: {:ok, nil}
+
+  defp supplied_uploads(authority, owner) do
+    with uploads when is_pid(uploads) <- resolve(authority.authoring_uploads),
+         :ok <- WotexHome.Profiles.AuthoringUpload.bound_owner(uploads, owner),
+         do: {:ok, uploads},
+         else: (_ -> {:error, :invalid_controller_listener_config})
+  end
+
+  defp upload_owner(authority, owner, supplied, listener) do
+    result =
+      if is_nil(supplied) do
+        case WotexHome.Profiles.AuthoringUpload.start_link(store_owner: owner) do
+          {:ok, uploads} ->
+            {:ok, Authority.with_authoring_uploads(authority, uploads), uploads, uploads}
+
+          error ->
+            error
+        end
+      else
+        case WotexHome.Profiles.AuthoringUpload.bound_owner(supplied, owner) do
+          :ok -> {:ok, Authority.with_authoring_uploads(authority, supplied), supplied, nil}
+          error -> error
+        end
+      end
+
+    if not match?({:ok, _, _, _}, result), do: :ssl.close(listener)
+    result
+  rescue
+    _ ->
+      :ssl.close(listener)
+      {:error, :invalid_controller_listener_config}
+  catch
+    _, _ ->
+      :ssl.close(listener)
+      {:error, :invalid_controller_listener_config}
   end
 
   @impl true
@@ -378,6 +432,9 @@ defmodule WotexHome.ControllerConnections.Server do
            Process.alive?(context.owner) and Authority.owner(context.authority) == context.owner,
          true <- resolve(context.authority.pairing_reviews) == context.reviews,
          true <- Process.alive?(context.reviews),
+         true <-
+           context.authority.authoring_uploads == context.uploads and
+             Process.alive?(context.uploads),
          :ok <- Binding.check(context.binding),
          {:ok, _} <- InstallationIdentity.server_options(context.identity),
          do: :ok,

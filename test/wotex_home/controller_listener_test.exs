@@ -379,6 +379,111 @@ defmodule WotexHome.ControllerListenerTest do
     end
   end
 
+  test "paired authoring uploads retain one owner across TLS exchanges and retire on listener stop",
+       c do
+    alias WotexHome.Profiles.AuthoringUpload
+    {:ok, key, _} = Store.provision_principal(c.store, "author:tls", ["profile:manage"], [])
+    credential = Base.url_encode64(key, padding: false)
+
+    input = %{
+      "upload_id" => "upload:paired-owner",
+      "purpose" => "import_payload",
+      "payload_bytes" => 9,
+      "payload_sha256" => Base.encode16(:crypto.hash(:sha256, "synthetic"), case: :lower)
+    }
+
+    payload = %{
+      "api_version" => 1,
+      "credential" => credential,
+      "operation" => "authoring_upload_begin",
+      "upload" => input
+    }
+
+    assert %{"outcome" => "ok", "authoring_upload" => first} = request(c, payload)
+
+    assert %{"outcome" => "ok", "authoring_upload" => status} =
+             request(c, %{
+               "api_version" => 1,
+               "credential" => credential,
+               "operation" => "authoring_upload_status",
+               "upload_id" => input["upload_id"]
+             })
+
+    assert Map.delete(status, "remaining_ms") == Map.delete(first, "remaining_ms")
+    assert status["remaining_ms"] <= first["remaining_ms"]
+
+    uploads = :sys.get_state(c.listener).uploads
+    assert :ok = AuthoringUpload.bound_owner(uploads, c.store)
+
+    assert {:error, :authoring_upload_owner_changed} =
+             AuthoringUpload.bound_owner(uploads, self())
+
+    monitor = Process.monitor(uploads)
+    assert :ok = stop_supervised(LAN)
+    assert_receive {:DOWN, ^monitor, :process, ^uploads, _}, 1_000
+    listener = start_supervised!(Supervisor.child_spec({LAN, c.opts}, restart: :temporary))
+    assert :sys.get_state(listener).uploads != uploads
+
+    assert %{"outcome" => "not_found"} =
+             request(c, %{
+               "api_version" => 1,
+               "credential" => credential,
+               "operation" => "authoring_upload_status",
+               "upload_id" => input["upload_id"]
+             })
+
+    assert %{"outcome" => "ok", "authoring_upload" => second} = request(c, payload)
+    assert first["owner_epoch"] != second["owner_epoch"]
+  end
+
+  test "upload owner loss fences the listener and accepted sockets", c do
+    uploads = :sys.get_state(c.listener).uploads
+    socket = connect(c)
+    monitor = Process.monitor(c.listener)
+    GenServer.stop(uploads)
+    assert_receive {:DOWN, ^monitor, :process, _, _}, 2_000
+    assert {:error, :closed} = :ssl.recv(socket, 0, 2_000)
+    :ssl.close(socket)
+  end
+
+  test "supplied upload owner stays pinned and survives normal listener stop", c do
+    alias WotexHome.Profiles.AuthoringUpload
+    assert :ok = stop_supervised(LAN)
+    name = __MODULE__.SharedUploads
+    uploads = start_supervised!({AuthoringUpload, store_owner: c.store, name: name})
+    authority = Authority.with_authoring_uploads(c.authority, name)
+    opts = Keyword.put(c.opts, :authority, authority)
+    listener = start_supervised!(Supervisor.child_spec({LAN, opts}, restart: :temporary))
+    assert :sys.get_state(listener).uploads == uploads
+    Process.unregister(name)
+
+    replacement =
+      start_supervised!({AuthoringUpload, store_owner: c.store, name: name}, id: :replacement)
+
+    assert :sys.get_state(listener).authority.authoring_uploads == uploads
+    assert Process.whereis(name) == replacement
+    assert :ok = stop_supervised(LAN)
+    assert Process.alive?(uploads)
+    assert Process.alive?(replacement)
+    assert :ok = AuthoringUpload.bound_owner(uploads, c.store)
+  end
+
+  test "supplied upload owner from another Store refuses before opening a listener", c do
+    alias WotexHome.Profiles.AuthoringUpload
+    Process.flag(:trap_exit, true)
+    assert :ok = stop_supervised(LAN)
+    uploads = start_supervised!({AuthoringUpload, store_owner: self()})
+    authority = Authority.with_authoring_uploads(c.authority, uploads)
+
+    assert {:error, :invalid_controller_listener_config} =
+             LAN.start_link(Keyword.put(c.opts, :authority, authority))
+
+    assert {:error, _} =
+             :gen_tcp.connect({127, 0, 0, 1}, c.binding.port, [:binary, active: false], 500)
+
+    assert Process.alive?(uploads)
+  end
+
   for owner <- [:store, :reviews] do
     test "#{owner} loss closes listener and every accepted socket", c do
       socket = connect(c)
