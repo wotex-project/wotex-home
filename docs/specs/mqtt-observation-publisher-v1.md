@@ -34,6 +34,8 @@ installed with JSONProjection.selector_schema, and allow observeproperty. Each
 configured channel must name an included observable channel plan, retain its
 exact selector and pass JSONProjection.validate_selector. At most 32 channels.
 The source/channel policy otherwise follows ExternalSourceSelection.new/3.
+Its complete-input wrapper allows the source contract's single extra depth level;
+the independently revalidated reader and decoded reports keep their own limits.
 
 Source has exactly source_ref, stable_id, source_generation, method and trust;
 the publisher supplies a new random lower-hex32 source_epoch for its incarnation.

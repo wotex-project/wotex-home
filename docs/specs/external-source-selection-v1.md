@@ -1,6 +1,6 @@
 # Explicit external source selections
 
-Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18-04/05/08/H18-T11/T12; WOH.03 H03-02.
 Implementation: pure checked source/reader/consumer-policy selection implemented.
 Evidence: [independent identities and exact archive cases](../provenance/external-source-selection-2026-10.md).
@@ -59,7 +59,7 @@ its public to_map/1 and validate each consumer through the shared public
 consumer_identity/2 under the reader's identical limits. Before consumer/unit
 construction, bound complete JSON inputs containing source, reader.inputs and
 channels through public core JSON.encode/2: at most reader.max_bytes (ceiling
-262144), reader.max_depth (ceiling eight), reader.max_nodes (ceiling 4096),
+262144), reader.max_depth plus one (ceiling nine), reader.max_nodes (ceiling 4096),
 collection 256 and strings/keys 4096. A native ReaderSelection itself is not
 serialized as an arbitrary struct. Unknown/struct fields, malformed IDs/epochs/
 counters/method/trust/policies/order/duplicates refuse invalid_external_source.
@@ -67,6 +67,12 @@ Resource excess refuses external_profile_limit; missing producer API refuses
 profiles_producer_unavailable. Inherited reader/consumer errors retain their
 owning typed outcomes. An uninstalled consumer reference refuses
 unsupported_external_source. No defaults, discovery or fallback are introduced.
+
+The one additional depth level belongs only to this complete-input wrapper:
+ReaderSelection and each consumer still pass their unchanged reader limits
+before use. In particular the installed MQTT selector's nested path-item schema
+must fit after wrapping. Canonical bytes and identities are unchanged for
+previously admitted sources; no reader, decoded value or report limit increases.
 
 ## Native output, privacy and correspondence
 
