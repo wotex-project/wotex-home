@@ -151,3 +151,91 @@ final class NativeKeychainCustodian: @unchecked Sendable {
         guard DispatchTime.now().uptimeNanoseconds < deadline else { throw NativeKeychainError.expired }
     }
 }
+
+enum NativeMQTTKeychainPolicy {
+    static let service = "org.wotex.home.mqtt.v1"
+    static func account(source: String) throws -> String {
+        guard NativeCoreWire.digest(source) else { throw NativeKeychainError.ownerChanged }
+        return "mqtt." + source
+    }
+
+    // Query metadata is inert and cannot supply the actual-self access seal.
+    static func attributes(account: String, group: String, context: LAContext) -> [String: Any] {
+        var query = NativeKeychainPolicy.attributes(account: account, group: group, context: context)
+        query[kSecAttrService as String] = service
+        return query
+    }
+}
+
+// MQTT custody has no operator-role bearer, socket operation or generated
+// password. The app explicitly adds exact source-scoped bytes; the agent reads.
+final class NativeMQTTKeychainCustodian: @unchecked Sendable {
+    private let lock = NSLock()
+
+    func existing(source: String, deadline: UInt64) throws -> NativeMQTTCredential {
+        guard lock.try() else { throw NativeKeychainError.capacity }
+        defer { lock.unlock() }
+        try fresh(deadline)
+        let account = try NativeMQTTKeychainPolicy.account(source: source)
+        let access = try SignedSetupPeer.mqttKeychainAccess(as: .agent, deadline: deadline)
+        guard let bytes = try read(account: account, access: access, deadline: deadline) else {
+            throw NativeKeychainError.unavailable
+        }
+        do { return try NativeMQTTCredential(document: bytes) }
+        catch { throw NativeKeychainError.custodyConflict }
+    }
+
+    func importCredential(_ credential: NativeMQTTCredential, source: String, deadline: UInt64) throws {
+        guard lock.try() else { throw NativeKeychainError.capacity }
+        defer { lock.unlock() }
+        try fresh(deadline)
+        let account = try NativeMQTTKeychainPolicy.account(source: source)
+        let access = try SignedSetupPeer.mqttKeychainAccess(as: .app, deadline: deadline)
+        let proposed = try credential.document()
+        if let current = try read(account: account, access: access, deadline: deadline) {
+            guard current == proposed else { throw NativeKeychainError.custodyConflict }
+            return
+        }
+        let context = LAContext()
+        context.interactionNotAllowed = true
+        defer { context.invalidate() }
+        let group = try SignedSetupPeer.currentMQTTKeychain(access)
+        try fresh(deadline)
+        var query = NativeMQTTKeychainPolicy.attributes(account: account, group: group, context: context)
+        query[kSecValueData as String] = proposed
+        let status = SecItemAdd(query as CFDictionary, nil)
+        try fresh(deadline)
+        _ = try SignedSetupPeer.currentMQTTKeychain(access)
+        try fresh(deadline)
+        guard status == errSecSuccess || status == errSecDuplicateItem else { throw NativeKeychainPolicy.failure(status) }
+        guard try read(account: account, access: access, deadline: deadline) == proposed else {
+            throw NativeKeychainError.custodyConflict
+        }
+    }
+
+    private func read(account: String, access: NativeMQTTKeychainAccessSeal, deadline: UInt64) throws -> Data? {
+        try fresh(deadline)
+        let group = try SignedSetupPeer.currentMQTTKeychain(access)
+        try fresh(deadline)
+        let context = LAContext()
+        context.interactionNotAllowed = true
+        defer { context.invalidate() }
+        var query = NativeMQTTKeychainPolicy.attributes(account: account, group: group, context: context)
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        query[kSecReturnData as String] = true
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        try fresh(deadline)
+        _ = try SignedSetupPeer.currentMQTTKeychain(access)
+        try fresh(deadline)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess else { throw NativeKeychainPolicy.failure(status) }
+        guard let bytes = result as? Data, (1...8192).contains(bytes.count),
+              (try? NativeMQTTCredential(document: bytes)) != nil else { throw NativeKeychainError.custodyConflict }
+        return bytes
+    }
+
+    private func fresh(_ deadline: UInt64) throws {
+        guard DispatchTime.now().uptimeNanoseconds < deadline else { throw NativeKeychainError.expired }
+    }
+}

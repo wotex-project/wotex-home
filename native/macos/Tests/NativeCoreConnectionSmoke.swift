@@ -9,7 +9,7 @@ struct NativeCoreConnectionSmoke {
         guard CommandLine.arguments.count == 3 else { throw CoreSmokeError.failed }
         let directory = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
         let mode = CommandLine.arguments[2]
-        for key in ["ERL_AFLAGS", "ELIXIR_ERL_OPTIONS", "RELEASE_ROOT", "WOTEX_HOME_PHYSICAL_DISPATCH", "WOTEX_HOME_LIFX_INTERFACE"] {
+        for key in ["ERL_AFLAGS", "ELIXIR_ERL_OPTIONS", "RELEASE_ROOT", "WOTEX_HOME_PHYSICAL_DISPATCH", "WOTEX_HOME_LIFX_INTERFACE", "WOTEX_HOME_NATIVE_MQTT_BOOTSTRAP"] {
             guard setenv(key, "untrusted_fixture_override", 1) == 0 else { throw CoreSmokeError.failed }
         }
         let environment = try NativeCoreEnvironment.values(dataDirectory: directory)
@@ -18,7 +18,9 @@ struct NativeCoreConnectionSmoke {
         try expected(.unavailable) {
             _ = try NativeCoreConnection(release: directory.appendingPathComponent("missing-executable"), dataDirectory: directory)
         }
-        if mode == "signal-stop" || mode == "parent-loss" {
+        if mode.hasPrefix("mqtt-") {
+            try mqtt(directory, mode: mode)
+        } else if mode == "signal-stop" || mode == "parent-loss" {
             try lifecycle(directory)
         } else if mode == "actual" {
             try actual(directory)
@@ -28,6 +30,32 @@ struct NativeCoreConnectionSmoke {
             try adversarial(directory, mode: mode)
         }
         print("native core pipe \(mode) passed")
+    }
+
+    private static func mqtt(_ directory: URL, mode: String) throws {
+        let started = DispatchTime.now().uptimeNanoseconds
+        do {
+            let connection = try NativeCoreConnection(release: directory.appendingPathComponent("core-shim"), dataDirectory: directory) { source, _ in
+                guard source == String(repeating: "a", count: 64), mode != "mqtt-none" else { throw CoreSmokeError.failed }
+                if mode == "mqtt-denied" { throw CoreSmokeError.failed }
+                if mode == "mqtt-slow-custody" { usleep(7_000_000) }
+                let document = Data(#"{"format":"wotex-home.mqtt-credential@1","password_base64":"Zml4dHVyZS1wYXNzd29yZA==","username":"fixture-user"}"#.utf8)
+                return try NativeMQTTCredential(document: document)
+            }
+            defer { _ = connection.close() }
+            try check(mode == "mqtt-none" || mode == "mqtt-credential")
+            try check(try connection.identity(deadline: deadline()).revision == 0)
+            try check(connection.close() && !connection.childIsRunning)
+        } catch NativeCoreConnectionError.unavailable {
+            try check(["mqtt-bad", "mqtt-oversized", "mqtt-denied", "mqtt-timeout", "mqtt-slow-custody"].contains(mode))
+            if mode == "mqtt-timeout" || mode == "mqtt-slow-custody" {
+                let elapsed = DispatchTime.now().uptimeNanoseconds - started
+                try check(elapsed >= 5_000_000_000 && elapsed < 7_000_000_000)
+            }
+        }
+        let pidURL = directory.appendingPathComponent("child-pid")
+        let pid = Int32(try String(contentsOf: pidURL, encoding: .utf8))!
+        try check(kill(pid, 0) != 0 && errno == ESRCH)
     }
 
     private static func selectedEnvironment(_ directory: URL) throws {
@@ -117,7 +145,11 @@ struct NativeCoreConnectionSmoke {
         try check(connection.close())
         try check(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("ipc/home.sock").path))
         try expected(.unavailable) { _ = try connection.identity(deadline: deadline()) }
-        let reopened = try NativeCoreConnection(release: directory.appendingPathComponent("core-shim"), dataDirectory: directory)
+        // Exercise the actual Core's new none bootstrap on restart, with no
+        // policy/Keychain lookup and the same original durable role receipt.
+        let reopened = try NativeCoreConnection(release: directory.appendingPathComponent("core-shim"), dataDirectory: directory) { _, _ in
+            throw CoreSmokeError.failed
+        }
         let scope = try reopened.identity(deadline: deadline())
         try check(scope.deployment == firstScope.deployment && scope.owner == firstScope.owner && scope.revision == 1)
         let nextToken = try reopened.endpointAuditToken(deadline: deadline())

@@ -57,9 +57,19 @@ enum NativeSetupSigningPolicy {
             throw NativeSetupPeerError.signingUnavailable
         }
         if let value = entitlements["keychain-access-groups"] {
-            guard let groups = value as? [String], groups == [group] else {
+            guard let groups = value as? [String], groups.count == Set(groups).count,
+                  groups.contains(group), Set(groups).isSubset(of: [group, team + ".org.wotex.home.mqtt.v1"]) else {
                 throw NativeSetupPeerError.signingUnavailable
             }
+        }
+        return group
+    }
+
+    static func mqttKeychainGroup(team: String, entitlements: [String: Any], role: NativeSetupRole) throws -> String {
+        _ = try keychainGroup(team: team, entitlements: entitlements, role: role)
+        let group = team + ".org.wotex.home.mqtt.v1"
+        guard let groups = entitlements["keychain-access-groups"] as? [String], groups.contains(group) else {
+            throw NativeSetupPeerError.signingUnavailable
         }
         return group
     }
@@ -100,6 +110,17 @@ struct NativePairedKeychainAccessSeal: Sendable, CustomStringConvertible, Custom
     fileprivate let executableIdentity: Data, bundleIdentity: Data
     fileprivate let deadline: UInt64
     var description: String { "private_paired_keychain_access" }
+    var debugDescription: String { description }
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+}
+
+struct NativeMQTTKeychainAccessSeal: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    fileprivate let role: NativeSetupRole
+    fileprivate let outer: URL
+    fileprivate let team: String, group: String
+    fileprivate let executableIdentity: Data, bundleIdentity: Data
+    fileprivate let deadline: UInt64
+    var description: String { "private_native_mqtt_keychain_access" }
     var debugDescription: String { description }
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
 }
@@ -206,7 +227,7 @@ enum SignedSetupPeer {
         return facts.group
     }
 
-    private static func pairedKeychainFacts(deadline: UInt64) throws ->
+    private static func pairedKeychainFacts(deadline: UInt64, mqtt: Bool = false) throws ->
         (outer: URL, team: String, group: String, executableIdentity: Data, bundleIdentity: Data) {
         try fresh(deadline)
         guard getuid() != 0, getuid() == geteuid() else { throw NativeSetupPeerError.signingUnavailable }
@@ -248,9 +269,48 @@ enum SignedSetupPeer {
               let bundleIdentity = staticInfo[kSecCodeInfoUnique as String] as? Data,
               !bundleIdentity.isEmpty, bundleIdentity.count <= 64 else { throw NativeSetupPeerError.signingUnavailable }
         try metadata(staticInfo, role: .app, team: team)
-        let group = try NativeSetupSigningPolicy.keychainGroup(team: team, entitlements: entitlements, role: .app)
+        let group = try mqtt
+            ? NativeSetupSigningPolicy.mqttKeychainGroup(team: team, entitlements: entitlements, role: .app)
+            : NativeSetupSigningPolicy.keychainGroup(team: team, entitlements: entitlements, role: .app)
         try fresh(deadline)
         return (outer, team, group, executableIdentity, bundleIdentity)
+    }
+
+    // Only actual self metadata and a protected installed bundle can mint this
+    // seal. Inert policy dictionaries and caller-selected paths cannot do so.
+    static func mqttKeychainAccess(as role: NativeSetupRole, deadline: UInt64) throws -> NativeMQTTKeychainAccessSeal {
+        let facts = try mqttKeychainFacts(role: role, deadline: deadline)
+        return NativeMQTTKeychainAccessSeal(role: role, outer: facts.outer, team: facts.team, group: facts.group,
+            executableIdentity: facts.executableIdentity, bundleIdentity: facts.bundleIdentity, deadline: deadline)
+    }
+
+    static func currentMQTTKeychain(_ seal: NativeMQTTKeychainAccessSeal) throws -> String {
+        let facts = try mqttKeychainFacts(role: seal.role, deadline: seal.deadline)
+        guard facts.outer == seal.outer, facts.team == seal.team, facts.group == seal.group,
+              facts.executableIdentity == seal.executableIdentity, facts.bundleIdentity == seal.bundleIdentity else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        return facts.group
+    }
+
+    private static func mqttKeychainFacts(role: NativeSetupRole, deadline: UInt64) throws ->
+        (outer: URL, team: String, group: String, executableIdentity: Data, bundleIdentity: Data) {
+        if role == .app { return try pairedKeychainFacts(deadline: deadline, mqtt: true) }
+        try fresh(deadline)
+        let installation = try installedRelease()
+        let team = try selfTeam(.agent, deadline: deadline)
+        var code: SecCode?
+        guard SecCodeCopySelf([], &code) == errSecSuccess, let code else { throw NativeSetupPeerError.signingUnavailable }
+        let info = try information(code, deadline: deadline)
+        try validate(code, role: .agent, team: team, info: info, deadline: deadline)
+        guard let identity = info[kSecCodeInfoUnique as String] as? Data, !identity.isEmpty, identity.count <= 64,
+              let entitlements = info[kSecCodeInfoEntitlementsDict as String] as? [String: Any] else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        let group = try NativeSetupSigningPolicy.mqttKeychainGroup(team: team, entitlements: entitlements, role: .agent)
+        try currentInstalledRelease(installation)
+        try fresh(deadline)
+        return (installation.outer, team, group, identity, installation.identity)
     }
 
     static func developmentRelease() throws -> URL {

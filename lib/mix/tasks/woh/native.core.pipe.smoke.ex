@@ -25,7 +25,7 @@ defmodule Woh.Tool.NativeCorePipeSmoke do
   end
 
   defp compile(project, directory, executable) do
-    Command.run(
+    Command.run_diagnostic(
       "swiftc",
       [
         "-parse-as-library",
@@ -70,6 +70,7 @@ defmodule Woh.Tool.NativeCorePipeSmoke do
       test -z "${ELIXIR_ERL_OPTIONS+x}"
       test -z "${RELEASE_ROOT+x}"
       test -z "${WOTEX_HOME_PHYSICAL_DISPATCH+x}"
+      echo "$$" > "$WOTEX_HOME_DATA_DIR/core-pid"
       cd #{quote_shell(project)}
       export PATH=#{quote_shell(path)} MIX_ENV=test WOTEX_HOME_GIT_DEPS=1
       exec #{quote_shell(elixir)} #{quote_shell(mix)} run --no-start --no-compile --no-deps-check bin/native_core_host.exs
@@ -101,6 +102,7 @@ defmodule Woh.Tool.NativeCorePipeSmoke do
         assert os.path.exists(root + '/parent-ready')
         assert os.path.exists(root + '/ipc/home.sock')
         assert not os.path.exists(root + '/ipc/native-setup.sock')
+        with open(root + '/core-pid') as file: core_pid = int(file.read())
         child.send_signal(signal.SIGTERM if mode == 'signal-stop' else signal.SIGKILL)
         output, diagnostics = child.communicate(timeout=7)
         assert len(output) <= 1024 and len(diagnostics) <= 8192
@@ -108,7 +110,19 @@ defmodule Woh.Tool.NativeCorePipeSmoke do
         limit = time.monotonic() + 5
         while os.path.exists(root + '/ipc/home.sock') and time.monotonic() < limit: time.sleep(.02)
         assert not os.path.exists(root + '/ipc/home.sock')
-        connection = sqlite3.connect('file:' + root + '/home.sqlite?mode=ro',uri=True)
+        # Socket removal begins shutdown; Store closes later. Wait for the
+        # actual original Core, including orphan cleanup after parent SIGKILL,
+        # before inspecting its settled SQLite files.
+        limit = time.monotonic() + 5
+        while True:
+          try: os.kill(core_pid, 0)
+          except ProcessLookupError: break
+          assert time.monotonic() < limit
+          time.sleep(.02)
+        # Require the existing database while permitting normal WAL recovery
+        # after orphan shutdown. A read-only connection cannot recover it on
+        # every supported SQLite build; immutable would skip that recovery.
+        connection = sqlite3.connect('file:' + root + '/home.sqlite?mode=rw',uri=True)
         try: assert connection.execute('SELECT count(*) FROM principals').fetchone()[0] == 0
         finally: connection.close()
       finally:
@@ -117,7 +131,12 @@ defmodule Woh.Tool.NativeCorePipeSmoke do
     """
 
     if is_binary(python) do
-      case Command.run(python, ["-c", script, executable, signal_root, loss_root], 16_384, 30_000) do
+      case Command.run_diagnostic(
+             python,
+             ["-c", script, executable, signal_root, loss_root],
+             16_384,
+             30_000
+           ) do
         {:ok, output} ->
           if String.contains?(output, "native parent signal and loss cleanup passed"),
             do: :ok,
@@ -146,7 +165,14 @@ defmodule Woh.Tool.NativeCorePipeSmoke do
           "capacity",
           "wrong-receipt",
           "expired",
-          "selected-environment"
+          "selected-environment",
+          "mqtt-none",
+          "mqtt-credential",
+          "mqtt-bad",
+          "mqtt-oversized",
+          "mqtt-denied",
+          "mqtt-timeout",
+          "mqtt-slow-custody"
         ],
         :ok,
         fn mode, :ok ->
@@ -175,9 +201,36 @@ defmodule Woh.Tool.NativeCorePipeSmoke do
     ~S"""
     import json, os, struct, sys, time
     root = os.environ['WOTEX_HOME_DATA_DIR']
-    assert sys.argv[1] in ('oversized','partial','drip','silent','death','extra-reply','capacity','wrong-receipt','expired','selected-environment')
+    mode = sys.argv[1]
+    assert mode in ('oversized','partial','drip','silent','death','extra-reply','capacity','wrong-receipt','expired','selected-environment','mqtt-none','mqtt-credential','mqtt-bad','mqtt-oversized','mqtt-denied','mqtt-timeout','mqtt-slow-custody')
     assert all(key not in os.environ for key in ('ERL_AFLAGS','ELIXIR_ERL_OPTIONS','RELEASE_ROOT','WOTEX_HOME_PHYSICAL_DISPATCH'))
     with open(root + '/child-pid','w') as file: file.write(str(os.getpid()))
+    if mode.startswith('mqtt-'):
+      assert os.environ['WOTEX_HOME_NATIVE_MQTT_BOOTSTRAP'] == '1'
+      def send(values):
+        body = json.dumps(values,separators=(',',':')).encode()
+        sys.stdout.buffer.write(struct.pack('>I',len(body)) + body); sys.stdout.buffer.flush()
+      if mode == 'mqtt-oversized':
+        sys.stdout.buffer.write(struct.pack('>I',4097)); sys.stdout.buffer.flush()
+      elif mode != 'mqtt-timeout':
+        request = ['wotex-home.native-mqtt-bootstrap@1','none'] if mode == 'mqtt-none' else ['wotex-home.native-mqtt-bootstrap@1','credential','a'*64]
+        if mode == 'mqtt-bad': request.append(True)
+        send(request)
+      if mode not in ('mqtt-none','mqtt-credential'):
+        assert sys.stdin.buffer.read(1) == b''
+        sys.exit(0)
+      size = struct.unpack('>I',sys.stdin.buffer.read(4))[0]
+      assert 1 <= size <= 8192
+      reply = json.loads(sys.stdin.buffer.read(size))
+      expected = ['wotex-home.native-mqtt-bootstrap@1','none'] if mode == 'mqtt-none' else ['wotex-home.native-mqtt-bootstrap@1','credential','a'*64,'fixture-user','Zml4dHVyZS1wYXNzd29yZA==']
+      assert reply == expected
+      header = sys.stdin.buffer.read(4)
+      size = struct.unpack('>I',header)[0]
+      assert json.loads(sys.stdin.buffer.read(size)) == ['wotex-home.native-setup-authority.v1','identity']
+      send(['wotex-home.native-setup-authority.v1','identity','a'*64,'b'*64,1,0])
+      assert sys.stdin.buffer.read(1) == b''
+      sys.exit(0)
+    assert 'WOTEX_HOME_NATIVE_MQTT_BOOTSTRAP' not in os.environ
     if sys.argv[1] == 'selected-environment':
       count = 0
       while True:
@@ -221,14 +274,14 @@ defmodule Woh.Tool.NativeCorePipeSmoke do
   end
 
   defp run_fixture(executable, root, mode) do
-    case Command.run(executable, [root, mode], 16_384, 15_000) do
+    case Command.run_diagnostic(executable, [root, mode], 16_384, 15_000) do
       {:ok, output} ->
         if String.contains?(output, "native core pipe #{mode} passed"),
           do: :ok,
           else: {:error, "native core pipe fixture did not complete"}
 
-      error ->
-        error
+      {:error, reason} ->
+        {:error, "#{mode}: #{reason}"}
     end
   end
 

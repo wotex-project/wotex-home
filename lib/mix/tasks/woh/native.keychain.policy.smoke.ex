@@ -39,8 +39,8 @@ defmodule Woh.Tool.NativeKeychainPolicySmoke do
         executable
       ]
 
-      with {:ok, _} <- Command.run("swiftc", args, 1_048_576, 60_000),
-           {:ok, _} <- Command.run(executable, [], 16_384, 10_000),
+      with {:ok, _} <- Command.run_diagnostic("swiftc", args, 1_048_576, 60_000),
+           {:ok, _} <- Command.run_diagnostic(executable, [], 16_384, 10_000),
            do: :ok
     after
       File.rm_rf!(directory)

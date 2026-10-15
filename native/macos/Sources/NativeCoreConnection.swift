@@ -5,8 +5,32 @@ enum NativeCoreConnectionError: Error {
     case capacity, expired, unavailable, outcomeUnknown, ownerChanged, custodyConflict
 }
 
+// One initial, noninteractive custody operation may outlive its caller inside
+// Security.framework. Expiry drops any late result and still lets the parent
+// close/reap its original Core by the exchange deadline.
+private final class NativeMQTTResolution: @unchecked Sendable {
+    private let lock = NSLock()
+    private let ready = DispatchSemaphore(value: 0)
+    private var active = true
+    private var result: Result<NativeMQTTCredential, Error>?
+    func complete(_ value: Result<NativeMQTTCredential, Error>) {
+        lock.lock(); defer { lock.unlock() }
+        if active { result = value; ready.signal() }
+    }
+    func take(deadline: UInt64) throws -> NativeMQTTCredential {
+        let status = ready.wait(timeout: DispatchTime(uptimeNanoseconds: deadline))
+        lock.lock(); defer { lock.unlock() }
+        active = false
+        let value = result; result = nil
+        guard status == .success, DispatchTime.now().uptimeNanoseconds < deadline, let value else {
+            throw NativeCoreConnectionError.expired
+        }
+        return try value.get()
+    }
+}
+
 enum NativeCoreEnvironment {
-    static func values(dataDirectory: URL) throws -> [String: String] {
+    static func values(dataDirectory: URL, nativeMQTTBootstrap: Bool = false) throws -> [String: String] {
         guard dataDirectory.path.hasPrefix("/") else { throw NativeCoreConnectionError.unavailable }
         var environment = [
             "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "HOME": try userHome(),
@@ -15,6 +39,7 @@ enum NativeCoreEnvironment {
         ]
         let preference = try NativeNetworkPreferences.load(directory: dataDirectory)
         if let interface = preference.record.interface { environment["WOTEX_HOME_LIFX_INTERFACE"] = interface }
+        if nativeMQTTBootstrap { environment["WOTEX_HOME_NATIVE_MQTT_BOOTSTRAP"] = "1" }
         return environment
     }
 
@@ -68,14 +93,16 @@ final class NativeCoreConnection: @unchecked Sendable {
     // Only trusted host composition supplies a release path. Socket records
     // cannot choose these arguments or environment. A development fixture may
     // supply an executable shim for the same constant release invocation.
-    init(release: URL, dataDirectory: URL) throws {
+    init(release: URL, dataDirectory: URL,
+         mqttResolver: (@Sendable (String, UInt64) throws -> NativeMQTTCredential)? = nil) throws {
         self.dataDirectory = dataDirectory
         let process = Process()
         let incoming = Pipe()
         let outgoing = Pipe()
         process.executableURL = release
         process.arguments = ["eval", "WotexHome.NativeSetup.CoreHost.main()"]
-        process.environment = try NativeCoreEnvironment.values(dataDirectory: dataDirectory)
+        process.environment = try NativeCoreEnvironment.values(dataDirectory: dataDirectory,
+            nativeMQTTBootstrap: mqttResolver != nil)
         process.standardInput = incoming
         process.standardOutput = outgoing
         process.standardError = FileHandle.standardError
@@ -105,6 +132,7 @@ final class NativeCoreConnection: @unchecked Sendable {
             // parent EOF and child EOF retain their actual ownership meaning.
             try incoming.fileHandleForReading.close()
             try outgoing.fileHandleForWriting.close()
+            if let mqttResolver { try bootstrapMQTT(mqttResolver) }
         } catch {
             _ = closeLocked()
             throw NativeCoreConnectionError.unavailable
@@ -113,6 +141,31 @@ final class NativeCoreConnection: @unchecked Sendable {
 
     deinit { _ = close() }
     var childIsRunning: Bool { child.isRunning }
+
+    private func bootstrapMQTT(_ resolve: @escaping @Sendable (String, UInt64) throws -> NativeMQTTCredential) throws {
+        let deadline = DispatchTime.now().uptimeNanoseconds + 5_000_000_000
+        let header = try receive(4, deadline: deadline)
+        let size = header.reduce(0) { ($0 << 8) | Int($1) }
+        guard (1...4096).contains(size) else { throw NativeCoreConnectionError.unavailable }
+        let source = try NativeMQTTBootstrapWire.request(receive(size, deadline: deadline))
+        try current(deadline)
+        try quiet()
+        let reply: Data
+        if let source {
+            let pending = NativeMQTTResolution()
+            DispatchQueue.global().async { pending.complete(Result { try resolve(source, deadline) }) }
+            reply = try pending.take(deadline: deadline).bootstrapReply(source: source)
+        }
+        else { reply = try NativeMQTTBootstrapWire.none() }
+        try current(deadline)
+        try quiet()
+        var started = false
+        let length = UInt32(reply.count)
+        let frame = Data([UInt8((length >> 24) & 255), UInt8((length >> 16) & 255),
+                          UInt8((length >> 8) & 255), UInt8(length & 255)]) + reply
+        try send(frame, deadline: deadline, started: &started)
+        try current(deadline)
+    }
 
     func identity(deadline: UInt64) throws -> NativeControllerScope {
         try exchange(body: NativeCoreWire.identityRequest(), deadline: deadline, mayCommit: false) {

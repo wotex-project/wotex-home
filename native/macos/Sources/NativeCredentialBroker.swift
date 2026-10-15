@@ -114,7 +114,13 @@ final class NativeCredentialBroker: @unchecked Sendable {
 
     init(installation: NativeInstalledReleaseSeal, dataDirectory: URL) throws {
         try SignedSetupPeer.currentInstalledRelease(installation)
-        let core = try NativeCoreConnection(release: installation.executable, dataDirectory: dataDirectory)
+        let mqtt = NativeMQTTKeychainCustodian()
+        let core = try NativeCoreConnection(release: installation.executable, dataDirectory: dataDirectory) { source, deadline in
+            try SignedSetupPeer.currentInstalledRelease(installation)
+            let credential = try mqtt.existing(source: source, deadline: deadline)
+            try SignedSetupPeer.currentInstalledRelease(installation)
+            return credential
+        }
         do {
             _ = try core.identity(deadline: DispatchTime.now().uptimeNanoseconds + 5_000_000_000)
             try SignedSetupPeer.currentInstalledRelease(installation)

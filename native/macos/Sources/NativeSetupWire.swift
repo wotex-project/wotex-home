@@ -4,6 +4,59 @@ import Foundation
 
 enum NativeSetupWireError: Error { case invalidRecord }
 
+// Broker credentials have their own wire grammar. Ordinary setup frames retain
+// NativeScalarJSON's 4096-byte and 128-byte-string ceilings.
+struct NativeMQTTCredential: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    private let username: String
+    private let password: Data
+    var description: String { "private_native_mqtt_credential" }
+    var debugDescription: String { description }
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+
+    init(document: Data) throws {
+        guard (1...8192).contains(document.count),
+              let value = try? JSONSerialization.jsonObject(with: document) as? [String: Any],
+              Set(value.keys) == Set(["format", "username", "password_base64"]),
+              value["format"] as? String == "wotex-home.mqtt-credential@1",
+              let username = value["username"] as? String, (1...128).contains(username.utf8.count),
+              !username.utf8.contains(0), let encoded = value["password_base64"] as? String,
+              encoded.utf8.count <= 5464, let password = Data(base64Encoded: encoded),
+              (1...4096).contains(password.count), password.base64EncodedString() == encoded,
+              try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys, .withoutEscapingSlashes]) == document else {
+            throw NativeSetupWireError.invalidRecord
+        }
+        self.username = username; self.password = password
+    }
+
+    func document() throws -> Data {
+        try JSONSerialization.data(withJSONObject: ["format": "wotex-home.mqtt-credential@1",
+            "username": username, "password_base64": password.base64EncodedString()],
+            options: [.sortedKeys, .withoutEscapingSlashes])
+    }
+
+    func bootstrapReply(source: String) throws -> Data {
+        guard NativeCoreWire.digest(source) else { throw NativeSetupWireError.invalidRecord }
+        let body = try JSONSerialization.data(withJSONObject: [NativeMQTTBootstrapWire.format, "credential", source,
+            username, password.base64EncodedString()], options: [.withoutEscapingSlashes])
+        guard body.count <= 8192 else { throw NativeSetupWireError.invalidRecord }
+        return body
+    }
+}
+
+enum NativeMQTTBootstrapWire {
+    static let format = "wotex-home.native-mqtt-bootstrap@1"
+    static func request(_ body: Data) throws -> String? {
+        let value = try NativeScalarJSON.decode(body)
+        guard value.first as? String == format else { throw NativeSetupWireError.invalidRecord }
+        if value.count == 2, value[1] as? String == "none" { return nil }
+        guard value.count == 3, value[1] as? String == "credential",
+              let source = value[2] as? String, NativeCoreWire.digest(source) else { throw NativeSetupWireError.invalidRecord }
+        return source
+    }
+
+    static func none() throws -> Data { try NativeScalarJSON.encode([format, "none"]) }
+}
+
 enum NativeCustodyRole: String, CaseIterable, Sendable {
     case diagnostic, `operator`, maintenance, transfer
 }
