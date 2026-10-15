@@ -1,6 +1,6 @@
 # Native paired power submission v1
 
-Version: 0.1.0. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: accepted composition target; development implementation/evidence and actual installed obligations are distinguished below.
+Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: accepted composition target; development implementation/evidence and actual installed obligations are distinguished below.
 
 Compose the [shared driver](native-controller-driver-v1.md),
 [selected session](native-paired-session-v1.md),
@@ -59,6 +59,10 @@ confirmed resolved publication may trigger a fresh stored-report read, whose
 new session cannot repair or renew the original operation. Missing clock,
 unsigned app, failed custody, scope drift, cancellation, expiry and unknown
 publication preserve refusal/uncertainty and never enable physical dispatch.
+
+The [receipt successor](native-paired-power-receipt-v1.md) defines explicit
+last-resolved original-controller reads. It adds no retry or cancellation authority
+and remains planned until its separate executable cases pass.
 
 ## Development evidence and delivery obligations
 

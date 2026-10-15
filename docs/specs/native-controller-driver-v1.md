@@ -1,6 +1,6 @@
 # Shared native controller driver v1
 
-Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted composition target; development implementation and evidence are recorded separately below.
+Version: 0.1.2. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted composition target; development implementation and evidence are recorded separately below.
 
 Compose the [public association document](native-controller-associations-v1.md),
 [actual selected session](native-paired-session-v1.md),
@@ -55,6 +55,10 @@ retained. Do not derive zero-uncertainty confidence from `Date`, decoded scope,
 saved permissions or a foreground fixture. Local-only tools remain fenced until
 their own async paired successors are implemented; no generic credential-loader
 or socket-path substitution turns them into remote tools.
+
+The [last resolved paired power receipt contract](native-paired-power-receipt-v1.md)
+freezes a separate read-only original-controller purpose and explicit Activity
+lookup. It is planned until its factory/transport/model cases execute.
 
 ## Required evidence and remaining delivery
 
