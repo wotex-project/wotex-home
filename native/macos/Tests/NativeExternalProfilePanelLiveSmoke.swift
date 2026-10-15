@@ -29,8 +29,8 @@ struct NativeExternalProfilePanelLiveSmoke {
             controller.installLocalFence(); await controller.reload()
             let journal = NativePendingCoordinator(persistence: .init(directory: pending), capture: capture, socketPath: { socket })
             await journal.reload()
-            let model = NativeExternalProfileViewModel(journal: journal, controller: controller)
-            model.workAllowed = { controller.localSelected && !controller.busy }
+            let application = HomeApplicationModel(pending: journal, controller: controller)
+            let model = application.externalProfiles
             let file = root.appendingPathComponent("decision.json")
             try JSONSerialization.data(withJSONObject: fields).write(to: file); try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
             model.kind = kind; model.originalURL = file
@@ -91,6 +91,7 @@ struct NativeExternalProfilePanelLiveSmoke {
                 var retired = false
                 for _ in 0..<1500 {
                     if FileManager.default.fileExists(atPath: root.appendingPathComponent("retire").path) {
+                        try check(application.busy && !application.canChangeSession)
                         model.invalidate(clearReads: true); retired = true
                         try Data().write(to: root.appendingPathComponent("retired")); break
                     }
@@ -106,6 +107,7 @@ struct NativeExternalProfilePanelLiveSmoke {
                 let monitor = Task { @MainActor in
                     for _ in 0..<1500 {
                         if FileManager.default.fileExists(atPath: root.appendingPathComponent("retire").path) {
+                            try check(application.busy && !application.canChangeSession)
                             if mode == "cancel-status" { submission.cancel() } else { prepared.retire() }
                             try Data().write(to: root.appendingPathComponent("retired")); return
                         }
