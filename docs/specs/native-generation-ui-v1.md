@@ -1,6 +1,6 @@
 # Native generation workspace and first decisions
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18A-02/04/05 and H18-T15/T16/T17;
 WOH.15 H15-03/07 and H15-T8. Implementation: workspace codec/private custody implemented; driver/panel/review composition planned.
 Evidence: [executed custody dependency checks](../provenance/native-generation-workspace-2026-10.md).
@@ -123,6 +123,13 @@ workspace custody is confirmed. Lost/malformed reply retains both originals.
 The two files have ordered publication, not an invented multi-file transaction.
 On restart explicitly reconcile workspace/pending/status; never silently replace
 an original or allocate a new identity because one publication was incomplete.
+An explicit restore action checks current original custody and existing-only root/
+last-attempt status, then republishes the complete absent root or retained last
+attempt into pending recovery. It makes no generation mutation and preserves the
+original revision/ID/SHA. Ordinary explicit lookup/retry then uses that pending
+original. Refuse a missing root with retained attempts, another pending operation,
+uncertain workspace custody or unresolved cancellation intent. Never reconstruct
+an original from displayed fields or current options.
 
 **NGU-03 — Start and repair separately.** Explicitly read the selected root's
 current matching status; start only prepared. Re-read current contract/basis and
@@ -177,7 +184,10 @@ The Things task exposes these operations as one generation panel sharing pending
 coordination. Disable conflicting actions while busy/unconfirmed; invalidation
 retires prepared decisions and private previews. Confirmation resets on every
 changed input/context. Archive workspace only on an explicit decision after pending
-and cancellation intent are reconciled; it removes client metadata, not controller
+and cancellation intent are reconciled. A missing root without attempts, a missing
+last attempt, or an unknown/null attempt requires a separate archive confirmation
+that expressly acknowledges uncertainty and that a later result may still arrive.
+Running status always refuses archive. This removes client metadata, not controller
 history, model work or an authorization guard. Signed paired presentation, actual
 installed accessibility and physical qualification remain separate.
 
