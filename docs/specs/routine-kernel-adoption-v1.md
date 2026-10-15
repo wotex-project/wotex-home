@@ -1,6 +1,6 @@
 # Explicit rule kernel adoption v1
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted target.
 Owner: WOH.20 H20-02/03/06/08/10; WOH.04 rule admission; WOH.14 durable execution.
 Implementation: planned. Evidence: missing for this successor.
 
@@ -132,7 +132,10 @@ The sole accepted result has exactly run, proposals, outcome, edge, basis.
 outcome is running; edge is null. Public Run validation must accept it under
 the regenerated program. It has the exact original/program/source/compiler and
 logical time, start/last 0, deadline ownership_ms, status running, reason/window
-null, one proposed root step, every receipt slot null and spent `[]`.
+null, one proposed root effect step at path `[]`, started_ms 0, deadline_ms
+ownership_ms, branch null, every receipt slot null and spent `[]`. A shortened
+step deadline is not the canonical initial result even if a general retained
+Run validator could accept it at a later lifecycle boundary.
 There is exactly one proposal with the exact program, original, binding, Thing,
 whole-resource domains, writeproperty operation, Boolean input, reported_match
 threshold and report-contract reference. Path is `[]`; step_original equals the
