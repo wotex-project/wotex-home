@@ -30,15 +30,17 @@ private final class NativeMQTTResolution: @unchecked Sendable {
 }
 
 enum NativeCoreEnvironment {
-    static func values(dataDirectory: URL, nativeMQTTBootstrap: Bool = false) throws -> [String: String] {
+    static func values(dataDirectory: URL, nativeMQTTBootstrap: Bool = false, capturePreference: Bool = true) throws -> [String: String] {
         guard dataDirectory.path.hasPrefix("/") else { throw NativeCoreConnectionError.unavailable }
         var environment = [
             "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "HOME": try userHome(),
             "LANG": "en_US.UTF-8", "LC_ALL": "en_US.UTF-8",
             "WOTEX_HOME_DATA_DIR": dataDirectory.path, "RELEASE_DISTRIBUTION": "none",
         ]
-        let preference = try NativeNetworkPreferences.load(directory: dataDirectory)
-        if let interface = preference.record.interface { environment["WOTEX_HOME_LIFX_INTERFACE"] = interface }
+        if capturePreference {
+            let preference = try NativeNetworkPreferences.load(directory: dataDirectory)
+            if let interface = preference.record.interface { environment["WOTEX_HOME_LIFX_INTERFACE"] = interface }
+        }
         if nativeMQTTBootstrap { environment["WOTEX_HOME_NATIVE_MQTT_BOOTSTRAP"] = "1" }
         return environment
     }
@@ -84,6 +86,11 @@ final class NativeCoreConnection: @unchecked Sendable {
     private let output: FileHandle
     private let inputIdentity: PipeIdentity
     private let outputIdentity: PipeIdentity
+    private let finiteForeground: Bool
+    private let diagnostics: FileHandle?
+    private let diagnosticsIdentity: PipeIdentity?
+    private var diagnosticCount = 0
+    private var diagnosticsClosed = false
     private let lock = NSLock()
     private var ended = false
     private var launched = false
@@ -93,26 +100,35 @@ final class NativeCoreConnection: @unchecked Sendable {
     // Only trusted host composition supplies a release path. Socket records
     // cannot choose these arguments or environment. A development fixture may
     // supply an executable shim for the same constant release invocation.
-    init(release: URL, dataDirectory: URL,
+    convenience init(release: URL, dataDirectory: URL,
          mqttResolver: (@Sendable (String, UInt64) throws -> NativeMQTTCredential)? = nil) throws {
+        try self.init(release: release, dataDirectory: dataDirectory, mqttResolver: mqttResolver, foreground: false)
+    }
+
+    private init(release: URL, dataDirectory: URL,
+                 mqttResolver: (@Sendable (String, UInt64) throws -> NativeMQTTCredential)?, foreground: Bool) throws {
+        finiteForeground = foreground
         self.dataDirectory = dataDirectory
         let process = Process()
         let incoming = Pipe()
         let outgoing = Pipe()
+        let captured = foreground ? Pipe() : nil
         process.executableURL = release
-        process.arguments = ["eval", "WotexHome.NativeSetup.CoreHost.main()"]
+        process.arguments = ["eval", foreground ? "WotexHome.NativeSetup.MQTTProvisioning.main()" : "WotexHome.NativeSetup.CoreHost.main()"]
         process.environment = try NativeCoreEnvironment.values(dataDirectory: dataDirectory,
-            nativeMQTTBootstrap: mqttResolver != nil)
+            nativeMQTTBootstrap: mqttResolver != nil, capturePreference: !foreground)
         process.standardInput = incoming
         process.standardOutput = outgoing
-        process.standardError = FileHandle.standardError
+        if let captured { process.standardError = captured } else { process.standardError = FileHandle.standardError }
         input = incoming.fileHandleForWriting
         output = outgoing.fileHandleForReading
         child = process
         inputIdentity = try PipeIdentity(input.fileDescriptor)
         outputIdentity = try PipeIdentity(output.fileDescriptor)
+        diagnostics = captured?.fileHandleForReading
+        diagnosticsIdentity = try diagnostics.map { try PipeIdentity($0.fileDescriptor) }
         do {
-            for fd in [input.fileDescriptor, output.fileDescriptor] {
+            for fd in [input.fileDescriptor, output.fileDescriptor] + (diagnostics.map { [$0.fileDescriptor] } ?? []) {
                 let flags = fcntl(fd, F_GETFL)
                 guard flags >= 0, fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0 else {
                     throw NativeCoreConnectionError.unavailable
@@ -132,6 +148,7 @@ final class NativeCoreConnection: @unchecked Sendable {
             // parent EOF and child EOF retain their actual ownership meaning.
             try incoming.fileHandleForReading.close()
             try outgoing.fileHandleForWriting.close()
+            try captured?.fileHandleForWriting.close()
             if let mqttResolver { try bootstrapMQTT(mqttResolver) }
         } catch {
             _ = closeLocked()
@@ -141,6 +158,46 @@ final class NativeCoreConnection: @unchecked Sendable {
 
     deinit { _ = close() }
     var childIsRunning: Bool { child.isRunning }
+
+    // The production app obtains release from its actual protected-self seal.
+    // The fixed foreground entry is independent of ordinary Core setup frames.
+    static func provision(release: URL, dataDirectory: URL, request: Data, mayCommit: Bool) throws -> Data {
+        guard (1...4096).contains(request.count) else { throw NativeSetupWireError.invalidRecord }
+        let deadline = DispatchTime.now().uptimeNanoseconds + 15_000_000_000
+        let connection = try NativeCoreConnection(release: release, dataDirectory: dataDirectory,
+            mqttResolver: nil, foreground: true)
+        defer { _ = connection.close() }
+        var started = false
+        do {
+            try connection.current(deadline)
+            try connection.quiet()
+            let size = UInt32(request.count)
+            let header = Data([UInt8((size >> 24) & 255), UInt8((size >> 16) & 255),
+                UInt8((size >> 8) & 255), UInt8(size & 255)])
+            try connection.send(header + request, deadline: deadline, started: &started)
+            let length = try connection.receive(4, deadline: deadline).reduce(0) { ($0 << 8) | Int($1) }
+            guard (1...4096).contains(length) else { throw NativeCoreConnectionError.unavailable }
+            let reply = try connection.receive(length, deadline: deadline)
+            while connection.child.isRunning {
+                try connection.current(deadline)
+                usleep(10_000)
+            }
+            connection.child.waitUntilExit()
+            try connection.drainDiagnostics()
+            guard DispatchTime.now().uptimeNanoseconds < deadline,
+                  connection.child.terminationReason == .exit, connection.child.terminationStatus == 0,
+                  try PipeIdentity(connection.input.fileDescriptor) == connection.inputIdentity,
+                  try PipeIdentity(connection.output.fileDescriptor) == connection.outputIdentity else {
+                throw NativeCoreConnectionError.unavailable
+            }
+            var extra: UInt8 = 0
+            guard Darwin.read(connection.output.fileDescriptor, &extra, 1) == 0 else { throw NativeCoreConnectionError.unavailable }
+            return reply
+        } catch {
+            if mayCommit && started { throw NativeCoreConnectionError.outcomeUnknown }
+            throw NativeCoreConnectionError.unavailable
+        }
+    }
 
     private func bootstrapMQTT(_ resolve: @escaping @Sendable (String, UInt64) throws -> NativeMQTTCredential) throws {
         let deadline = DispatchTime.now().uptimeNanoseconds + 5_000_000_000
@@ -340,10 +397,28 @@ final class NativeCoreConnection: @unchecked Sendable {
 
     private func current(_ deadline: UInt64) throws {
         guard DispatchTime.now().uptimeNanoseconds < deadline else { throw NativeCoreConnectionError.expired }
-        guard !ended, !inputClosed, !outputClosed, child.isRunning,
+        guard !ended, !inputClosed, !outputClosed, (child.isRunning || finiteForeground),
               try PipeIdentity(input.fileDescriptor) == inputIdentity,
               try PipeIdentity(output.fileDescriptor) == outputIdentity else {
             throw NativeCoreConnectionError.unavailable
+        }
+        try drainDiagnostics()
+    }
+
+    private func drainDiagnostics() throws {
+        guard let diagnostics else { return }
+        guard !diagnosticsClosed, try PipeIdentity(diagnostics.fileDescriptor) == diagnosticsIdentity else {
+            throw NativeCoreConnectionError.unavailable
+        }
+        var bytes = [UInt8](repeating: 0, count: 1024)
+        while true {
+            let count = Darwin.read(diagnostics.fileDescriptor, &bytes, bytes.count)
+            if count < 0 && errno == EINTR { continue }
+            if count < 0 && errno == EAGAIN { return }
+            guard count >= 0 else { throw NativeCoreConnectionError.unavailable }
+            if count == 0 { return }
+            diagnosticCount += count
+            guard diagnosticCount <= 4096 else { throw NativeCoreConnectionError.unavailable }
         }
     }
 
@@ -411,6 +486,7 @@ final class NativeCoreConnection: @unchecked Sendable {
             if child.isRunning { _ = kill(child.processIdentifier, SIGKILL); wait(milliseconds: 1000) }
         }
         if !outputClosed { try? output.close(); outputClosed = true }
+        if !diagnosticsClosed { try? diagnostics?.close(); diagnosticsClosed = true }
         guard !child.isRunning else { return false }
         if launched { child.waitUntilExit() }
         return true

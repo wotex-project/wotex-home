@@ -125,6 +125,12 @@ struct NativeMQTTKeychainAccessSeal: Sendable, CustomStringConvertible, CustomDe
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
 }
 
+struct NativeMQTTForegroundSeal: Sendable, CustomReflectable {
+    fileprivate let outer: URL, executable: URL
+    fileprivate let executableIdentity: Data, bundleIdentity: Data
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+}
+
 enum NativeProtectedInstallation {
     static func physicalPath(_ path: String) throws -> String {
         guard path.hasPrefix("/"), !path.utf8.contains(0), let resolved = realpath(path, nil) else {
@@ -208,6 +214,27 @@ enum NativeProtectedInstallation {
 }
 
 enum SignedSetupPeer {
+    static func mqttForegroundRelease() throws -> NativeMQTTForegroundSeal {
+        let deadline = DispatchTime.now().uptimeNanoseconds + 5_000_000_000
+        let facts = try pairedKeychainFacts(deadline: deadline)
+        let release = facts.outer.appendingPathComponent("Contents/Resources/WotexHomeRelease/bin/wotex_home")
+        var info = stat()
+        guard lstat(release.path, &info) == 0, info.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG),
+              access(release.path, X_OK) == 0 else { throw NativeSetupPeerError.signingUnavailable }
+        try fresh(deadline)
+        return NativeMQTTForegroundSeal(outer: facts.outer, executable: release,
+            executableIdentity: facts.executableIdentity, bundleIdentity: facts.bundleIdentity)
+    }
+
+    static func mqttForegroundExecutable(_ original: NativeMQTTForegroundSeal) throws -> URL {
+        let current = try mqttForegroundRelease()
+        guard current.outer == original.outer, current.executable == original.executable,
+              current.executableIdentity == original.executableIdentity, current.bundleIdentity == original.bundleIdentity else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        return current.executable
+    }
+
     // Actual installed app custody, independent of the local agent/socket seal.
     // No caller-supplied signer facts, group, path or lease enter this gate.
     static func pairedKeychainAccess() throws -> NativePairedKeychainAccessSeal {

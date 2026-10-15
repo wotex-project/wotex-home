@@ -18,14 +18,24 @@ enum NativeAuthoringFiles {
         }
     }
     static func read(_ url: URL, maximum: Int) throws -> Data {
+        guard (1...262_144).contains(maximum) else { throw NativeAuthoringFileError.invalidFile }
+        return try read(url, maximum: maximum, mode: 0o600)
+    }
+    static func readImmutable(_ url: URL, maximum: Int) throws -> Data {
+        guard (1...524_288).contains(maximum) else { throw NativeAuthoringFileError.invalidFile }
+        return try read(url, maximum: maximum, mode: 0o400)
+    }
+    private static func read(_ url: URL, maximum: Int, mode: mode_t) throws -> Data {
         guard url.isFileURL, url.path.utf8.count <= 1024, url.path.hasPrefix("/"),
               !url.path.utf8.contains(0),
               !url.pathComponents.contains(".."), !url.pathComponents.contains("."),
-              (1...262_144).contains(maximum) else { throw NativeAuthoringFileError.invalidFile }
+              (1...524_288).contains(maximum) else { throw NativeAuthoringFileError.invalidFile }
         let parent = url.deletingLastPathComponent().path
         try noLinks(parent)
         var directory = stat(), named = stat()
-        guard lstat(parent, &directory) == 0, lstat(url.path, &named) == 0, privateFile(named, maximum: maximum) else { throw NativeAuthoringFileError.invalidFile }
+        guard lstat(parent, &directory) == 0,
+              mode != 0o400 || (directory.st_uid == geteuid() && directory.st_mode & 0o777 == 0o700),
+              lstat(url.path, &named) == 0, privateFile(named, maximum: maximum, mode: mode) else { throw NativeAuthoringFileError.invalidFile }
         let descriptor = open(url.path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK)
         guard descriptor >= 0 else { throw NativeAuthoringFileError.invalidFile }; defer { _ = close(descriptor) }
         var opened = stat()
@@ -41,12 +51,13 @@ enum NativeAuthoringFiles {
         try noLinks(parent)
         guard cursor == named.st_size, cursor <= maximum, fstat(descriptor, &final) == 0, lstat(url.path, &finalName) == 0,
               Identity(final) == Identity(named), Identity(finalName) == Identity(named), lstat(parent, &finalDirectory) == 0,
+              mode != 0o400 || (finalDirectory.st_uid == geteuid() && finalDirectory.st_mode & 0o777 == 0o700),
               finalDirectory.st_dev == directory.st_dev, finalDirectory.st_ino == directory.st_ino else { throw NativeAuthoringFileError.invalidFile }
         return Data(bytes.prefix(cursor))
     }
-    private static func privateFile(_ value: stat, maximum: Int) -> Bool {
+    private static func privateFile(_ value: stat, maximum: Int, mode: mode_t) -> Bool {
         value.st_uid == geteuid() && value.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG) &&
-            value.st_mode & 0o777 == 0o600 && value.st_nlink == 1 && value.st_size > 0 && value.st_size <= maximum
+            value.st_mode & 0o777 == mode && value.st_nlink == 1 && value.st_size > 0 && value.st_size <= maximum
     }
     private static func noLinks(_ path: String) throws {
         var value = stat()
