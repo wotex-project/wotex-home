@@ -563,7 +563,7 @@ struct NativePairedRecoverySmoke {
             original = NativePendingEntry(context: context(association), custody: try .paired(from: association),
                 input: .power(operation: "op:original-paired", target: "light:paired-original", revision: 0, on: true), phase: .pending)
             _ = try NativePendingStorage.retaining(original, directory: directory, expected: .empty)
-        } else if mode == "wrong-principal" {
+        } else if mode.hasPrefix("wrong-principal") {
             key = Data(repeating: 8, count: 32)
             let delivered = NativeControllerAssociation(context: try NativeControllerPairingWire.context(bootstrap),
                 deployment: String(repeating: "3", count: 64), owner: String(repeating: "4", count: 64), epoch: 1,
@@ -602,9 +602,31 @@ struct NativePairedRecoverySmoke {
         if mode == "wrong-principal" {
             do { _ = try await execute(original, .lookup); throw PairedRecoverySmokeError.failed(#line) }
             catch NativeControllerTLSError.outcomeUnknown {}
+        } else if mode == "wrong-principal-receipt" {
+            let c = association.scope
+            let known = HomeControllerScope(identity: HomeControllerIdentity(deploymentID: c.deployment, ownerID: c.owner,
+                authorityEpoch: Int(c.epoch), revision: Int(c.creationRevision), principalID: c.principal), permissions: ["read"], targetIDs: [])
+            do {
+                _ = try await NativeControllerDomainClient.perform(association.peer, credential: key, clock: clock, exchangeGuard: guardCheck) {
+                    try NativePairedPowerReceiptCorrespondence.read(original, association: association, scope: known, credential: key)
+                }
+                throw PairedRecoverySmokeError.failed(#line)
+            } catch NativeControllerTLSError.outcomeUnknown {}
+        } else if mode == "other-principal-receipt" {
+            let otherKey = try OperatorCredential.decode(payload["other_credential"] as! String)
+            let otherRead = try await NativeControllerDomainClient.perform(association.peer, credential: otherKey, clock: clock, exchangeGuard: guardCheck) {
+                try LocalHealthClient.fetchReceiptStatus(socketPath: "", credential: otherKey, authorityEpoch: Int(original.context.epoch), operationID: original.input.operationID)
+            }
+            guard case .notFound = otherRead else { throw PairedRecoverySmokeError.failed(#line) }
         } else if mode == "revoked" {
             do { _ = try await execute(original, .retry); throw PairedRecoverySmokeError.failed(#line) }
             catch LocalHealthError.server("unauthorized") {}
+            do {
+                _ = try await NativeControllerDomainClient.perform(association.peer, credential: key, clock: clock, exchangeGuard: guardCheck) {
+                    try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key)
+                }
+                throw PairedRecoverySmokeError.failed(#line)
+            } catch LocalHealthError.server("unauthorized") {}
         } else {
             let current = try await NativeControllerDomainClient.perform(association.peer, credential: key, clock: clock,
                 exchangeGuard: guardCheck, deadline: .now.advanced(by: .seconds(15))) {
@@ -613,10 +635,21 @@ struct NativePairedRecoverySmoke {
             try NativePairedSessionCorrespondence.check(current, association: association)
             let result = try await execute(original, mode == "stage" || mode == "retry" ? .retry : .lookup)
             guard case .resolved(let detail) = result, detail.contains("Original request is held") else { throw PairedRecoverySmokeError.failed(#line) }
+            let readScope = try await NativeControllerDomainClient.perform(association.peer, credential: key, clock: clock, exchangeGuard: guardCheck) {
+                try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key)
+            }
+            let receipt = try await NativeControllerDomainClient.perform(association.peer, credential: key, clock: clock, exchangeGuard: guardCheck) {
+                try NativePairedPowerReceiptCorrespondence.read(original, association: association, scope: readScope, credential: key)
+            }
+            guard case .found(let value) = receipt, value.disposition == "held", value.operationID == original.input.operationID else { throw PairedRecoverySmokeError.failed(#line) }
             if mode == "lookup" {
                 let absent = NativePendingEntry(context: original.context, custody: original.custody,
                     input: .power(operation: "op:original-absent", target: "light:paired-original", revision: 0, on: false), phase: .pending)
                 guard case .retained = try await execute(absent, .lookup) else { throw PairedRecoverySmokeError.failed(#line) }
+                let read = try await NativeControllerDomainClient.perform(association.peer, credential: key, clock: clock, exchangeGuard: guardCheck) {
+                    try NativePairedPowerReceiptCorrespondence.read(absent, association: association, scope: readScope, credential: key)
+                }
+                guard case .notFound = read else { throw PairedRecoverySmokeError.failed(#line) }
             }
         }
         try NativePendingStorage.check(journal, directory: directory)

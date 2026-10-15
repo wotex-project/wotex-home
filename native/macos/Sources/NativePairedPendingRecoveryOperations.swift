@@ -130,7 +130,7 @@ final class NativePairedScopeRevision: @unchecked Sendable {
 
 // The ordinary power DTO intentionally omits receipt principal. Check it before
 // passing unchanged bytes to that existing decoder; no reply is normalized.
-private struct PairedOriginalReplyTransport: NativeDomainTransport, CustomReflectable {
+struct PairedOriginalReplyTransport: NativeDomainTransport, CustomReflectable {
     let base: any NativeDomainTransport
     let principal: String
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }

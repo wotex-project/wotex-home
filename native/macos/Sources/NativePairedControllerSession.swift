@@ -64,6 +64,7 @@ enum NativePairedSessionCorrespondence {
 struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     private enum Purpose: Equatable, Sendable {
         case selected
+        case powerReceipt(NativePendingEntry)
         case original(entry: NativePendingEntry, action: NativePendingRecoveryAction, pending: NativePendingSnapshot)
         case generationOriginal(entry: NativePendingEntry, action: NativePendingRecoveryAction,
                                 pending: NativePendingSnapshot, workspace: NativeGenerationWorkspaceSnapshot)
@@ -130,6 +131,24 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
             throw NativePairedSessionError.invalidSelection
         }
         return try await acquire(association: association, expected: expected, purpose: .selected, deadline: deadline, clock: clock, additionalCheck: additionalCheck)
+    }
+
+    static func readPowerReceipt(_ entry: NativePendingEntry, associations: NativeControllerAssociationSnapshot,
+                                 clock: @escaping @Sendable () throws -> NativeControllerCertificateClock) async throws -> NativePairedPowerReceiptRead {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        guard !Task.isCancelled else { throw NativeControllerTLSError.cancelled }
+        let association = try NativePairedPowerReceiptCorrespondence.association(entry, associations: associations)
+        let purpose = Purpose.powerReceipt(entry)
+        let session = try await acquire(association: association, expected: associations, purpose: purpose, deadline: deadline, clock: clock)
+        let guardValue = currentGuard(expected: associations, association: association, custody: session.custody, deadline: deadline, purpose: purpose)
+        let result = try await NativeControllerDomainClient.perform(association.peer, credential: session.bearer,
+            clock: clock, exchangeGuard: guardValue, deadline: deadline) {
+                try NativePairedPowerReceiptCorrespondence.read(entry, association: association, scope: session.scope, credential: session.bearer)
+            }
+        try await guardValue.validate(.decoded, until: deadline)
+        let read = NativePairedPowerReceiptRead(entry: entry, result: result, deadline: deadline)
+        try read.deliveryCurrent()
+        return read
     }
 
     static func recovering(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
@@ -207,6 +226,8 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
             }
             try NativePairedSessionCorrespondence.check(scope, association: association)
             switch purpose {
+            case .powerReceipt(let entry):
+                try NativePairedPowerReceiptCorrespondence.scope(scope, entry: entry, association: association)
             case .original(let entry, _, _), .generationOriginal(let entry, _, _, _):
                 try NativePairedSessionCorrespondence.checkProfileScope(scope, entry: entry)
             default: break
@@ -571,6 +592,9 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
     private static func snapshots(_ expected: NativeControllerAssociationSnapshot, purpose: Purpose) throws {
         do { try NativeControllerAssociationStorage.check(expected) }
         catch { throw NativePairedSessionError.selectionChanged }
+        if case .powerReceipt(let entry) = purpose {
+            _ = try NativePairedPowerReceiptCorrespondence.association(entry, associations: expected)
+        }
         if case .original(_, _, let pending) = purpose {
             do { try NativePendingStorage.check(pending) }
             catch { throw NativePairedSessionError.originalChanged }

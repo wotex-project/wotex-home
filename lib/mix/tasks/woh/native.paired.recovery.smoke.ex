@@ -55,11 +55,12 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
   @moduledoc """
-  Check original paired recovery custody and transport.
+  Checks original paired recovery custody, transport and power receipts.
 
-  Run `mix woh.native.paired.recovery.smoke` on the supported macOS toolchain.
-  The task compiles and runs the owning bounded Swift fixtures, reporting
-  compilation, exchange or assertion failures through Mix.
+  Run `mix woh.native.paired.recovery.smoke` on Apple Silicon macOS 15 or later
+  with the Swift 6 toolchain. The task compiles and runs bounded Swift fixtures
+  with warnings rejected. Compilation, exchange and assertion failures fail
+  the Mix task.
 
   Checks original paired metadata/unsigned production refusal and the closed
   adapter over actual Authority pairing, TLS, SQLite restart and exact
@@ -75,6 +76,19 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
   same original recovery, restart and revocation checks. This creates no signed
   app session. `--workspace-selectors` runs two nonempty-source/fixture cohorts,
   including multiple passages from one source and wrong object reply refusals.
+
+  For focused power checks, run
+  `mix woh.native.paired.recovery.smoke --power-receipts`. This retains the shared
+  metadata/unsigned-refusal checks, then exercises actual Authority pairing and
+  TLS/Store power originals, identical retries and recorded-controller receipt
+  reads. It checks found/not-found results, other-principal visibility, immutable
+  pending bytes, Store restart, principal revocation and wrong-principal replies.
+  It skips the generation/provider cohorts. Each optional flag selects one
+  cohort; flags cannot be combined.
+
+  Native Activity model and shared-panel layout checks are provided separately
+  by `Mix.Tasks.Woh.Native.Paired.Power.Receipt.Smoke`. The TLS fixtures use raw
+  fixture credentials and do not create a successful production signed session.
 
   The result is executable software evidence for the tested boundary.
   Installed signing, private account custody and physical device qualification
@@ -92,7 +106,8 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
   alias WotexHome.LocalAPI.Server, as: UDS
   alias WotexHome.Semantics.Thing
 
-  def run(scope) when scope in [[], ["--generation-ui"], ["--workspace-selectors"]] do
+  def run(scope)
+      when scope in [[], ["--generation-ui"], ["--workspace-selectors"], ["--power-receipts"]] do
     Code.require_file("test/support/controller_tls_fixture.exs")
     root = Path.join("/private/tmp", "woh-paired-recovery-#{System.unique_integer([:positive])}")
     File.mkdir!(root)
@@ -157,7 +172,7 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
             do: authoring_owner(executable, root, family, scenario)
       else
         actual_owner(executable, root, associations)
-        authoring_owner(executable, root)
+        if scope != ["--power-receipts"], do: authoring_owner(executable, root)
         wrong_principal(executable, root)
       end
 
@@ -168,6 +183,9 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
 
           ["--workspace-selectors"] ->
             "paired two-family nonempty selectors, owned-object refusals, original recovery, restart and revocation passed"
+
+          ["--power-receipts"] ->
+            "paired power receipt TLS/Store reads, immutable originals, restart, revocation and wrong-principal refusal passed"
 
           [] ->
             "native paired publication/unsigned refusal, real pairing, manual authoring lost replies without replay, original recovery/restart/revocation and wrong-principal refusal passed"
@@ -182,7 +200,7 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
   def run(_),
     do:
       Mix.raise(
-        "usage: mix woh.native.paired.recovery.smoke [--generation-ui | --workspace-selectors]"
+        "usage: mix woh.native.paired.recovery.smoke [--generation-ui | --workspace-selectors | --power-receipts]"
       )
 
   defp actual_owner(executable, root, associations) do
@@ -249,6 +267,20 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
           true = current == staged
         end
 
+        {:ok, other_key, _} =
+          Store.provision_principal(store, "operator:receipt-other", ["read"], [])
+
+        {:ok, read_revision} = Store.revision(store)
+
+        transport(
+          executable,
+          Map.merge(input, %{
+            "mode" => "other-principal-receipt",
+            "other_credential" => Base.url_encode64(other_key, padding: false)
+          })
+        )
+
+        {:ok, ^read_revision} = Store.revision(store)
         input
       after
         stop_owner(first)
@@ -516,28 +548,30 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
       }
     }
 
-    {port, task} = peer().peer(fixture, "valid", :paired, response: JSON.encode!(response))
-    invitation = peer().invitation(fixture, port)
+    for mode <- ["wrong-principal", "wrong-principal-receipt"] do
+      {port, task} = peer().peer(fixture, "valid", :paired, response: JSON.encode!(response))
+      invitation = peer().invitation(fixture, port)
 
-    input = %{
-      "mode" => "wrong-principal",
-      "invitation" => peer().invitation_body(invitation),
-      "bootstrap" => peer().request_body(),
-      "directory" => private_directory(root, "wrong-principal")
-    }
-
-    transport(executable, input)
-    {:request, bytes} = Task.await(task, 10_000)
-    {:ok, decoded} = JSON.decode(bytes)
-
-    true =
-      decoded == %{
-        "api_version" => 1,
-        "operation" => "status",
-        "credential" => Base.url_encode64(:binary.copy(<<8>>, 32), padding: false),
-        "authority_epoch" => 1,
-        "operation_id" => "op:original-paired"
+      input = %{
+        "mode" => mode,
+        "invitation" => peer().invitation_body(invitation),
+        "bootstrap" => peer().request_body(),
+        "directory" => private_directory(root, mode)
       }
+
+      transport(executable, input)
+      {:request, bytes} = Task.await(task, 10_000)
+      {:ok, decoded} = JSON.decode(bytes)
+
+      true =
+        decoded == %{
+          "api_version" => 1,
+          "operation" => "status",
+          "credential" => Base.url_encode64(:binary.copy(<<8>>, 32), padding: false),
+          "authority_epoch" => 1,
+          "operation_id" => "op:original-paired"
+        }
+    end
   end
 
   defp transport(executable, input) do
