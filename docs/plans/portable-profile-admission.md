@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.20. Updated: 2026-10-15. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host delivery remain.
+Version: 0.1.21. Updated: 2026-10-15. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host delivery remain.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -514,6 +514,8 @@ terminal across Store-child restart; a full Host startup creates a new source
 epoch and requires target reselection. The [native MQTT setup contract](../specs/native-mqtt-setup-v1.md)
 now has bounded original-parent bootstrap and source-scoped Keychain custody
 code, with [executed pipe/Store/TLS and unsigned-refusal evidence](../provenance/native-mqtt-bootstrap-2026-10.md).
-Next complete its fixed foreground preparation/publication entry and local Setup
-UI, then positive signed installed custody. Physical/source-age/edge qualification
-and full release/firmware evidence remain milestone obligations.
+Its fixed foreground preparation/publication entry and local Setup UI now have
+[executed files/pipes, shared fences, exact retry and inspected previews](../provenance/native-mqtt-provisioning-2026-10.md).
+Next establish positive signed installed custody and fresh-account lifecycle.
+Physical/source-age/edge qualification and full release/firmware evidence remain
+milestone obligations.

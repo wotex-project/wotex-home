@@ -1,6 +1,6 @@
 # Native credential broker v1
 
-Version: 0.1.17. Accepted host mechanism with separate MQTT custody, 2026-10-15.
+Version: 0.1.18. Accepted host mechanism with separate MQTT custody, 2026-10-15.
 WOH.08 owns installed native identity, custody and lifecycle. This broker joins
 [signed setup peers](macos-signed-peer-v1.md), the
 [private core channel](native-core-channel-v1.md) and
@@ -13,7 +13,10 @@ This broker's service/socket records remain Home operator-role custody. The
 username/password service and actual-self app-import/agent-read custodian. It
 uses only the original child's initial pipes before Store, with no new broker
 request. Its dedicated access group may coexist with each role's own group;
-positive signed installed custody remains unexecuted.
+positive signed installed custody remains unexecuted. The explicit local Setup
+import/publication composition now has
+[software and inspected UI evidence](../provenance/native-mqtt-provisioning-2026-10.md);
+its foreground producer carries no credential or operator-broker request.
 
 ## Native ownership
 

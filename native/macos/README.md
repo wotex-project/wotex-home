@@ -1660,11 +1660,22 @@ filesystem, Host, Store, TLS and fresh-Application cases.
 ## Native MQTT bootstrap and signing checks
 
 The [native setup contract](../../docs/specs/native-mqtt-setup-v1.md) now has
-source-scoped Keychain custody and the initial native-parent/Core exchange.
-Setup file preparation, explicit import/publication buttons and the fixed
-foreground publication entry remain pending. Do not treat source-file
-publication alone as usable installed Keychain provisioning. Ordinary startup
-of `keychain` policy without its native capability refuses before SQLite.
+source-scoped Keychain custody, the initial native-parent/Core exchange and an
+explicit local Setup section. Select private mode-0400 authoring/source files
+under owned mode-0700 parents, then Prepare Source to review digests, channel
+count and authentication mode. Keychain policy requires an explicit separate
+credential import before Publish for Next Start. Production actions require
+the actual protected signed app and fixed bundled foreground entry; unsigned
+development fails closed. Ordinary startup of `keychain` policy without its
+native capability refuses before SQLite.
+
+Stop the background controller before publication. Publication holds the same
+Host gate and writes authoring before MQTT; it can leave inert authoring policy
+after an uncertain failure. Retain the original and use Retry Identical
+Publication to confirm or finish it. New file/controller selection is fenced
+until that original settles. Restart the controller explicitly afterward; a new
+source epoch still requires target reselection. No source publication implies
+profile trust, device access, signed custody qualification or physical support.
 
 For signed qualification, both the app and helper need their own exact
 `com.apple.application-identifier` and exactly these two access groups, using
@@ -1687,6 +1698,9 @@ Focused checks from the repository root, with the locked cache:
 MIX_ENV=test WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/native_mqtt_bootstrap_test.exs test/wotex_home/private_mqtt_installation_test.exs test/wotex_home/native_core_channel_test.exs
 MIX_ENV=test WOTEX_HOME_GIT_DEPS=1 mise exec -- mix woh.native.core.pipe.smoke
 MIX_ENV=test WOTEX_HOME_GIT_DEPS=1 mise exec -- mix woh.native.keychain.policy.smoke
+MIX_ENV=test WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/native_mqtt_provisioning_test.exs
+MIX_ENV=test WOTEX_HOME_GIT_DEPS=1 mise exec -- mix woh.native.mqtt.provision.smoke
+MIX_ENV=test WOTEX_HOME_GIT_DEPS=1 mise exec -- mix woh.native.mqtt.setup.smoke
 ```
 
 The native pipe task waits for actual Core exit before reopening the existing
@@ -1694,4 +1708,8 @@ fixture database with recovery permitted. Scripted credentials, unsigned gate
 refusal and actual Core/TLS are software evidence only. See the
 [executed results and remaining acceptance](../../docs/provenance/native-mqtt-bootstrap-2026-10.md)
 before claiming positive signed Keychain, fresh-account lifecycle or physical
-qualification. No new installed artifact is established by these checks.
+qualification. The [foreground and Setup evidence](../../docs/provenance/native-mqtt-provisioning-2026-10.md)
+records actual producer/pipe checks, exact uncertain retry and inspected previews
+at `_build/native/mqtt-setup-{prepared,uncertain}.png`. Both MQTT fixture tasks
+remove their own temporary compiler/fixture directories on completion. No new
+installed artifact is established by these checks.

@@ -1,6 +1,6 @@
 # Private installed MQTT source
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.03 H03-T7, WOH.08 lifecycle, WOH.16 private custody and WOH.18 H18-T11/T12.
 Implementation: sealed publication, ordinary Host composition and terminal lifecycle implemented.
 Evidence: [executed files, Host/Store, TLS and fresh-process checks](../provenance/private-mqtt-installation-2026-10.md).
@@ -149,6 +149,9 @@ only config SHA256/channel count. Credential installation returns only installed
 true, never username/password/hash. Separate publication is intentional: install
 credentials and authoring first, MQTT config last, then start Host. There is no
 false atomic multi-file activation claim or running-service mutation route.
+The [native successor](native-mqtt-setup-v1.md) composes these writers behind
+a fixed stopped-host foreground gate and original-only retry, with
+[executed filesystem/pipe evidence](../provenance/native-mqtt-provisioning-2026-10.md).
 
 Public fixed errors are invalid_mqtt_configuration, mqtt_configuration_unavailable,
 mqtt_configuration_changed, mqtt_configuration_exists,

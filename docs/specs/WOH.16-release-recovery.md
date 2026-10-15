@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.142. Status: accepted target.
+Version: 0.1.143. Status: accepted target.
 
 The [native MQTT bootstrap](native-mqtt-setup-v1.md) now carries a source-scoped
 single-use capability outside Store/profile archives, with
@@ -9,8 +9,11 @@ The [private MQTT installation](private-mqtt-installation-v1.md) keeps local
 source policy and sealed-file credentials outside those archives. Store loss
 retires its temporary publisher/custody; a Store-child restart cannot reconnect.
 A full native startup needs a new bootstrap and source epoch, never restored
-current-target or freshness authority. Setup publication UI, positive installed
-Keychain custody and physical/power-loss qualification remain separate.
+current-target or freshness authority. The explicit Setup publication UI now has
+[bounded foreground and exact-retry software evidence](../provenance/native-mqtt-provisioning-2026-10.md).
+Partial authoring publication is possible; only identical original retry may
+confirm installation. Positive installed Keychain custody and physical/power-loss
+qualification remain separate.
 
 The [exact MQTT producer cohort](mqtt-producer-cohort-v1.md) defines the next
 locked generic projection and historical runtime-identity succession. Old source

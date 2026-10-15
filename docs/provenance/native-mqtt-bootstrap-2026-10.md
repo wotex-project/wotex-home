@@ -4,8 +4,11 @@ Executed 2026-10-15 on Apple Silicon macOS 27.0.1, Apple Swift 6.4, using
 `.tool-versions` Elixir 1.19.6 and OTP 28.5.0.6 with the locked test cache and
 `WOTEX_HOME_GIT_DEPS=1`.
 Core source: `7aacb32`; native source: `3922d0ddc219f75840af457c5f58e7c26a580371`.
-The [owning contract](../specs/native-mqtt-setup-v1.md) remains partial:
-its preparation/import/publication UI and positive installed custody are open.
+This record captures the bootstrap milestone. Its pending foreground/UI work
+was subsequently implemented with
+[separate publication and Setup evidence](native-mqtt-provisioning-2026-10.md).
+Positive installed custody remains open; the remaining-work text below records
+the obligations at this bootstrap milestone.
 
 ## Implemented boundary
 

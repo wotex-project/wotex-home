@@ -1,6 +1,6 @@
 # Native core channel v1
 
-Version: 0.1.5. Accepted host mechanism with native MQTT bootstrap, 2026-10-15.
+Version: 0.1.6. Accepted host mechanism with native MQTT bootstrap, 2026-10-15.
 WOH.08 owns the native parent and OTP lifetime. The ordinary channel carries the
 [trusted native setup records](native-setup-authority-v1.md); it is not the
 ordinary socket or an installed-client authentication substitute.
@@ -13,6 +13,14 @@ Its request is at most 4096 bytes and its one reply at most 8192 under one
 five-second deadline. This exception does not widen ordinary setup frames below
 or add a broker/socket operation. Without a matching capability, Keychain policy
 refuses before Store; development does not enable the exchange.
+
+The same native pipe owner also implements the separate fixed foreground
+preparation/publication entry defined by NM-05. Its request/reply stay at 4096
+bytes under one original 15-second launch-to-reap deadline, with bounded
+discarded diagnostics and no Host startup. A complete buffered reply is usable
+after normal foreground exit; ordinary Core still requires its live child.
+[Executed foreground checks](../provenance/native-mqtt-provisioning-2026-10.md)
+cover malformed/extra output, death, excessive diagnostics and original timeout.
 
 The native agent starts one bundled OTP release with the fixed invocation
 `eval WotexHome.NativeSetup.CoreHost.main()`. Two anonymous pipes become that
