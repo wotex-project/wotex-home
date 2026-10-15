@@ -146,7 +146,7 @@ enum NativeExternalProfileOriginalWire {
 }
 
 // Pinned Home URI.new metadata grammar; never a transport address parser.
-private enum ExternalOriginalURI {
+enum ExternalOriginalURI {
     private static let unreserved = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~".utf8)
     private static let sub = Set("!$&'()*+,;=".utf8)
     private static let name = unreserved.union(sub).union([37])

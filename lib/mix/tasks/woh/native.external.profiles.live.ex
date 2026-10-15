@@ -15,24 +15,56 @@ defmodule Woh.Tool.NativeExternalProfileLive do
 
   @owner __MODULE__.Store
 
-  def run(project) do
+  def run(project, guidance \\ false) do
     root =
       Path.join("/private/tmp", "external-profile-native-#{System.unique_integer([:positive])}")
 
     File.mkdir!(root)
     File.chmod!(root, 0o700)
     executable = Path.join(root, "client")
+    guidance_executable = if guidance, do: Path.join(root, "guidance"), else: nil
 
     try do
       with :ok <-
              NativeFixture.compile(project, "NativeExternalProfileReadSmoke.swift", executable, [
                "NativeExternalProfileClient"
-             ]) do
-        for family <- ~w(temperature research), do: owner(root, executable, family)
+             ]),
+           :ok <- compile_guidance(project, guidance_executable) do
+        for family <- ~w(temperature research),
+            do: owner(root, executable, family, guidance_executable)
+
         :ok
       end
     after
       File.rm_rf!(root)
+    end
+  end
+
+  defp compile_guidance(_, nil), do: :ok
+
+  defp compile_guidance(project, executable),
+    do:
+      NativeFixture.compile(project, "NativeExternalGuidanceSmoke.swift", executable, [
+        "NativeExternalProfileClient",
+        "NativeExternalProfileOriginalWire",
+        "NativeExternalGuidanceClient"
+      ])
+
+  defp guidance(nil, _, _, _, _, _, _, _), do: :ok
+
+  defp guidance(executable, socket, credential, family, inspected, kind, expected, variant) do
+    reference =
+      Map.take(inspected, ~w(authority_epoch operation_id revision input_sha256 result_sha256))
+
+    mode = Enum.join(["live-" <> kind, expected, family, variant], "|")
+    input = Base.encode64(credential) <> "\n" <> JSON.encode!(reference) <> "\n"
+
+    case Command.run_diagnostic(executable, [socket, mode], 16_384, 10_000, input) do
+      {:ok, _} ->
+        :ok
+
+      {:error, reason} ->
+        Mix.raise("native guidance #{kind}/#{expected} Store read failed: #{reason}")
     end
   end
 
@@ -140,7 +172,7 @@ defmodule Woh.Tool.NativeExternalProfileLive do
         receipt["input_sha256"]
       )
 
-  defp owner(parent, executable, family) do
+  defp owner(parent, executable, family, guidance_executable) do
     root = Path.join(parent, family)
     File.mkdir!(root)
     File.chmod!(root, 0o700)
@@ -287,6 +319,29 @@ defmodule Woh.Tool.NativeExternalProfileLive do
 
       try do
         before = revision(store)
+        source_entries = :sys.get_state(sources).entries
+
+        for {kind, expected, variant} <- [
+              {"context", "valid", "maintenance"},
+              {"sources", "valid", "one"},
+              {"target", "valid", "selected"},
+              {"artifact", "valid", ""}
+            ] do
+          guidance(
+            guidance_executable,
+            socket,
+            credential,
+            family,
+            inspected,
+            kind,
+            expected,
+            variant
+          )
+        end
+
+        true = :sys.get_state(custody).leases == %{}
+        true = :sys.get_state(sources).entries == source_entries
+        ^before = revision(store)
         read(executable, socket, credential, "catalogue", "valid", 1, "approved")
         original(executable, socket, credential, "inspection", inspected)
         original(executable, socket, credential, "trust", approved)
@@ -338,6 +393,54 @@ defmodule Woh.Tool.NativeExternalProfileLive do
         stop(sources)
         false = Process.alive?(reports)
         false = Process.alive?(sources)
+
+        for {kind, expected, variant} <- [
+              {"sources", "valid", "unavailable"},
+              {"target", "valid", "revoked"},
+              {"artifact", "valid", ""}
+            ] do
+          guidance(
+            guidance_executable,
+            socket,
+            credential,
+            family,
+            inspected,
+            kind,
+            expected,
+            variant
+          )
+        end
+
+        if guidance_executable do
+          :sys.replace_state(store, &%{&1 | external_reader: nil})
+
+          guidance(
+            guidance_executable,
+            socket,
+            credential,
+            family,
+            inspected,
+            "context",
+            "valid",
+            "unavailable"
+          )
+
+          guidance(
+            guidance_executable,
+            socket,
+            credential,
+            family,
+            inspected,
+            "artifact",
+            "reader",
+            ""
+          )
+
+          :sys.replace_state(store, &%{&1 | external_reader: reader})
+        end
+
+        true = :sys.get_state(custody).leases == %{}
+        ^before = revision(store)
         read(executable, socket, credential, "catalogue", "valid", 1, "revoked")
         original(executable, socket, credential, "inspection", inspected)
         original(executable, socket, credential, "trust", approved)

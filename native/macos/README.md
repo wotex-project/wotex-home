@@ -1491,8 +1491,10 @@ Uncertain/refused submissions keep their original for Activity recovery.
 Paired selection remains selected and refuses this local consumer without fallback.
 Opening, file choice and editing send no request. Session/access/sleep/wake/input
 changes retire prepared work, and request checks prevent a retired/cancelled decision
-from progressing from status to mutation. Guided construction still needs current
-reader/source/target-basis read contracts; this panel does not infer those values.
+from progressing from status to mutation. Current reader/source/target and owned
+artifact inputs now have authenticated guidance APIs and a strict native reader
+below. Guided controls remain a separate consumer; this file panel does not infer
+or silently populate those values.
 
 Run `mix woh.native.external.panel.smoke` for real two-family first decisions,
 lost-reply/restart recovery, held-reply retirement/cancellation, changed Store basis,
@@ -1500,3 +1502,21 @@ failed publication/resolution and shared app guards. Mounted state renders under
 `_build/native/external-profile-*.png` cover all responsive edges and explicit1.4×
 content enlargement. [Executed evidence](../../docs/provenance/native-external-profile-panel-2026-10.md)
 separates this layout stress from installed OS accessibility, signing and qualification.
+
+
+## External-profile guidance reader
+
+The [native guidance SDK](../../docs/specs/native-external-guidance-reads-v1.md)
+reads current reader/maintenance context, safe source choices, target counters and
+the actor's exact inspected manifest. Each explicit read brackets the fixed domain
+request with controller identity and requires one current Store watermark. Manifest
+identity is verified against ordered canonical object arrays. Returned typed
+metadata grants no trust, target selection or source qualification.
+
+Run `mix woh.native.external.guidance.smoke` for independently sequenced private
+peers and strict bounds/refusal checks. Add `--live` for both quantity families
+through actual Store/Authority/Unix sockets, including source shutdown and reader
+loss. Fixture credentials travel on stdin. These checks do not open Keychain,
+register a service, send a mutation or qualify physical hardware. They establish
+SDK inputs for subsequent guided controls; signed paired and installed delivery
+remain separate obligations.

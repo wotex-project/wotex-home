@@ -1404,7 +1404,7 @@ enum LocalHealthClient {
 
     static func externalProfileReadTransport(socketPath: String, credential: Data, operation: String,
                                              fields: [String: Any]) throws -> [String: Any] {
-        guard ["external_profiles", "external_inspection_status", "external_trust_status", "external_target_status"].contains(operation) else {
+        guard ["external_profiles", "external_inspection_status", "external_trust_status", "external_target_status", "external_profile_context", "external_source_catalogue", "external_target_basis", "external_inspection_artifact"].contains(operation) else {
             throw LocalHealthError.invalidProfileRequest
         }
         do { return try request(socketPath: socketPath, credential: credential, operation: operation, fields: fields, allowNotFound: true) }
