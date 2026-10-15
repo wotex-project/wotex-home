@@ -3,8 +3,9 @@
 This record owns incremental Home evidence for the
 [temporal runtime successor](../specs/routine-temporal-runtime-v1.md).
 Dependency selection, production calendar delegation and the complete v4
-runtime identity are implemented. Expanded durable phase-fault and historical
-current-row acceptance remain pending.
+runtime identity are implemented. Expanded opening/closing Store phase-fault
+checks pass; the later checkpoints retain final-reader and historical
+current-row acceptance separately.
 The separate [civil archive record](routines-civil-2026-10.md) retains the
 producer archive identities and all prior comparison evidence.
 
@@ -142,7 +143,7 @@ Exact source SHA-256s for this slice:
 | schedules/temporal_basis.ex | 456461bca2f5fc82e57aaeedd8fb4912187e95bfe33f50a1cf9e2a8a2adbf3a9 |
 | schedules/recurrence.ex | 18ee3a9927744fa83bc0fffb2dc3a31fb398ba813b0fbb2f44910624c90dd02c |
 
-### Remaining acceptance
+### Remaining acceptance at the runtime implementation slice
 
 The actual Store queue/claim/final-handoff and poll-preparation phase-fault
 campaign must still mutate producer/dependency artifacts at opening, closing and
@@ -200,8 +201,9 @@ producer's complete bytes with an equal OTP code checksum before the independent
 final guard. The ordinary complete byte/file/loaded checks remain enabled.
 
 The first Routines run selected queue/claim/handoff with and without withdrawal
-SQL faults: six cases, seed 906163, 27.3 seconds. The three injected SQL failures
-passed. The three ordinary final refusals instead returned `store_unavailable`.
+SQL faults: six cases, seed 906163, 27.3 seconds. The three fault-shaped outcomes
+matched `store_unavailable`, but did not yet prove that withdrawal publication
+was reached. The three ordinary final refusals also returned `store_unavailable`.
 Inspection found `stale_schedule_admission` in ExecutionWriter's initial-policy
 set but absent from its final-policy set; the final reader correctly detected
 stale admission, then treated that semantic refusal as writer damage.
@@ -211,3 +213,48 @@ admission is a closed current-basis denial, preserving sticky withdrawal and
 original spend while leaving the writer usable. SQL and historical damage remain
 rollback/disabled-writer failures. This failed run is a counterexample, not
 positive final-boundary acceptance evidence.
+
+### Final-reader fix and executed acceptance
+
+ExecutionWriter now includes `stale_schedule_admission` in its final-policy
+classification, inherited by the initial-policy set. No other error changes
+classification. A current-basis denial restores tentative execution, publishes
+the required sticky withdrawal against the original phase and leaves Store
+writable. SQL/history damage still rolls back and disables writes.
+
+The final-reader matrix covers all ten temporal applications at queue, no-send,
+claim and handoff; Routines also repeats all four phases with a withdrawal SQL
+fault. Every case observes SQLite's actual rule-generation update before the
+withdrawal insert, including when its trigger aborts. Thus an earlier generic
+writer failure cannot satisfy a SQL-fault case. The one-use fault is consumed
+after successful closing inventory, and no guard inventory remains at the
+independent final check. Every case checks immutable originals, prior committed
+spend, absence of tentative dispatch, exact withdrawal/rollback state and snapshot
+integrity. Home byte drift may refuse earlier through `profile_unqualified`;
+it must still retain the same sticky withdrawal and writer usability.
+
+Two producers, Routines and ExBooking, additionally change complete retained
+bytes after an already committed handoff. Successful withdrawal records exactly
+one unknown outcome without refunding the spent root, replaying the original or
+opening another poll slot. A SQL fault preserves the committed dispatching phase
+and revision, retains its dispatch journal and disables writes. These are
+software uncertainty tests; no physical transport or device acknowledgement is
+inferred.
+
+Executed with root Elixir 1.19.6 / OTP 28.5.0.6 and exact locked sources:
+
+- `WOTEX_HOME_GIT_DEPS=1 mix test test/wotex_home/durable_enrollment_test.exs --only temporal_final_runtime_member:wotex_routines --warnings-as-errors`: **six passed**, seed **74396**, 22.7 seconds, after adding the actual generation-update observation.
+- `WOTEX_HOME_GIT_DEPS=1 mix test test/wotex_home/durable_enrollment_test.exs --only temporal_final_runtime --warnings-as-errors`: **44 cases, three failed test expectations**, seed **782223**, 91.1 seconds. All forty non-Home cases passed. Three Home cases correctly returned `profile_unqualified`, which the initial test whitelist omitted. This run alone is not a green matrix claim.
+- After correcting that expectation, `WOTEX_HOME_GIT_DEPS=1 mix test test/wotex_home/durable_enrollment_test.exs --only temporal_final_runtime_member:wotex_home --only temporal_handed_runtime --warnings-as-errors`: **eight passed**, seed **913064**, 38.8 seconds: all four Home final phases and all four committed-handoff/SQL cases. Combined with the unchanged forty non-Home cases above, every final matrix case has positive executed evidence.
+
+The fixtures restore original dependency/Home BEAMs in `after` and `on_exit`,
+restore compiler options, stop owned Stores and remove private SQLite
+directories. A post-run scan found no `.held` backup. Normal locked dependency
+and compiled caches remain for incremental work. No Docker container, image,
+volume, standalone archive, generated documentation tree or release was created.
+Historical retained-row/current-authority acceptance and the broader mechanism
+milestone remain open.
+
+Scoped formatting, `mix compile --warnings-as-errors`, `mix woh.spec.check`
+(22 working catalogue contracts) and `git diff --check` passed. ExecutionWriter's
+source SHA-256 is `a24c7e7f6dbd0b9c6e1155bebb6f5ee18a7e9992054bc7f1d0ef0a4df136a346`.

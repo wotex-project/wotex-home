@@ -1,11 +1,24 @@
 defmodule WotexHome.Durable.Store.ExecutionWriter do
   @moduledoc """
-  Direct LIFX receipt and execution transactions under the single Store writer.
+  Builds direct LIFX execution and receipt transitions for the single Store writer.
 
-  This collaborator receives a borrowed connection and immutable guard basis.
-  It owns no process, monitor, credential issuance, clock or device transport.
-  Store alone wraps these functions in transactions and checks the live caller
-  before any claim-token transition. Handoff records uncertainty, never a send.
+  Application callers enter through `WotexHome.Authority`.
+  `WotexHome.Durable.Store` supplies the borrowed SQLite connection and current
+  guard inputs, owns the enclosing transaction and checks the live caller before
+  claim-token transitions. This collaborator owns no process, credential
+  issuance, clock or device transport.
+
+  Transaction functions return commit or rollback decisions to Store. Closed
+  semantic denials use `{:rollback, {:policy, reason}}`, including a final
+  `:stale_schedule_admission`. That classification lets Store restore tentative
+  execution work while preserving the required sticky admission withdrawal.
+  SQL failures and damaged history remain non-policy rollback failures and take
+  Store's writer-disabled path.
+
+  Handoff records uncertainty before transport; it does not establish a send.
+  Protocol acknowledgement, retained readback and unknown outcomes remain
+  distinct receipt states. These transitions do not establish physical
+  qualification or authorize bypassing current execution guards.
   """
 
   alias WotexHome.{Id, Mutation, Policy}
@@ -53,10 +66,8 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
   import WotexHome.Durable.Store.RequestLedger, only: [select_request: 4, decode_receipt: 4]
 
   @max_i64 9_223_372_036_854_775_807
-  @final_policy ~w(unauthorized principal_unavailable target_unavailable stale_authority_epoch stale_resource_revision stale_rule_generation permission_denied profile_unqualified profile_artifact_unavailable profile_basis_changed runtime_artifact_unavailable qualification_artifact_unavailable observation_unavailable basis_changed guard_unresolved effect_domain_busy invariant_unresolved operator_override_active rule_basis_changed schedule_basis_changed temporal_basis_changed temporal_clock_unavailable timezone_basis_changed occurrence_early occurrence_expired clock_uncertain maintenance_active stale_rule_admission unsupported_admission_profile attempt_history_cold attempt_rate_exhausted attempt_spacing causal_provenance_unavailable execution_basis_changed)a
-  @initial_policy @final_policy ++
-                    [:stale_schedule_admission] ++
-                    WotexHome.Durable.Store.ProfileGuard.denials()
+  @final_policy ~w(unauthorized principal_unavailable target_unavailable stale_authority_epoch stale_resource_revision stale_rule_generation permission_denied profile_unqualified profile_artifact_unavailable profile_basis_changed runtime_artifact_unavailable qualification_artifact_unavailable observation_unavailable basis_changed guard_unresolved effect_domain_busy invariant_unresolved operator_override_active rule_basis_changed schedule_basis_changed temporal_basis_changed temporal_clock_unavailable timezone_basis_changed occurrence_early occurrence_expired clock_uncertain maintenance_active stale_rule_admission stale_schedule_admission unsupported_admission_profile attempt_history_cold attempt_rate_exhausted attempt_spacing causal_provenance_unavailable execution_basis_changed)a
+  @initial_policy @final_policy ++ WotexHome.Durable.Store.ProfileGuard.denials()
   @inspection_policy @initial_policy ++
                        ~w(not_found request_not_held unsupported_capability read_only_capability risk_not_supported invalid_value color_plan_unavailable effect_required)a
   @select_current """

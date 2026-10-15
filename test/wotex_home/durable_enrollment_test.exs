@@ -4650,6 +4650,329 @@ defmodule WotexHome.DurableEnrollmentTest do
   end
 
   for {app, module} <- @temporal_runtime_members,
+      phase <- [:queue, :no_send, :claim, :handoff],
+      sql_fault <- if(app == :wotex_routines, do: [false, true], else: [false]) do
+    @tag temporal_final_runtime: true
+    @tag temporal_final_runtime_member: app
+    test "#{app} drift after inventory closure refuses final #{phase}#{if sql_fault, do: " and rolls back failed withdrawal", else: ""}",
+         %{path: path} do
+      with_after_close_runtime_fixture(fn ->
+        {store, manager, thing, _owner, activation} = temporal_fixture(path, 90_000)
+        prepare_admission_value(store, thing, unquote(phase))
+        {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+        operation = original.occurrence_id
+
+        if unquote(phase in [:claim, :handoff]) do
+          assert {:ok, {:ok, %{receipts: [%{disposition: :queued}]}}} =
+                   temporal_advance_fixture(store, snapshot)
+        end
+
+        final_admission_clock(store, snapshot)
+        token = if unquote(phase == :handoff), do: final_phase_token(store, :handoff, operation)
+        assert {:ok, before} = Store.revision(store)
+        Code.ensure_loaded!(unquote(module))
+        runtime_file = :code.which(unquote(module)) |> List.to_string()
+
+        on_exit(fn ->
+          if File.exists?(runtime_file <> ".held"),
+            do: File.rename!(runtime_file <> ".held", runtime_file)
+        end)
+
+        {:ok, db} = Sqlite3.open(path)
+
+        if unquote(sql_fault) do
+          assert :ok =
+                   Sqlite3.execute(
+                     db,
+                     "CREATE TRIGGER after_inventory_fault BEFORE INSERT ON schedule_lifecycle_operations WHEN NEW.kind='withdraw' BEGIN SELECT RAISE(ABORT,'injected after inventory fault'); END"
+                   )
+        end
+
+        [[generation_row]] = rows(db, "SELECT rowid FROM meta WHERE key='rule_generation'")
+        observer = self()
+
+        :sys.replace_state(store, fn state ->
+          :ok = Sqlite3.set_update_hook(state.db, observer)
+          Process.put({WotexHome.RuntimeArtifacts, :after_close_fixture}, runtime_file)
+          state
+        end)
+
+        result =
+          try do
+            initial_power_call(store, manager, operation, unquote(phase), token)
+          after
+            if File.exists?(runtime_file <> ".held"),
+              do: File.rename!(runtime_file <> ".held", runtime_file)
+          end
+
+        observed =
+          case result do
+            {:error, reason} -> {:error, reason}
+            _ -> :unexpected_positive
+          end
+
+        # The generation update precedes the withdrawal insert, including when
+        # its trigger aborts and SQLite rolls the transaction back. An ordinary
+        # writer failure before withdrawal cannot satisfy this observation.
+        assert_receive {:update, "main", "meta", ^generation_row}, 1_000
+
+        # The one-use fault occurs after a successful complete closing read.
+        # These final refusals must therefore come from independent guards.
+        assert :sys.replace_state(store, fn state ->
+                 assert Process.get({WotexHome.RuntimeArtifacts, :after_close_fixture}) == nil
+                 assert Process.get({WotexHome.RuntimeArtifacts, :guard_inventory}) == nil
+                 state
+               end)
+
+        if unquote(sql_fault) do
+          assert observed == {:error, :store_unavailable}
+          assert {:ok, ^before} = Store.revision(store)
+
+          expected =
+            unquote(
+              case phase do
+                :queue -> :held
+                :no_send -> :held
+                :claim -> :queued
+                :handoff -> :claimed
+              end
+            )
+
+          assert {:ok, %{disposition: ^expected}} =
+                   Store.request_status(store, manager, 1, operation)
+
+          assert [[0]] =
+                   rows(
+                     db,
+                     "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                   )
+
+          assert {:ok, %{writable: false}} = Store.health(store)
+          assert :ok = Sqlite3.execute(db, "DROP TRIGGER after_inventory_fault")
+        else
+          assert {:error, refusal} = observed
+
+          assert refusal in [
+                   :stale_schedule_admission,
+                   :profile_unqualified,
+                   :qualification_artifact_unavailable,
+                   :execution_basis_changed,
+                   :schedule_basis_changed
+                 ]
+
+          assert {:ok, %{state: :suspended, reason: "stale_schedule_admission"}} =
+                   Store.schedule_status(store, manager)
+
+          assert {:ok, %{disposition: :rejected, reason: "rule_generation_fenced"}} =
+                   Store.request_status(store, manager, 1, operation)
+
+          assert [[1, 1, 0]] =
+                   rows(
+                     db,
+                     "SELECT COUNT(*),SUM(affected_requests),SUM(unknown_outcomes) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                   )
+
+          assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(store)
+          assert :sys.get_state(store).claim_owners == %{}
+        end
+
+        spent = unquote(if phase in [:queue, :no_send], do: 0, else: 1)
+
+        assert [[^spent, 0, 0]] =
+                 rows(
+                   db,
+                   "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching'),(SELECT COUNT(*) FROM request_execution WHERE state='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+                 )
+
+        assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+        assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+        assert :ok = Sqlite3.close(db)
+        assert :ok = GenServer.stop(store)
+      end)
+    end
+  end
+
+  for {app, module} <- [
+        {:wotex_routines, Wotex.Routines.Civil},
+        {:ex_booking, ExBooking}
+      ],
+      sql_fault <- [false, true] do
+    @tag temporal_handed_runtime: true
+    test "#{app} closing drift after committed handoff #{if sql_fault, do: "rolls back failed withdrawal", else: "retains uncertainty and spend"}",
+         %{path: path} do
+      {store, manager, _thing, _owner, activation} = temporal_fixture(path, 90_000)
+      {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+      operation = original.occurrence_id
+
+      assert {:ok, {:ok, %{receipts: [%{disposition: :queued}]}}} =
+               temporal_advance_fixture(store, snapshot)
+
+      Code.ensure_loaded!(unquote(module))
+      runtime_file = :code.which(unquote(module)) |> List.to_string()
+
+      on_exit(fn ->
+        if File.exists?(runtime_file <> ".held"),
+          do: File.rename!(runtime_file <> ".held", runtime_file)
+      end)
+
+      clock = final_admission_clock(store, snapshot, runtime_file: runtime_file, loss_at: 2)
+      token = final_phase_token(store, :handoff, operation)
+
+      assert {:ok, %{disposition: :dispatching}} =
+               final_phase_call(store, :handoff, operation, token)
+
+      assert {:ok, before} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path)
+      [[generation_row]] = rows(db, "SELECT rowid FROM meta WHERE key='rule_generation'")
+      observer = self()
+
+      :sys.replace_state(store, fn state ->
+        :ok = Sqlite3.set_update_hook(state.db, observer)
+        state
+      end)
+
+      if unquote(sql_fault) do
+        assert :ok =
+                 Sqlite3.execute(
+                   db,
+                   "CREATE TRIGGER handed_runtime_fault BEFORE INSERT ON schedule_lifecycle_operations WHEN NEW.kind='withdraw' BEGIN SELECT RAISE(ABORT,'injected handed runtime fault'); END"
+                 )
+      end
+
+      assert :ok = GenServer.call(clock, {:reset, :runtime_bytes_changed})
+
+      result =
+        try do
+          Store.prepare_schedule_poll(store)
+        after
+          if File.exists?(runtime_file <> ".held"),
+            do: File.rename!(runtime_file <> ".held", runtime_file)
+        end
+
+      assert_receive {:update, "main", "meta", ^generation_row}, 1_000
+      assert :sys.get_state(store).schedule_poll == nil
+
+      if unquote(sql_fault) do
+        assert {:error, :store_unavailable} = result
+        assert {:ok, ^before} = Store.revision(store)
+
+        assert {:ok, %{disposition: :dispatching}} =
+                 Store.request_status(store, manager, 1, operation)
+
+        assert [[0]] =
+                 rows(
+                   db,
+                   "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+
+        assert {:ok, %{writable: false}} = Store.health(store)
+        assert :ok = Sqlite3.execute(db, "DROP TRIGGER handed_runtime_fault")
+      else
+        assert {:error, :schedule_basis_changed} = result
+
+        assert {:ok,
+                %{disposition: :outcome_unknown, reason: "rule_generation_fenced_after_handoff"}} =
+                 Store.request_status(store, manager, 1, operation)
+
+        assert [[1, 1, 1]] =
+                 rows(
+                   db,
+                   "SELECT COUNT(*),SUM(affected_requests),SUM(unknown_outcomes) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+
+        assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(store)
+        assert {:ok, %{state: :inactive}} = Store.prepare_schedule_poll(store)
+        assert {:ok, %{requests: []}} = Store.pending_scheduled_power(store)
+        assert :sys.get_state(store).schedule_poll == nil
+      end
+
+      assert [[1, 1, 1]] =
+               rows(
+                 db,
+                 "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching'),(SELECT COUNT(*) FROM schedule_considerations) FROM request_causal_roots WHERE origin='schedule_occurrence'"
+               )
+
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      assert :ok = Sqlite3.close(db)
+      assert :ok = GenServer.stop(store)
+    end
+  end
+
+  # Test-only fault insertion into a temporary loaded/file-matching BEAM.
+  # Store, SQL, admission and final guard code remain unchanged. No source or
+  # production hook is added; normal tests run the restored original artifact.
+  defp with_after_close_runtime_fixture(callback) do
+    source = Path.expand("../../lib/wotex_home/runtime_artifacts.ex", __DIR__)
+    marker = "        Process.put(@guard_key, {:closed, token, result})\n"
+
+    with_runtime_module_fixture(
+      WotexHome.RuntimeArtifacts,
+      source,
+      fn code ->
+        assert length(String.split(code, marker)) == 2
+        String.replace(code, marker, marker <> ~S|
+        if result == :ok do
+          case Process.delete({__MODULE__, :after_close_fixture}) do
+            nil -> :ok
+            path ->
+              original = File.read!(path)
+              {:ok, module, chunks} = :beam_lib.all_chunks(original)
+              {:ok, changed} = :beam_lib.build_module(chunks ++ [{~c"TEST", "after complete inventory closure"}])
+              {:ok, {^module, checksum}} = :beam_lib.md5(original)
+              {:ok, {^module, ^checksum}} = :beam_lib.md5(changed)
+              File.write!(path <> ".held", original)
+              File.write!(path, changed)
+          end
+        end
+|)
+      end,
+      fn _restore -> callback.() end
+    )
+  end
+
+  defp with_runtime_module_fixture(module, source, transform, callback) do
+    Code.ensure_loaded!(module)
+    artifact = :code.which(module) |> List.to_string()
+    original = File.read!(artifact)
+    options = Code.compiler_options()
+    previous = Process.put(:temporal_runtime_fixture_active, true)
+
+    restore = fn ->
+      File.write!(artifact, original)
+      {:module, ^module} = :code.load_binary(module, String.to_charlist(artifact), original)
+      :code.purge(module)
+      :ok
+    end
+
+    on_exit(fn ->
+      restore.()
+      Code.compiler_options(Map.to_list(options))
+    end)
+
+    try do
+      Code.compiler_options(ignore_module_conflict: true)
+      [{^module, bytes}] = Code.compile_string(transform.(File.read!(source)), source)
+      File.write!(artifact, bytes)
+      :code.purge(module)
+      Code.compiler_options(Map.to_list(options))
+      callback.(restore)
+    after
+      case Process.delete(:temporal_runtime_fixture_store) do
+        store when is_pid(store) -> if Process.alive?(store), do: GenServer.stop(store)
+        _ -> :ok
+      end
+
+      restore.()
+      Code.compiler_options(Map.to_list(options))
+
+      if previous == nil,
+        do: Process.delete(:temporal_runtime_fixture_active),
+        else: Process.put(:temporal_runtime_fixture_active, previous)
+    end
+  end
+
+  for {app, module} <- @temporal_runtime_members,
       loss <- [:opening, :closing],
       sql_fault <- [false, true] do
     @tag scheduled_preparation: true
@@ -9036,6 +9359,10 @@ defmodule WotexHome.DurableEnrollmentTest do
 
   defp attempt_fixture(path) do
     {:ok, initial} = Store.start_link(path: path)
+
+    if Process.get(:temporal_runtime_fixture_active),
+      do: Process.put(:temporal_runtime_fixture_store, initial)
+
     assert {:ok, owner, 1} = Store.provision_principal(initial, "owner:1", ["enroll:review"], [])
     {candidate, interview, profile, thing} = fixtures()
     assert {:ok, 2} = commit(initial, owner, [candidate], interview, [profile], thing, @selection)
@@ -9063,6 +9390,10 @@ defmodule WotexHome.DurableEnrollmentTest do
     :ok = GenServer.stop(initial)
     keys = insert_synthetic_qualification(path, 6, thing)
     {:ok, store} = Store.start_link([path: path] ++ keys)
+
+    if Process.get(:temporal_runtime_fixture_active),
+      do: Process.put(:temporal_runtime_fixture_store, store)
+
     {store, credential, thing}
   end
 
