@@ -1,6 +1,10 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.146. Status: accepted target.
+Version: 0.2.147. Status: accepted target.
+
+The [producer succession contract](mqtt-producer-cohort-v1.md) preserves native
+historical runtime revision syntax across controller/client upgrades. Current
+producer authority stays with the controller's exact installed code check.
 
 The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
 now defines fresh signed authorization after human review, unchanged first originals,

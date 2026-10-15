@@ -66,6 +66,11 @@ then requires complete equality to that actual assertion. Any well-formed old,
 future, unknown or substituted revision/inventory returns stale_profile_runtime;
 malformed representation returns invalid_profile_producer. Path-selected builds
 still return profile_runtime_source_unavailable for current construction/use.
+Native Swift producer decoders apply the same closed representation grammar,
+including any canonical lower-hex40 recorded revision. A client build does not
+relabel that revision or compare it to its own producer pin; controller-side
+current guards retain authority. Native live fixtures compare the returned
+revision to the actual Store export, not a compiled fixture constant.
 No historical assertion can install a current ReaderSelection or current
 AuthoringContract, renew a source/review lease or authorize a new report.
 
@@ -90,7 +95,7 @@ history witnesses, not physical source assertions or a full deployed DB upgrade.
 
 | Case | Requirements | Stimulus and falsifier | Level |
 | --- | --- | --- | --- |
-| MC-T1 | 02 | Predecessor literal producer/wire, EnvelopeSummary and retained source round-trip unchanged after the pin advances; malformed variants refuse. Rewriting identity/hash or producer lookup during historical decode fails. | Independent historical/software |
+| MC-T1 | 02 | Predecessor literal producer/wire, native decoding, EnvelopeSummary and retained source round-trip unchanged after the pin advances; malformed variants refuse. Rewriting identity/hash or producer lookup during historical decode fails. | Independent historical/software |
 | MC-T2 | 01/02 | Actual checked-out HEADs/lock tuples, current three-app inventories, old/future revision current refusal, path-build refusal; old current reader/contract construction refuses. Accepting a historical identity as current fails. | Locked source/runtime |
 | MC-T3 | 01 | Public exact JSON/JSONProjection vectors under Home's actual OTP lane, unchanged WPF/occurrence controls; release legal roots and committed Git staging include MQTT. Float conversion, endpoint install, changed unrelated lock tuple or missing legal/source input fails. | Consumer/software |
 | MC-T4 | 02 | Existing external original/outcome, installed Host and source/report/Store lifecycle regressions retain archived identities and fail-closed current guards. A new source, grant, renewed freshness or enabled dispatch from adoption fails. | Focused regression |

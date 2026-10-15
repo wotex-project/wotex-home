@@ -1,6 +1,6 @@
 # Selected-session native authoring contract reads
 
-Version: 0.1.4. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.5. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-T1/T2/T5, WOH.15 H15-T1 and WOH.18 H18-T13/T16.
 Implementation: bounded native decoder, immutable contract value and selected
 driver read implemented. Evidence: [executed peer/local scope and actual Store checks](../provenance/native-authoring-contract-2026-10.md).
@@ -35,8 +35,11 @@ wotex-home.authoring-contract@1 and consumption policy
 wotex-home.read-only-profile@1. Its three summary SHA fields (contract_sha256,
 contract_raw_sha256 and basis_sha256) are lower hex64.
 Producer has either the exact three archive fields or the exact tagged five
-runtime fields under installed-profile-runtime-v1; runtime revision must match
-that supported producer cohort. Home contract references are a proper sorted
+runtime fields under installed-profile-runtime-v1. The
+[producer succession contract](mqtt-producer-cohort-v1.md) requires canonical
+lower-hex40 revision syntax, preserving older recorded/controller revisions
+without comparing them to the client build. Current installed-code equality is
+a controller guard; native syntax acceptance creates no installation authority. Home contract references are a proper sorted
 unique list of at most 32 exact id/version/sha256 records, using the existing
 closed native external-reference grammar. No URL or named reference is fetched.
 Limits contain exactly reader and the four existing authoring limit fields;
