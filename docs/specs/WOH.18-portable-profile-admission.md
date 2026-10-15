@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.69. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.70. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
 now defines fresh signed authorization after human review, unchanged first originals,
@@ -13,8 +13,10 @@ The v2 workspace now has [executed custody/local-refusal
 evidence](../provenance/native-generation-workspace-v2-2026-10.md). The paired manual
 closed consumer and TLS upload-owner lifecycle now have [executed transport/Store
 and unsigned-refusal evidence](../provenance/native-paired-authoring-consumer-2026-10.md).
-Paired generation, selected authoring/panel composition and installed signed success
-remain planned; physical guards and current local evidence retain their scope.
+The [existing paired workspace purpose](native-paired-generation-workspace-session-v1.md)
+now has [executed transitions, raw TLS/Store and unsigned-refusal evidence](../provenance/native-paired-workspace-session-2026-10.md).
+First paired generation submission/recovery, selected authoring/panel composition
+and installed signed success remain planned; physical guards retain their scope.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)
 defines durable root/attempt workspace custody, explicit policy/consent/budget,

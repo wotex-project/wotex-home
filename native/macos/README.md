@@ -1292,3 +1292,26 @@ owner bound to its exact Store. Owner loss fences accepted sockets. Listener sto
 retires its owned uploads, leaves an external owner alive, and never replays durable
 originals. `mix test test/wotex_home/controller_listener_test.exs test/wotex_home/authoring_upload_test.exs`
 checks those lifetimes and the existing upload bounds.
+
+
+## Existing paired generation workspace operations
+
+The [workspace session contract](../../docs/specs/native-paired-generation-workspace-session-v1.md)
+now has an actual existing-only factory and fixed status, cancellation, pending
+restoration, generated-draft assessment and archival operations. The factory uses
+the original association, actual signed custody and its original five-second lease.
+It pins complete workspace/pending/association snapshots and retains the highest
+observed scope revision across exchanges and permitted intent continuations.
+No public metadata or raw-key fixture can construct its sealed publication.
+
+Run `mix woh.native.paired.workspace.smoke` for245 independent transitions,
+intent/pending guards, exact private-file and inode witnesses, scope drift,
+late publication and actual unsigned factory refusal before clock/network.
+`mix woh.native.paired.recovery.smoke` now also checks both quantity families over
+real pairing, pinned TLS and Store: running archival refusal, one gated synthetic
+provider call, generated owned draft to fresh manual assessment, cancellation
+intent before a dropped committed reply, status reconciliation, unchanged-original
+pending restoration, metadata archival and restart/revocation. Those raw adapter
+checks establish no successful installed signing or provider confinement. Source/
+fixture selector branches, first paired generation submission/recovery and selected
+presentation continue separately; see the [executed evidence](../../docs/provenance/native-paired-workspace-session-2026-10.md).
