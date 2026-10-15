@@ -23,6 +23,41 @@ defmodule WotexHome.Profiles.ExternalReportOwner do
   refuse further checkout; a missing ID is `:not_found`. Store retains ownership
   of authentication, current target/grant checks and durable observation commit.
 
+  `lifetime/3` is a five-second Store-only call: supply the expected report-owner
+  epoch as lowercase hex32 and the original Home report ID. The configured Store
+  PID is checked before lookup or clock disclosure. For an unexpired consumed
+  original, success is `{:ok, witness}`
+  with format `wotex-home.external-report-lifetime@1`, original source/report
+  identities and signed microsecond strings `"receipt_monotonic_us"` and
+  `"expires_at_us"`. The latter is the original receive coordinate plus the TTL
+  selected at publication, with an exclusive deadline. Reading it never renews
+  that lifetime or samples a replacement receive instant.
+
+  Lifetime use requires the same current source-owner incarnation and source
+  selection, with current monotonic time strictly before the retained deadline.
+  Missing IDs return `:not_found`; malformed scope returns
+  `{:error, :invalid_external_report_lease}` and a different valid owner epoch
+  returns `{:error, :external_report_owner_changed}`. Wrong callers return
+  `:external_report_store_denied`, pending/checked-out reports
+  `:external_report_not_consumed`, and invalid retained clock bounds
+  `:invalid_external_report_clock`, each wrapped as `{:error, reason}`.
+  Expiry, retired state or changed/unavailable source returns
+  `{:error, :external_report_retired}`. A stopped owner or call timeout retains
+  ordinary GenServer exit behavior; Store callers must handle it as unavailable,
+  without falling back to a current clock or TTL.
+
+  Consumption drops the report body, canonical document and checkout monitor,
+  retaining only the original clock pair alongside its bounded consumed summary.
+  The pair does not appear in `status/2`, `catalogue/1` or publication replay.
+  Exact consumed `finish/2` and publication replay remain idempotent even after
+  the lifetime expires; neither restores a body or extends its deadline. A
+  checked-out report may also be consumed after a definite refused or failed
+  observation attempt. A consumed lifetime witness therefore does not prove that
+  any durable observation row committed. A later Store collector must separately
+  match the actual retained observation original and current observation pointer,
+  then repeat current custody and authority checks. The witness establishes no
+  source qualification, current Fact or grant.
+
   Each report document is bounded to 65,536 bytes. `:report_limit` defaults to
   128 active reports and allows at most 256; `:max_bytes` defaults to its ceiling
   of 4,194,304 active document bytes. `:ttl_ms` defaults to 60,000 and is
@@ -66,6 +101,13 @@ defmodule WotexHome.Profiles.ExternalReportOwner do
 
   @doc "Returns the explicit host receipt-clock epoch and canonical current microseconds."
   def receipt_clock(server), do: GenServer.call(server, :clock, 5000)
+
+  @doc "Reads an unexpired consumed original's clock pair for the configured Store, without renewing it."
+  @spec lifetime(GenServer.server(), term(), term()) ::
+          {:ok, map()} | {:error, atom()} | :not_found
+  def lifetime(server, expected_owner_epoch, report_id),
+    do: GenServer.call(server, {:lifetime, expected_owner_epoch, report_id}, 5000)
+
   @doc "Buffers a publisher's exact decoded report, without interpreting or admitting it."
   def publish(server, id, source, source_sha, report),
     do: GenServer.call(server, {:publish, id, source, source_sha, report}, 5000)
@@ -120,6 +162,37 @@ defmodule WotexHome.Profiles.ExternalReportOwner do
     state = reconcile(state)
     result = if Id.valid?(id), do: lookup(state, id), else: invalid_lease()
     {:reply, result, state}
+  end
+
+  def handle_call({:lifetime, epoch, id}, {caller, _}, state) do
+    with :ok <- store(state, caller), :ok <- lifetime_identity(epoch, id, state.owner_epoch) do
+      catalogue = sources(state)
+      state = reconcile(state, catalogue)
+
+      result =
+        with {:ok, e} <- entry(state, id),
+             {:ok, received, deadline} <- consumed_lifetime(e),
+             true <- current_source?(catalogue, e.summary) and now() < deadline do
+          {:ok,
+           e.summary
+           |> Map.take(
+             ~w(owner_epoch report_id source_owner_epoch source_ref source_selection_sha256
+             channel_id source_epoch sequence report_sha256 state)
+           )
+           |> Map.merge(%{
+             "format" => "wotex-home.external-report-lifetime@1",
+             "receipt_monotonic_us" => Integer.to_string(received),
+             "expires_at_us" => Integer.to_string(deadline)
+           })}
+        else
+          false -> retired()
+          error -> error
+        end
+
+      {:reply, result, state}
+    else
+      error -> {:reply, error, state}
+    end
   end
 
   def handle_call({:publish, id, source, sha, report}, {caller, _}, state)
@@ -288,6 +361,7 @@ defmodule WotexHome.Profiles.ExternalReportOwner do
         document: document,
         received: received,
         deadline: received + state.ttl,
+        lifetime: nil,
         caller: nil,
         monitor: nil
       }
@@ -402,9 +476,9 @@ defmodule WotexHome.Profiles.ExternalReportOwner do
         else: {:error, :invalid_external_transport_report}
   end
 
-  defp reconcile(state) do
-    catalogue = sources(state)
+  defp reconcile(state), do: reconcile(state, sources(state))
 
+  defp reconcile(state, catalogue) do
     Enum.reduce(state.entries, state, fn {id, e}, acc ->
       if e.state in @active do
         cond do
@@ -447,10 +521,36 @@ defmodule WotexHome.Profiles.ExternalReportOwner do
         document: nil,
         received: nil,
         deadline: nil,
+        lifetime: if(status == :consumed, do: {e.received, e.deadline}),
         caller: nil,
         monitor: nil
     })
   end
+
+  defp lifetime_identity(epoch, id, current) do
+    cond do
+      not epoch?(epoch) or not Id.valid?(id) -> invalid_lease()
+      epoch != current -> {:error, :external_report_owner_changed}
+      true -> :ok
+    end
+  end
+
+  defp consumed_lifetime(%{state: :consumed, lifetime: {received, deadline}})
+       when is_integer(received) and is_integer(deadline) do
+    duration = deadline - received
+
+    if received in @minimum..@maximum and deadline in @minimum..@maximum and
+         duration in 100_000..60_000_000 and rem(duration, 1000) == 0,
+       do: {:ok, received, deadline},
+       else: {:error, :invalid_external_report_clock}
+  end
+
+  defp consumed_lifetime(%{state: :consumed}), do: {:error, :invalid_external_report_clock}
+
+  defp consumed_lifetime(%{state: status}) when status in @active,
+    do: {:error, :external_report_not_consumed}
+
+  defp consumed_lifetime(_), do: retired()
 
   defp entry(state, id) do
     cond do

@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.98. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.99. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 The [private MQTT installation](private-mqtt-installation-v1.md) supplies
 ordinary Host composition from explicit local source/capture/policy plus separate
@@ -697,6 +697,6 @@ actual old-writer/radio-counter isolation remain separate requirements.
 The [lifetime witness contract](external-report-lifetime-v1.md) preserves the
 original report-owner receive/deadline pair for a Store-only current read after
 consumption. It is a bounded transient successor with no durable encoding change;
-its implementation is planned. A future routine collector must retain narrower
+its native software implementation is complete. A future routine collector must retain narrower
 original owner lifetime as well as declaration/Mapping freshness. Read approval,
 a live witness and generic Mapping construction do not qualify an external input.

@@ -1,6 +1,6 @@
 # Bounded custody for external transport receipts
 
-Version: 0.1.3. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-04/05/08, H18-T3/T4/T8/T11/T12; WOH.03 H03-T3/T5.
 Implementation: bounded publisher/Store custody process and schema 35
 [durable observation integration](external-observations-v1.md) implemented.
@@ -120,8 +120,9 @@ retires even checked-out bodies. Detected source replacement invalidates matchin
 active receipts on the next owner call/timer; it cannot leave a valid old guard.
 Retirement drops body/document/active clock fields/PID/monitor and keeps the safe
 original. The accepted [consumed lifetime successor](external-report-lifetime-v1.md)
-adds a separate private original clock pair for consumed entries only; its API
-and evidence remain planned until implemented.
+adds a separate private original clock pair for consumed entries only. Its
+Store-only lifetime API and bounded native software evidence are implemented;
+consumption does not itself prove a durable observation commit.
 No retired original can become pending through replay. Process restart restores
 nothing and changes epoch; old report IDs/guards do not become current authority.
 

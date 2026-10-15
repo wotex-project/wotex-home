@@ -20,7 +20,10 @@ defmodule HomeReportOwnerArchiveTest do
   }
 
   @receiver __MODULE__.Receiver
-  defp fixture(name), do: JSON.decode!(File.read!("fixtures/" <> name <> ".json"))
+  defp fixture(name) do
+    root = System.get_env("HOME_REPORT_OWNER_FIXTURES", "fixtures")
+    JSON.decode!(File.read!(Path.join(root, name <> ".json")))
+  end
 
   defp value(family, changes \\ %{}) do
     i = fixture("external-source-selections")[family]["inputs"]
@@ -103,6 +106,14 @@ defmodule HomeReportOwnerArchiveTest do
 
       assert guard == borrowed.guard
       assert :ok = run(c, fn -> ExternalReportOwner.finish(c.owner, "packet:1") end)
+
+      assert {:ok, lifetime} =
+               run(c, fn ->
+                 ExternalReportOwner.lifetime(c.owner, receipt["owner_epoch"], "packet:1")
+               end)
+
+      assert lifetime["receipt_monotonic_us"] == r["receipt_time"]["monotonic_us"]
+      assert lifetime["report_sha256"] == receipt["report_sha256"]
       assert :ok = run(c, fn -> ExternalReportOwner.finish(c.owner, "packet:1") end)
       assert {:ok, %{"state" => "consumed"}} = publish(c, "packet:1", r)
 
@@ -318,6 +329,13 @@ defmodule HomeReportOwnerArchiveTest do
       assert {:ok, _} = run(c, fn -> ExternalReportOwner.checkout(c.owner, "packet:1") end)
       assert :ok = run(c, fn -> ExternalReportOwner.finish(c.owner, "packet:1") end)
 
+      assert {:ok, lifetime} =
+               run(c, fn ->
+                 ExternalReportOwner.lifetime(c.owner, first["owner_epoch"], "packet:1")
+               end)
+
+      assert lifetime["report_sha256"] == first["report_sha256"]
+
       assert {:error, :profiles_producer_unavailable} =
                publish(c, "packet:2", Map.put(r, "sequence", "8"))
     after
@@ -383,5 +401,18 @@ defmodule HomeReportOwnerArchiveTest do
     assert {:ok, borrowed} = run(c, fn -> ExternalReportOwner.checkout(c.owner, "maximum") end)
     assert borrowed.report["continuity"] == "unknown"
     assert borrowed.report["sequence"] == "18446744073709551615"
+    assert :ok = run(c, fn -> ExternalReportOwner.finish(c.owner, "maximum") end)
+    epoch = r["receipt_time"]["epoch"]
+
+    assert {:ok, %{"sequence" => "18446744073709551615"}} =
+             run(c, fn -> ExternalReportOwner.lifetime(c.owner, epoch, "maximum") end)
+
+    for id <- ~w(null:1 null:2) do
+      assert {:ok, _} = run(c, fn -> ExternalReportOwner.checkout(c.owner, id) end)
+      assert :ok = run(c, fn -> ExternalReportOwner.finish(c.owner, id) end)
+
+      assert {:ok, %{"sequence" => nil}} =
+               run(c, fn -> ExternalReportOwner.lifetime(c.owner, epoch, id) end)
+    end
   end
 end

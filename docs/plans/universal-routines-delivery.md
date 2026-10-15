@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.10. Updated: 2026-10-15. Accepted build order; implementation and
+Version: 0.1.11. Updated: 2026-10-15. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -285,11 +285,13 @@ admission remain open.
 ## Current external input prerequisites
 
 Source review at aa8ec898 found two explicit missing owners: qualified external
-Mapping installation and the original consumed report lifetime. Implement the
-[Store-only lifetime witness](../specs/external-report-lifetime-v1.md) first,
-following its committed closed schema and independent signed/exclusive-deadline
-vectors. Keep original publication/consumption receipts and the existing quotas.
-Then specify reviewed current Mapping installation and atomic complete current
-collection, including actor/grant/semantic/source qualification, Store boot,
+Mapping installation and the original consumed report lifetime. The
+[Store-only lifetime witness](../specs/external-report-lifetime-v1.md) is now
+implemented after its committed schema and independent signed/exclusive-deadline
+vectors. Its 29 focused cases and 16 existing custody cases pass; original
+publication/consumption receipts and quotas are preserved. Consumed custody
+does not prove an observation committed. Next specify reviewed current Mapping
+installation and atomic complete current collection, including actor/grant/
+semantic/source qualification, Store boot,
 rebuild/revision/current-final guards and baseline continuity. Do not promote
 ordinary profile approval or fabricate an owner deadline from current defaults.

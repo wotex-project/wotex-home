@@ -1,9 +1,11 @@
 # Consumed external report lifetime witnesses
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18-04/05/08 and H18-T3/T4/T8; WOH.20 H20-04/06, H20-T1/T3.
-Implementation: planned. Evidence: source review and independent entry vectors;
-no native lifetime API or current routine collection evidence yet.
+Implementation: native lifetime API implemented; RL-T1–T5 have bounded software
+evidence. Evidence: 29 focused native/schema/regression cases and 16 existing
+custody cases; [commands and limits](../provenance/external-report-lifetime-2026-10.md).
+Current routine collection and physical qualification remain separate.
 
 ## Purpose and boundary
 
@@ -40,7 +42,10 @@ report_id is a Home ID. Reject malformed input as invalid_external_report_lease;
 a valid different owner epoch returns external_report_owner_changed before lookup.
 A missing ID under the matching owner returns not_found.
 
-Only an exactly consumed original can produce a witness. Pending or checked_out
+Only an exactly consumed original can produce a witness. Consumption finishes
+a definite checkout attempt, including a refused observation attempt; it does
+not prove that a durable observation row committed. The collector must match
+that retained original and current pointer independently. Pending or checked_out
 returns external_report_not_consumed; expired, invalidated or cancelled returns
 external_report_retired. Require the source owner's current incarnation and
 published selection SHA to match the original summary, and current monotonic
@@ -152,3 +157,11 @@ production has no injectable clock, alternate publisher or fixture branch.
 Entry/schema evidence alone does not satisfy these cases. Record exact source,
 toolchain, commands, actual results and artifact cleanup. Software tests and
 signed clock fixtures do not qualify a source, physical device or installed host.
+
+The bounded native milestone matches all three complete frozen witnesses and
+nine before/equal/after boundary probes in an isolated actual owner. Actual source
+replacement/loss, configured Store incarnation, producer absence, body release,
+closed scope and malformed private clock bounds refuse or preserve their exact
+required result. Existing custody count/byte/1024 and failure cases pass. These
+are native software checks; no extracted-archive renewal, current Store collector,
+installed host or physical qualification is claimed by this checkpoint.
