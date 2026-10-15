@@ -1521,3 +1521,21 @@ register a service, send a mutation or qualify physical hardware. They establish
 SDK inputs for subsequent guided controls; signed paired and installed delivery
 remain separate obligations. [Executed evidence](../../docs/provenance/native-external-guidance-2026-10.md)
 records the exact source, fixtures and remaining gates.
+
+## External-profile decision builders
+
+The [pure builders](../../docs/specs/native-external-profile-builders-v1.md)
+construct inspection, trust approval/withdrawal and target selection/withdrawal
+originals from explicit operation IDs, checked object references and authenticated
+comparison snapshots. They preserve exact canonical input bytes and grant no
+permission. The current selected panel still uses complete files; guided driver
+and form composition follow this construction layer.
+
+Run `mix woh.native.external.builders.smoke` for independent Python expectations,
+Elixir codec correspondence, native integer boundaries and strict object-reference
+checks. Add `--live` to consume all five decisions through actual Store for both
+quantity families. Native construction receives no socket or credential; it leaves
+Store revisions and private leases unchanged. The fixture then submits through
+Authority and verifies exact original receipts, including metadata-only withdrawals
+after reader/source/custody loss. No installed signing or physical qualification
+is established by these software checks.

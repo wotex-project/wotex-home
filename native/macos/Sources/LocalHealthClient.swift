@@ -2056,7 +2056,11 @@ struct HomeProfileCollection: Sendable {
 }
 
 extension LocalHealthClient {
-    static func profileInteger(_ value: Any?) -> Int? { wireInteger(value) }
+    static func profileInteger(_ value: Any?) -> Int? {
+        // Typed DTO counters are Int64; JSON NSNumber validation stays unchanged.
+        if let value, type(of: value) == Int64.self, let signed = value as? Int64 { return Int(exactly: signed) }
+        return wireInteger(value)
+    }
     static func profileID(_ value: String) -> Bool { validID(value) }
     static func profileDigest(_ value: String) -> Bool {
         value.utf8.count == 64 && value.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }

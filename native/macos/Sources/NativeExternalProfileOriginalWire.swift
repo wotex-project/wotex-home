@@ -21,7 +21,35 @@ struct HomeExternalProfileOriginal: Sendable, Equatable, CustomReflectable {
     }
 }
 
+struct NativeExternalProfileObjects: Sendable, Equatable, CustomReflectable {
+    let canonical: Data
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+    fileprivate init(canonical: Data) { self.canonical = canonical }
+    static func checked(_ fields: [String: Any]) throws -> Self { try NativeExternalProfileOriginalWire.encodeObjects(fields) }
+    static func decode(_ bytes: Data) throws -> Self { try NativeExternalProfileOriginalWire.decodeObjects(bytes) }
+    func fields() throws -> [String: Any] { try NativeExternalProfileOriginalWire.objectFields(canonical) }
+}
+
 enum NativeExternalProfileOriginalWire {
+    fileprivate static func encodeObjects(_ fields: [String: Any]) throws -> NativeExternalProfileObjects {
+        let bytes = try JSONSerialization.data(withJSONObject: objects(fields), options: .withoutEscapingSlashes)
+        guard bytes.count <= 16384 else { throw LocalHealthError.invalidProfileRequest }
+        return NativeExternalProfileObjects(canonical: bytes)
+    }
+    fileprivate static func decodeObjects(_ bytes: Data) throws -> NativeExternalProfileObjects {
+        let fields = try objectFields(bytes)
+        return try encodeObjects(fields)
+    }
+    fileprivate static func objectFields(_ bytes: Data) throws -> [String: Any] {
+        do {
+            guard (1...16384).contains(bytes.count) else { throw LocalHealthError.invalidProfileRequest }
+            var parser = ExternalOriginalPreflight(bytes: Array(bytes), objects: false); try parser.check()
+            guard let values = try JSONSerialization.jsonObject(with: bytes) as? [Any] else { throw LocalHealthError.invalidProfileRequest }
+            let fields = try nativeObjects(values), checked = try encodeObjects(fields)
+            guard checked.canonical == bytes else { throw LocalHealthError.invalidProfileRequest }
+            return fields
+        } catch { throw LocalHealthError.invalidProfileRequest }
+    }
     private static let inspectionKeys = ["authority_epoch", "operation_id", "expected_revision", "inspection"]
     private static let trustKeys = ["authority_epoch", "operation_id", "expected_revision", "action", "artifact_digest", "expected_trust_revision", "expected_policy_generation", "inspection_ref", "acknowledgement"]
     private static let targetKeys = ["authority_epoch", "operation_id", "expected_revision", "action", "target_id", "artifact_digest", "expected_trust_revision", "expected_policy_generation", "expected_selection_revision", "expected_resource_revision", "source_ref", "source_owner_epoch", "source_selection_sha256", "objects", "acknowledgement"]
