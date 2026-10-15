@@ -177,11 +177,41 @@ struct NativePairedWorkspaceSmoke {
             try refused { _ = try NativePairedWorkspaceCorrespondence.association(entry, action: action, workspace: workspace, pending: pending, associations: associations) }
         }
         try require(try NativePairedWorkspaceCorrespondence.association(entry, action: .status, workspace: workspace, pending: pending, associations: associations) == association)
+        try NativePairedGenerationOriginalCorrespondence.check(pendingOriginal, workspace: workspace)
+        let oldRoot = NativePendingEntry(context: entry.context, custody: entry.custody, input: .generation(entry.preparation), phase: .pending)
+        try refused { try NativePairedGenerationOriginalCorrespondence.check(oldRoot, workspace: workspace) }
+        var edited = try entry.attempts.last!.fields()
+        edited["expected_revision"] = Int(entry.attempts.last!.expectedRevision) + 1
+        let changedOriginal = try NativeGenerationOriginalWire.encode(edited, kind: .attempt)
+        let substituted = NativePendingEntry(context: entry.context, custody: entry.custody, input: .generation(changedOriginal), phase: .pending)
+        try refused { try NativePairedGenerationOriginalCorrespondence.check(substituted, workspace: workspace) }
+        for action in [NativePendingRecoveryAction.lookup, .retry, .acknowledgeUnknown, .acknowledgeAbsent] {
+            let clock = WorkspaceClockProbe()
+            do {
+                _ = try await NativePairedControllerSession.recovering(pendingOriginal, action: action, pending: pending,
+                    associations: associations, workspace: action == .retry ? workspace : nil, clock: clock.clock)
+                throw WorkspaceSessionSmokeError.failed(#line)
+            } catch NativePairedSessionError.custody(.denied) {}
+            try require(clock.calls == 0)
+        }
+        let noWorkspaceClock = WorkspaceClockProbe()
+        do {
+            _ = try await NativePairedControllerSession.recovering(pendingOriginal, action: .retry, pending: pending,
+                associations: associations, clock: noWorkspaceClock.clock)
+            throw WorkspaceSessionSmokeError.failed(#line)
+        } catch NativePendingError.conflict {}
+        try require(noWorkspaceClock.calls == 0)
+        try refused { try NativePairedGenerationOriginalCorrespondence.check(pendingOriginal, workspace: .empty) }
+        let intent = try entry.cancellation(true)
+        let intended = try NativeGenerationWorkspaceStorage.replacing(entry, with: intent, directory: directory, expected: workspace)
+        try refused { try NativePairedGenerationOriginalCorrespondence.check(pendingOriginal, workspace: intended) }
+        let restoredWorkspace = try NativeGenerationWorkspaceStorage.replacing(intent, with: entry, directory: directory, expected: intended)
+        try NativePairedGenerationOriginalCorrespondence.check(pendingOriginal, workspace: restoredWorkspace)
         let missing = NativePairedWorkspaceRead(root: nil, attempt: nil, identity: HomeControllerIdentity(deploymentID: c.deployment,
             ownerID: c.owner, authorityEpoch: Int(c.epoch), revision: 1, principalID: c.principal))
         try refused { try NativePairedWorkspaceCorrespondence.permitsArchive(entry, read: missing, acceptUncertainty: false) }
         try NativePairedWorkspaceCorrespondence.permitsArchive(entry, read: missing, acceptUncertainty: true)
-        try NativeGenerationWorkspaceStorage.check(workspace, directory: directory)
+        try NativeGenerationWorkspaceStorage.check(restoredWorkspace, directory: directory)
         try scopeGuards(entry, association: association)
         try await latePublication(entry, root: root)
     }

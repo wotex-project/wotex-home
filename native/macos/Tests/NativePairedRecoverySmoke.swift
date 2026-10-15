@@ -36,7 +36,7 @@ private final class AuthoringTransportProbe: NativeDomainTransport, @unchecked S
     }
     func request(body: Data, allowNotFound: Bool) throws -> Data {
         let request = try JSONSerialization.jsonObject(with: body) as! [String: Any]
-        let mutation = ["authoring_object_import", "authoring_candidate_assess", "authoring_candidate_review"].contains(request["operation"] as! String)
+        let mutation = ["authoring_object_import", "authoring_candidate_assess", "authoring_candidate_review", "authoring_generation_prepare", "authoring_generation_start"].contains(request["operation"] as! String)
         if mutation { lock.lock(); mutationCount += 1; lock.unlock() }
         let response = try base.request(body: body, allowNotFound: allowNotFound)
         if mutation && dropCommitted {
@@ -184,6 +184,7 @@ struct NativePairedRecoverySmoke {
         try await unavailableAuthoring(original, associations: NativeControllerAssociationStorage.load(directory: directory), root: root)
     }
 
+    @MainActor
     private static func unavailableAuthoring(_ association: NativeControllerPublicAssociation,
                                              associations: NativeControllerAssociationSnapshot, root: URL) async throws {
         let candidate = try dictionary("test/fixtures/profiles/authoring-candidate.json")
@@ -206,7 +207,7 @@ struct NativePairedRecoverySmoke {
             let pending = try NativePendingStorage.retaining(entry, directory: directory, expected: .empty)
             try require(pending.document.version == .v8)
             for action in [NativePendingRecoveryAction.lookup, .retry, .cancelReview, .acknowledgeUnknown, .acknowledgeAbsent] {
-                try require(action.permits(entry) == (input.category == .authoring && (action == .lookup || action == .retry)))
+                try require(action.permits(entry) == (action == .lookup || action == .retry || (input.category == .generation && action == .acknowledgeAbsent)))
                 let clock = RecoveryClockProbe()
                 do { _ = try await NativePairedControllerSession.recovering(entry, action: action, pending: pending, associations: associations, clock: clock.clock); throw PairedRecoverySmokeError.failed(#line) }
                 catch NativePendingError.conflict {}
@@ -240,6 +241,28 @@ struct NativePairedRecoverySmoke {
                 associations: publicAssociations, clock: clock.clock); throw PairedRecoverySmokeError.failed(#line) }
             catch NativePairedSessionError.custody(.denied) {}
             try require(clock.calls == 0 && NativePendingStorage.load(directory: directory) == pending)
+        }
+        guard case .generation(let generationOriginal) = inputs[1] else { throw PairedRecoverySmokeError.failed(#line) }
+        let generationDirectory = root.appendingPathComponent("approved-generation", isDirectory: true)
+        try makeDirectory(generationDirectory)
+        let workspaceEntry = try NativeGenerationWorkspaceEntry(context: c, custody: .paired(from: profileAssociation),
+            basisSHA: String(repeating: "a", count: 64), preparation: generationOriginal, attempts: [], cancellationPending: false).checked()
+        let workspace = try NativeGenerationWorkspaceStorage.retaining(workspaceEntry, directory: generationDirectory, expected: .empty)
+        let generationEntry = NativePendingEntry(context: c, custody: workspaceEntry.custody, input: .generation(generationOriginal), phase: .pending)
+        _ = try NativePendingStorage.retaining(generationEntry, directory: generationDirectory, expected: .empty)
+        let generationAssociations = try NativeControllerAssociationStorage.retaining(profileAssociation, directory: generationDirectory, expected: .empty)
+        let persistence = NativePendingPersistence(directory: generationDirectory)
+        try require(try persistence.loadWorkspace() == workspace)
+        let generationProbe = RecoveryClockProbe()
+        let journal = NativePendingCoordinator(persistence: persistence,
+            capture: { _ = try generationProbe.clock(); throw PairedRecoverySmokeError.failed(#line) }, socketPath: { "/fixture/no-local-fallback.sock" })
+        var resolutions = 0
+        journal.didResolve = { _ in resolutions += 1 }
+        await journal.loadIfNeeded()
+        for action in [NativePendingRecoveryAction.lookup, .retry, .acknowledgeAbsent] {
+            await journal.reload()
+            await journal.recoverPaired(generationEntry, action: action, associations: generationAssociations, clock: generationProbe.clock)
+            try require(journal.needsReload && !journal.busy && journal.entries == [generationEntry] && resolutions == 0 && generationProbe.calls == 0)
         }
     }
 
@@ -690,7 +713,7 @@ struct NativePairedRecoverySmoke {
                     "revision": Int(assessed.revision), "input_sha256": assessed.inputSHA!, "assessment_sha256": assessed.resultSHA!],
                     "evidence": [], "unresolved_paths": ["/profile/binding"], "envelope_ref": NSNull()]], kind: .review)
             _ = try await stage("source review") { try await submit(review, bytes: nil) }
-        } else if mode.hasPrefix("authoring-workspace") {
+        } else if mode.hasPrefix("authoring-workspace") || mode.hasPrefix("authoring-generation") {
             try await stage("paired workspace transport") {
                 try await workspaceTransport(mode: mode, directory: directory, association: association, key: key, clock: clock)
             }
@@ -715,11 +738,12 @@ struct NativePairedRecoverySmoke {
     private static func workspaceTransport(mode: String, directory: URL, association: NativeControllerPublicAssociation,
                                            key: Data, clock: @escaping @Sendable () throws -> NativeControllerCertificateClock) async throws {
         let associations = try NativeControllerAssociationStorage.load(directory: directory)
-        func remote<Value: Sendable>(_ operation: @escaping @Sendable () throws -> Value) async throws -> Value {
-            let workspace = try NativeGenerationWorkspaceStorage.load(directory: directory), pending = try NativePendingStorage.load(directory: directory)
+        func remote<Value: Sendable>(checkingWorkspace: Bool = true, _ operation: @escaping @Sendable () throws -> Value) async throws -> Value {
+            let workspace = checkingWorkspace ? try NativeGenerationWorkspaceStorage.load(directory: directory) : nil
+            let pending = try NativePendingStorage.load(directory: directory)
             let check = NativeControllerExchangeGuard { _ in
                 try NativeControllerAssociationStorage.check(associations, directory: directory)
-                try NativeGenerationWorkspaceStorage.check(workspace, directory: directory)
+                if let workspace { try NativeGenerationWorkspaceStorage.check(workspace, directory: directory) }
                 try NativePendingStorage.check(pending, directory: directory)
             }
             return try await NativeControllerDomainClient.perform(association.peer, credential: key, clock: clock,
@@ -735,10 +759,77 @@ struct NativePairedRecoverySmoke {
             try NativePairedCaptureCorrespondence.publication(of: entry, before: before, after: after)
             return entry
         }
+        func executeGeneration(_ entry: NativePendingEntry, _ action: NativePendingRecoveryAction,
+                               dropCommitted: Bool = false) async throws -> NativePendingRecoveryOutcome {
+            let workspace = action == .retry ? try NativeGenerationWorkspaceStorage.load(directory: directory) : nil
+            return try await remote(checkingWorkspace: action == .retry) {
+                guard let base = NativeDomainTransportScope.current else { throw PairedRecoverySmokeError.failed(#line) }
+                let probe = AuthoringTransportProbe(base: base, dropCommitted: dropCommitted)
+                do {
+                    let result = try NativeDomainTransportScope.$current.withValue(probe) {
+                        try NativePendingRecoveryOperations.executePaired(entry, association: association, credential: key, action: action, workspace: workspace)
+                    }
+                    try require(probe.observation.mutations == 0)
+                    return result
+                } catch {
+                    if dropCommitted {
+                        try require(probe.observation.dropped && probe.observation.mutations == 1)
+                        throw PairedRecoverySmokeError.droppedReply
+                    }
+                    throw error
+                }
+            }
+        }
         func resolve(_ entry: NativePendingEntry) throws {
             let before = try NativePendingStorage.load(directory: directory)
             let after = try NativePendingStorage.resolving(entry, directory: directory, expected: before)
             _ = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: .resolved("checked raw fixture status"), before: before, after: after)
+        }
+        if mode == "authoring-generation-revoked" {
+            let pending = try NativePendingStorage.load(directory: directory)
+            guard let entry = pending.document.entries.first, entry.category == .generation else { throw PairedRecoverySmokeError.failed(#line) }
+            do { _ = try await executeGeneration(entry, .lookup); throw PairedRecoverySmokeError.failed(#line) }
+            catch LocalHealthError.server("unauthorized") {}
+            try NativePendingStorage.check(pending, directory: directory)
+            return
+        }
+        if mode == "authoring-generation-restart-check" {
+            let workspace = try NativeGenerationWorkspaceStorage.load(directory: directory)
+            let pending = try NativePendingStorage.load(directory: directory)
+            guard let entry = workspace.document.entries.first, let original = pending.document.entries.first,
+                  original.input == .generation(entry.attempts.last!) else { throw PairedRecoverySmokeError.failed(#line) }
+            let status = try await read(entry)
+            try require(status.root?.state == "retired" && status.attempt?.state == "unknown" && status.attempt?.result == nil)
+            for action in [NativePendingRecoveryAction.lookup, .retry, .acknowledgeAbsent] {
+                guard case .retained = try await executeGeneration(original, action) else { throw PairedRecoverySmokeError.failed(#line) }
+            }
+            let path = directory.appendingPathComponent("native-generation-workspace-v1.json")
+            try require(chmod(path.path, 0o644) == 0)
+            do { _ = try await executeGeneration(original, .retry); throw PairedRecoverySmokeError.failed(#line) }
+            catch is NativePendingError {}
+            guard case .retained = try await executeGeneration(original, .lookup) else { throw PairedRecoverySmokeError.failed(#line) }
+            guard case .resolved(let detail) = try await executeGeneration(original, .acknowledgeUnknown), detail.contains("Unknown generation outcome") else { throw PairedRecoverySmokeError.failed(#line) }
+            try resolve(original)
+            try require(try NativePendingStorage.load(directory: directory).document.entries.isEmpty)
+            // Both kinds retain missing on lookup; only confirmed absence clears.
+            for source in [entry.preparation, entry.attempts.last!] {
+                var fields = try source.fields()
+                fields["operation_id"] = "generation:missing-" + source.kind.rawValue
+                let missing = try NativeGenerationOriginalWire.encode(fields, kind: source.kind)
+                let row = try retainPending(missing)
+                guard case .retained = try await executeGeneration(row, .lookup) else { throw PairedRecoverySmokeError.failed(#line) }
+                if source.kind == .attempt {
+                    guard case .retained = try await executeGeneration(row, .acknowledgeUnknown) else { throw PairedRecoverySmokeError.failed(#line) }
+                }
+                guard case .resolved(let detail) = try await executeGeneration(row, .acknowledgeAbsent), detail.contains("Missing generation original") else { throw PairedRecoverySmokeError.failed(#line) }
+                try resolve(row)
+            }
+            try require(chmod(path.path, 0o600) == 0)
+            let after = try await remote { try LocalHealthClient.fetchControllerIdentity(socketPath: "", credential: key) }
+            try require(after.revision == status.identity.revision)
+            // Explicit fixture-only re-retention checks revoked original recovery.
+            _ = try NativePendingStorage.retaining(original, directory: directory, expected: NativePendingStorage.load(directory: directory))
+            return
         }
         if mode == "authoring-workspace-revoked" {
             let workspace = try NativeGenerationWorkspaceStorage.load(directory: directory)
@@ -770,7 +861,9 @@ struct NativePairedRecoverySmoke {
             preparation: preparation, attempts: [], cancellationPending: false).checked()
         var workspace = try NativeGenerationWorkspaceStorage.retaining(entry, directory: directory, expected: .empty)
         let rootPending = try retainPending(preparation)
-        _ = try await remote { try NativeGenerationClient.submit(socketPath: "", credential: key, original: preparation) }
+        do { _ = try await executeGeneration(rootPending, .retry, dropCommitted: true); throw PairedRecoverySmokeError.failed(#line) }
+        catch PairedRecoverySmokeError.droppedReply {}
+        guard case .resolved = try await executeGeneration(rootPending, .retry) else { throw PairedRecoverySmokeError.failed(#line) }
         let prepared = try await read(entry)
         try require(prepared.root?.state == "prepared")
         try resolve(rootPending)
@@ -780,10 +873,18 @@ struct NativePairedRecoverySmoke {
         let appended = try entry.appending(attempt)
         workspace = try NativeGenerationWorkspaceStorage.replacing(entry, with: appended, directory: directory, expected: workspace); entry = appended
         let attemptPending = try retainPending(attempt)
-        _ = try await remote { try NativeGenerationClient.submit(socketPath: "", credential: key, original: attempt) }
+        do { _ = try await executeGeneration(attemptPending, .retry, dropCommitted: true); throw PairedRecoverySmokeError.failed(#line) }
+        catch PairedRecoverySmokeError.droppedReply {}
+        for action in [NativePendingRecoveryAction.lookup, .retry, .acknowledgeAbsent, .acknowledgeUnknown] {
+            guard case .retained = try await executeGeneration(attemptPending, action) else { throw PairedRecoverySmokeError.failed(#line) }
+        }
         var status = try await read(entry)
         try require(status.attempt?.state == "running")
         try refused { try NativePairedWorkspaceCorrespondence.permitsArchive(entry, read: status, acceptUncertainty: true) }
+        if mode == "authoring-generation-restart-seed" {
+            try NativePendingStorage.check(NativePendingStorage.load(directory: directory), directory: directory)
+            return
+        }
         try write(directory.appendingPathComponent("model-release"), Data("release".utf8))
         for _ in 0..<30 where status.attempt?.result == nil {
             try await Task.sleep(for: .milliseconds(50)); status = try await read(entry)

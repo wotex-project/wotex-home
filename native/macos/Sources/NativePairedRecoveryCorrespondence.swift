@@ -45,7 +45,7 @@ enum NativePairedRecoveryCorrespondence {
             throw NativePendingError.conflict
         }
         _ = try NativePendingDocument(revision: 1, entries: [entry]).encoded()
-        if entry.category == .authoring {
+        if entry.category == .authoring || entry.category == .generation {
             guard association.access.permissions.contains("profile:manage") else { throw NativePairedSessionError.scopeConflict }
         }
         return association

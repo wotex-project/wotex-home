@@ -155,3 +155,16 @@ enum NativePairedGenerationWorkspaceOperations {
         return try NativeDomainTransportScope.$current.withValue(guarded, operation: operation)
     }
 }
+
+// Required only where the original action may send. Read-only reconciliation
+// remains possible from a complete pending original without a workspace file.
+enum NativePairedGenerationOriginalCorrespondence {
+    static func check(_ entry: NativePendingEntry, workspace: NativeGenerationWorkspaceSnapshot) throws {
+        guard entry.category == .generation, entry.custody.isPaired, entry.phase == .pending else { throw NativePendingError.conflict }
+        let original = try entry.generationOperation()
+        _ = try workspace.document.encoded()
+        guard let retained = workspace.document.entries.first(where: { $0.context == entry.context && $0.custody == entry.custody }),
+              !retained.cancellationPending, (retained.attempts.last ?? retained.preparation) == original else { throw NativePendingError.conflict }
+        _ = try retained.checked()
+    }
+}

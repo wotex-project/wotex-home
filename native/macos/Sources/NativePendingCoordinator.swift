@@ -45,6 +45,10 @@ struct NativePendingPersistence: Sendable {
         if let directory { return try NativePendingStorage.load(directory: directory) }
         return try NativePendingStorage.load()
     }
+    func loadWorkspace() throws -> NativeGenerationWorkspaceSnapshot {
+        if let directory { return try NativeGenerationWorkspaceStorage.load(directory: directory) }
+        return try NativeGenerationWorkspaceStorage.load()
+    }
     func retain(_ entry: NativePendingEntry, expected: NativePendingSnapshot) throws -> NativePendingSnapshot {
         if let directory { return try NativePendingStorage.retaining(entry, directory: directory, expected: expected) }
         return try NativePendingStorage.retaining(entry, expected: expected)
@@ -197,20 +201,22 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
             return retained
         } catch { needsReload = true; self.error = error.localizedDescription; throw error }
     }
-    func beginPaired(_ input: NativePendingInput, session: NativePairedControllerSession) async throws -> NativePairedControllerRecovery {
+    func beginPaired(_ input: NativePendingInput, session: NativePairedControllerSession,
+                     workspace: NativeGenerationWorkspaceSnapshot? = nil) async throws -> NativePairedControllerRecovery {
         guard canStart, knownCount < 16, let expected = snapshot else { throw LocalHealthError.server("resolve_original_operation") }
         busy = true; error = nil
         defer { busy = false }
-        return try await capturePaired(input, session: session, expected: expected)
+        return try await capturePaired(input, session: session, expected: expected, workspace: workspace)
     }
     // Capture, the fixed first retry, receipt publication and actor delivery
     // share one reservation. No caller-supplied runner or successful outcome.
-    func submittingPaired(_ input: NativePendingInput, session: NativePairedControllerSession) async throws -> NativePairedRecoveryPublication {
+    func submittingPaired(_ input: NativePendingInput, session: NativePairedControllerSession,
+                          workspace: NativeGenerationWorkspaceSnapshot? = nil) async throws -> NativePairedRecoveryPublication {
         guard canStart, knownCount < 16, let expected = snapshot else { throw LocalHealthError.server("resolve_original_operation") }
         busy = true; error = nil
         defer { busy = false }
         do {
-            let original = try await capturePaired(input, session: session, expected: expected)
+            let original = try await capturePaired(input, session: session, expected: expected, workspace: workspace)
             let publication = try await original.performAndPublish()
             try consumePaired(publication)
             return publication
@@ -221,13 +227,21 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
         }
     }
     private func capturePaired(_ input: NativePendingInput, session: NativePairedControllerSession,
-                               expected: NativePendingSnapshot) async throws -> NativePairedControllerRecovery {
+                               expected: NativePendingSnapshot, workspace: NativeGenerationWorkspaceSnapshot?) async throws -> NativePairedControllerRecovery {
         let entry = try session.original(input: input, pending: expected)
+        if entry.category == .generation {
+            guard let workspace else { throw NativePendingError.conflict }
+            try NativePairedGenerationOriginalCorrespondence.check(entry, workspace: workspace)
+        }
         try rememberPaired(entry)
         owner = NativeControllerScope(deployment: entry.context.deployment, owner: entry.context.owner,
             epoch: entry.context.epoch, revision: Int64(session.scope.identity.revision))
         do {
-            let original = try await session.capturing(entry, pending: expected)
+            let original: NativePairedControllerRecovery
+            if entry.category == .generation {
+                guard let workspace else { throw NativePendingError.conflict }
+                original = try await session.capturingGeneration(entry, pending: expected, workspace: workspace)
+            } else { original = try await session.capturing(entry, pending: expected) }
             try original.deliveryCurrent()
             snapshot = original.pending
             status = "Original operation retained before submission."
@@ -344,8 +358,12 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
                 }
                 snapshot = expected
             }
+            let workspace: NativeGenerationWorkspaceSnapshot?
+            if entry.category == .generation && action == .retry {
+                workspace = try await Task.detached { try self.persistence.loadWorkspace() }.value
+            } else { workspace = nil }
             let recovery = try await NativePairedControllerSession.recovering(entry, action: action,
-                pending: expected, associations: associations, clock: clock)
+                pending: expected, associations: associations, workspace: workspace, clock: clock)
             let publication = try await recovery.performAndPublish()
             try consumePaired(publication)
         } catch {

@@ -19,12 +19,12 @@ enum NativePendingCategory: String, CaseIterable, Sendable { case maintenance, o
 enum NativePendingRecoveryAction: Equatable, Sendable {
     case lookup, retry, cancelReview, acknowledgeUnknown, acknowledgeAbsent
     func permits(_ entry: NativePendingEntry) -> Bool {
-        if self == .acknowledgeAbsent { return !entry.custody.isPaired && entry.category == .generation }
+        if self == .acknowledgeAbsent { return entry.category == .generation }
         if self == .acknowledgeUnknown {
-            guard !entry.custody.isPaired, case .generation(let original) = entry.input else { return false }
+            guard case .generation(let original) = entry.input else { return false }
             return original.kind == .attempt
         }
-        if entry.category == .generation { return !entry.custody.isPaired && self != .cancelReview }
+        if entry.category == .generation { return self == .lookup || self == .retry }
         if entry.category == .authoring { return self == .lookup || self == .retry }
         switch self {
         case .lookup: return true

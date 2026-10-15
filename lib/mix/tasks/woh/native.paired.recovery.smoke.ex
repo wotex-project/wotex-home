@@ -56,7 +56,11 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
   original retries. Paired manual import, candidate assessment and source review
   lose their committed replies, then resolve by existing-only reads without
   replay. Their durable history survives native/Store restart and revocation
-  retains the original. This creates no signed app session.
+  retains the original. Both quantity families also exercise generation
+  preparation/start reply loss, workspace-required retry, running-to-unknown
+  restart, separately confirmed acknowledgements and unsafe workspace isolation.
+  A gated synthetic provider is called once per cohort. This creates no signed
+  app session.
 
   The result is executable software evidence for the tested boundary.
   Installed signing, private account custody and physical device qualification
@@ -233,10 +237,12 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
   end
 
   defp authoring_owner(executable, parent) do
-    for family <- ~w(temperature research), do: authoring_owner(executable, parent, family)
+    for family <- ~w(temperature research),
+        scenario <- ~w(complete restart),
+        do: authoring_owner(executable, parent, family, scenario)
   end
 
-  defp authoring_owner(executable, parent, family_name) do
+  defp authoring_owner(executable, parent, family_name, scenario) do
     alias WotexHome.Profiles.{
       AuthoringContract,
       Custody,
@@ -245,7 +251,7 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
       ProducerIdentity
     }
 
-    root = private_directory(parent, "authoring-owner-" <> family_name)
+    root = private_directory(parent, "authoring-owner-" <> family_name <> "-" <> scenario)
     _ = private_directory(root, "profiles")
     family = fixture(family_name)
     mechanics = fixture("authoring-mechanics")[family_name]
@@ -339,7 +345,13 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
         true = staged == 4
         transport(executable, %{input | "mode" => "authoring-existing"})
         {:ok, ^staged} = Store.revision(store)
-        transport(executable, %{input | "mode" => "authoring-workspace"})
+
+        mode =
+          if scenario == "complete",
+            do: "authoring-workspace",
+            else: "authoring-generation-restart-seed"
+
+        transport(executable, %{input | "mode" => mode})
         true = GenServer.call(provider_pid, :calls) == 1
         input
       after
@@ -359,16 +371,27 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
 
     try do
       {:ok, before} = Store.revision(store)
-      transport(executable, %{payload | "mode" => "authoring-existing"})
-      {:ok, ^before} = Store.revision(store)
-      transport(executable, %{payload | "mode" => "authoring-workspace-restart"})
+
+      if scenario == "complete" do
+        transport(executable, %{payload | "mode" => "authoring-existing"})
+        transport(executable, %{payload | "mode" => "authoring-workspace-restart"})
+      else
+        transport(executable, %{payload | "mode" => "authoring-generation-restart-check"})
+      end
+
       {:ok, ^before} = Store.revision(store)
       true = GenServer.call(provider_pid, :calls) == 1
       key = File.read!(Path.join(payload["directory"], "raw-fixture.key"))
       {:ok, scope} = Store.controller_scope(store, key)
       {:ok, _} = Store.revoke_principal(store, scope.principal_id)
-      transport(executable, %{payload | "mode" => "authoring-revoked"})
-      transport(executable, %{payload | "mode" => "authoring-workspace-revoked"})
+
+      if scenario == "complete" do
+        transport(executable, %{payload | "mode" => "authoring-revoked"})
+        transport(executable, %{payload | "mode" => "authoring-workspace-revoked"})
+      else
+        transport(executable, %{payload | "mode" => "authoring-generation-revoked"})
+      end
+
       {:ok, %{dispatch_enabled: false}} = Store.health(store)
     after
       GenServer.stop(custody)

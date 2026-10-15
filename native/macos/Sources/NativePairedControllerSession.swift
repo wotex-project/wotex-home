@@ -51,6 +51,29 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
     private enum Purpose: Equatable, Sendable {
         case selected
         case original(entry: NativePendingEntry, action: NativePendingRecoveryAction, pending: NativePendingSnapshot)
+        case generationOriginal(entry: NativePendingEntry, action: NativePendingRecoveryAction,
+                                pending: NativePendingSnapshot, workspace: NativeGenerationWorkspaceSnapshot)
+        var generationWitness: NativeGenerationWorkspaceSnapshot? {
+            if case .generationOriginal(_, _, _, let workspace) = self { return workspace }; return nil
+        }
+        func matches(_ entry: NativePendingEntry, action: NativePendingRecoveryAction, pending: NativePendingSnapshot) -> Bool {
+            switch self {
+            case .original(let fixed, let fixedAction, let fixedPending), .generationOriginal(let fixed, let fixedAction, let fixedPending, _):
+                return fixed == entry && fixedAction == action && fixedPending == pending
+            default: return false
+            }
+        }
+        func continuing(_ entry: NativePendingEntry, action: NativePendingRecoveryAction, pending: NativePendingSnapshot) throws -> Self {
+            switch self {
+            case .original(let fixed, let fixedAction, _):
+                guard fixed.context == entry.context, fixed.custody == entry.custody, fixed.input == entry.input, fixedAction == action else { throw NativePendingError.conflict }
+                return .original(entry: entry, action: action, pending: pending)
+            case .generationOriginal(let fixed, let fixedAction, _, let workspace):
+                guard fixed == entry, fixedAction == action else { throw NativePendingError.conflict }
+                return .generationOriginal(entry: entry, action: action, pending: pending, workspace: workspace)
+            default: throw NativePendingError.conflict
+            }
+        }
         case workspace(entry: NativeGenerationWorkspaceEntry, action: NativePairedWorkspaceAction,
                        workspace: NativeGenerationWorkspaceSnapshot, pending: NativePendingSnapshot)
     }
@@ -94,13 +117,20 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
 
     static func recovering(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
                            pending: NativePendingSnapshot, associations: NativeControllerAssociationSnapshot,
+                           workspace: NativeGenerationWorkspaceSnapshot? = nil,
                            clock: @escaping @Sendable () throws -> NativeControllerCertificateClock) async throws -> NativePairedControllerRecovery {
         let deadline = ContinuousClock.now.advanced(by: .seconds(5))
         guard !Task.isCancelled else { throw NativeControllerTLSError.cancelled }
         let association = try NativePairedRecoveryCorrespondence.association(for: entry, action: action,
             pending: pending, associations: associations)
+        let purpose: Purpose
+        if entry.category == .generation && action == .retry {
+            guard let workspace else { throw NativePendingError.conflict }
+            try NativePairedGenerationOriginalCorrespondence.check(entry, workspace: workspace)
+            purpose = .generationOriginal(entry: entry, action: action, pending: pending, workspace: workspace)
+        } else { purpose = .original(entry: entry, action: action, pending: pending) }
         let session = try await acquire(association: association, expected: associations,
-            purpose: .original(entry: entry, action: action, pending: pending), deadline: deadline, clock: clock)
+            purpose: purpose, deadline: deadline, clock: clock)
         return NativePairedControllerRecovery(session: session, entry: entry, action: action, pending: pending)
     }
 
@@ -157,8 +187,10 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
                 try LocalHealthClient.fetchControllerScope(socketPath: "", credential: material.bearer)
             }
             try NativePairedSessionCorrespondence.check(scope, association: association)
-            if case .original(let entry, _, _) = purpose {
+            switch purpose {
+            case .original(let entry, _, _), .generationOriginal(let entry, _, _, _):
                 try NativePairedSessionCorrespondence.checkProfileScope(scope, entry: entry)
+            default: break
             }
             if case .workspace(let entry, _, _, _) = purpose {
                 try NativePairedSessionCorrespondence.checkProfileScope(scope,
@@ -205,18 +237,32 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
     }
 
     func capturing(_ entry: NativePendingEntry, pending: NativePendingSnapshot) async throws -> NativePairedControllerRecovery {
+        guard entry.category != .generation else { throw NativePendingError.conflict }
+        return try await capturingOriginal(entry, pending: pending, workspace: nil)
+    }
+    func capturingGeneration(_ entry: NativePendingEntry, pending: NativePendingSnapshot,
+                             workspace: NativeGenerationWorkspaceSnapshot) async throws -> NativePairedControllerRecovery {
+        guard entry.category == .generation else { throw NativePendingError.conflict }
+        try NativePairedGenerationOriginalCorrespondence.check(entry, workspace: workspace)
+        return try await capturingOriginal(entry, pending: pending, workspace: workspace)
+    }
+    private func capturingOriginal(_ entry: NativePendingEntry, pending: NativePendingSnapshot,
+                                   workspace: NativeGenerationWorkspaceSnapshot?) async throws -> NativePairedControllerRecovery {
         guard entry == (try original(input: entry.input, pending: pending)) else { throw NativePendingError.conflict }
         try await profileScope(entry, purpose: purpose)
         let next = try await NativePendingPublicationOwner.perform(until: deadline) { [self] in
             try Self.validateCurrent(expected: snapshot, association: association, custody: custody, deadline: deadline, purpose: purpose)
+            if let workspace { try NativeGenerationWorkspaceStorage.check(workspace) }
             try NativePendingStorage.check(pending)
             let next = try NativePendingStorage.retaining(entry, expected: pending)
             try NativePairedCaptureCorrespondence.publication(of: entry, before: pending, after: next)
-            try Self.validateCurrent(expected: snapshot, association: association, custody: custody, deadline: deadline,
-                purpose: .original(entry: entry, action: .retry, pending: next))
+            let continued: Purpose = workspace.map { .generationOriginal(entry: entry, action: .retry, pending: next, workspace: $0) }
+                ?? .original(entry: entry, action: .retry, pending: next)
+            try Self.validateCurrent(expected: snapshot, association: association, custody: custody, deadline: deadline, purpose: continued)
             return next
         }
-        let continued = Purpose.original(entry: entry, action: .retry, pending: next)
+        let continued: Purpose = workspace.map { .generationOriginal(entry: entry, action: .retry, pending: next, workspace: $0) }
+            ?? .original(entry: entry, action: .retry, pending: next)
         try await profileScope(entry, purpose: continued)
         try await Self.currentGuard(expected: snapshot, association: association, custody: custody,
             deadline: deadline, purpose: continued).validate(.decoded, until: deadline)
@@ -231,7 +277,7 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
 
     fileprivate func currentOriginal(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
                                      pending: NativePendingSnapshot) async throws {
-        guard purpose == .original(entry: entry, action: action, pending: pending) else { throw NativePendingError.conflict }
+        guard purpose.matches(entry, action: action, pending: pending) else { throw NativePendingError.conflict }
         guard !Task.isCancelled else { throw NativeControllerTLSError.cancelled }
         try await Self.currentGuard(expected: snapshot, association: association, custody: custody,
             deadline: deadline, purpose: purpose).validate(.opening, until: deadline)
@@ -245,10 +291,11 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
         try await currentOriginal(entry, action: action, pending: pending)
         let exchangeGuard = Self.currentGuard(expected: snapshot, association: association,
             custody: custody, deadline: deadline, purpose: purpose)
+        let workspace = purpose.generationWitness
         return try await NativeControllerDomainClient.perform(association.peer, credential: bearer,
             clock: clock, exchangeGuard: exchangeGuard, deadline: deadline) { [association, bearer, scopeRevisions] in
             try NativePairedProfileTransport.$revisions.withValue(scopeRevisions) {
-                try NativePendingRecoveryOperations.executePaired(entry, association: association, credential: bearer, action: action)
+                try NativePendingRecoveryOperations.executePaired(entry, association: association, credential: bearer, action: action, workspace: workspace)
             }
         }
     }
@@ -273,7 +320,7 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
 
     fileprivate func publishing(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
                                  pending: NativePendingSnapshot, outcome: NativePendingRecoveryOutcome) async throws -> (NativePendingSnapshot, NativePendingEntry) {
-        guard purpose == .original(entry: entry, action: action, pending: pending) else { throw NativePendingError.conflict }
+        guard purpose.matches(entry, action: action, pending: pending) else { throw NativePendingError.conflict }
         try await profileScope(entry, purpose: purpose)
         let next = try await NativePendingPublicationOwner.perform(until: deadline) { [self] in
             try Self.validateCurrent(expected: snapshot, association: association, custody: custody,
@@ -287,14 +334,14 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
             }
             let updated = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: outcome, before: pending, after: next)
             try Self.validateCurrent(expected: snapshot, association: association, custody: custody,
-                deadline: deadline, purpose: .original(entry: updated, action: action, pending: next))
+                deadline: deadline, purpose: purpose.continuing(updated, action: action, pending: next))
             return next
         }
         let updated = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: outcome, before: pending, after: next)
-        try await profileScope(updated, purpose: .original(entry: updated, action: action, pending: next))
+        try await profileScope(updated, purpose: purpose.continuing(updated, action: action, pending: next))
         guard !Task.isCancelled else { throw NativePendingError.outcomeUnknown }
         try await Self.currentGuard(expected: snapshot, association: association, custody: custody,
-            deadline: deadline, purpose: .original(entry: updated, action: action, pending: next)).validate(.decoded, until: deadline)
+            deadline: deadline, purpose: purpose.continuing(updated, action: action, pending: next)).validate(.decoded, until: deadline)
         guard !Task.isCancelled else { throw NativePendingError.outcomeUnknown }
         try Self.lifetime(deadline)
         return (next, updated)
@@ -441,6 +488,10 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
         catch { throw NativePairedSessionError.selectionChanged }
         if case .original(_, _, let pending) = purpose {
             do { try NativePendingStorage.check(pending) }
+            catch { throw NativePairedSessionError.originalChanged }
+        }
+        if case .generationOriginal(_, _, let pending, let workspace) = purpose {
+            do { try NativeGenerationWorkspaceStorage.check(workspace); try NativePendingStorage.check(pending) }
             catch { throw NativePairedSessionError.originalChanged }
         }
         if case .workspace(_, _, let workspace, let pending) = purpose {

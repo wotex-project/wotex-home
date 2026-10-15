@@ -111,6 +111,12 @@ struct NativeGenerationWorkspaceSnapshot: Sendable, Equatable, CustomReflectable
 }
 
 enum NativeGenerationWorkspaceStorage {
+    static func load() throws -> NativeGenerationWorkspaceSnapshot {
+        try mapped {
+            guard let directory = try NativePrivateDocuments.directory(create: false) else { return .empty }
+            return try load(directory: directory)
+        }
+    }
     static func check(_ expected: NativeGenerationWorkspaceSnapshot, directory: URL) throws {
         try mapped {
             _ = try NativePrivateDocuments.replace(directory: directory, kind: .generation, expected: expected.file, bytes: expected.file.bytes)

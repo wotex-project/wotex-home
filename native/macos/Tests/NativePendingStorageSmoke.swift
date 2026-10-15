@@ -505,8 +505,12 @@ struct NativePendingStorageSmoke {
             if document.entries.count == 1 {
                 let entry = document.entries[0]
                 try check(entry.custody.isPaired && Mirror(reflecting: entry).children.isEmpty)
+                var generationAttempt = false
+                if case .generation(let original) = entry.input { generationAttempt = original.kind == .attempt }
                 for action in [NativePendingRecoveryAction.lookup, .retry, .cancelReview, .acknowledgeUnknown, .acknowledgeAbsent] {
-                    try check(action.permits(entry) == (entry.category == .authoring && (action == .lookup || action == .retry)))
+                    let expected = action == .lookup || action == .retry || (entry.category == .generation &&
+                        (action == .acknowledgeAbsent || (action == .acknowledgeUnknown && generationAttempt)))
+                    try check(action.permits(entry) == expected)
                 }
                 if entry.category == .authoring { _ = try entry.authoringOperation() }
                 else { _ = try entry.generationOperation() }
