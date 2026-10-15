@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.33. Updated: 2026-10-16. Status: accepted target.
+Version: 0.1.34. Updated: 2026-10-16. Status: accepted target.
 Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context, original-first input install/revoke/status and durable input withdrawal.
 Evidence: finite software subset; full acceptance cases remain open.
 
@@ -365,3 +365,7 @@ from installation-author authority, deterministic item refusal/field stages and
 whole-call owner failure behavior. Original owner deadlines use signed floor
 projection, and expiry during final checks remains an expired item under the one
 final Store sample. Its implementation and native collection evidence remain open.
+The pure receipt/expiry/report arithmetic foundation is implemented and passes
+thirty-eight focused arithmetic/public-projection cases. It performs no Store or
+owner read and supplies no current Fact authority; the full native collection
+boundary remains the next implementation step.

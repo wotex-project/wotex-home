@@ -671,3 +671,56 @@ The working catalogue checks 22 contracts. A disposable index projection checks
 Both Git whitespace checks pass. Both temporary roots contain zero owned scratch
 paths. No producer/native/Docker artifact is generated and existing signed entry
 fixtures, dependency locks and unrelated research/client files stay unchanged.
+
+
+## Original coordinate and report arithmetic
+
+ExternalInputMath now supplies pure Store-owned arithmetic for collection:
+original signed microsecond receipt/deadline to Store milliseconds by floor;
+checked declaration/Mapping expiry sums and owner minima; one-sample report
+reason ordering; uncertainty ceiling without floating point; and exact slot/
+installation/report Fact identity. The original owner pair must retain its
+100–60000 ms integral lifetime. Canonical strings, signed/uint64 bounds and closed
+bounds maps refuse malformed input; no integer cast, clamping or default TTL is
+used. No native collection endpoint or trusted prepared-context input is added.
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/external_input_math_test.exs test/wotex_home/routine_external_fact_test.exs --warnings-as-errors`
+
+passes **38 tests**, seed **717765**, **2.7 seconds**. Twenty-nine new arithmetic
+cases consume the independent frozen clock/report/uncertainty corpus, test all
+six Fact identity components and malformed/overflow inputs, and join computed
+metadata to the public reader/routine path. The nine unchanged projection cases
+also pass, covering original reader reconstruction, exact unit conversion,
+quality/sequence/source-time/clock failures and unavailable producers.
+
+The projection join uses the earlier inert three-archive producer fixture and
+the newer entry Mapping/registry/clock. Its external-value SHA matches the old
+fixture's own independent oracle and differs from the newer synthetic runtime
+assertion's consumption SHA. All seven unchanged projection members, including
+the entire Fact and binding, match the newer frozen entry exactly. The initial
+whole-result comparison exposed this intentional producer-assertion difference;
+the final test checks both identities explicitly. No signed fixture or runtime
+assertion was rewritten to make the comparison pass.
+
+The documentation agent changed only the new module's moduledoc, verified
+unchanged implementation bytes and retained one following blank line. Test
+modules use moduledoc=false. These results establish pure arithmetic and inert
+producer correspondence. The actual current scope/authorization/original-pointer/
+private/source/lifetime join, repeated full closing basis, final-owner expiry and
+native unavailable-item traces remain the next implementation obligations.
+
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/external_input_installation_test.exs:22 --warnings-as-errors`
+
+also passes **one actual native install/original case**, seed **172837**,
+**4.1 seconds**, with fifteen unrelated cases excluded. It measures the complete
+runtime including the new Home module and verifies fresh signed synthetic review
+through the actual Authority/Store transaction; no old runtime identity is reused.
+
+Final formatting, warnings-as-errors compilation, the independent Python oracle,
+the 22-contract working catalogue and both Git whitespace checks pass. The
+staged projection checks 21 contracts and 45 relative Markdown references, then
+removes its scratch tree. Both temporary roots contain zero owned scratch paths.
+No Docker, native/release artifacts, dependency update, broad application suite
+or Dialyzer is used. Dependency locks, existing reusable caches and unrelated
+research/client files are preserved.

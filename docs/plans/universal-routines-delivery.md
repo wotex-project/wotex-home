@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.27. Updated: 2026-10-16. Accepted build order; implementation and
+Version: 0.1.28. Updated: 2026-10-16. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -341,6 +341,9 @@ successor. Current status and remaining order:
    eleven clock, fourteen report-order and six uncertainty cases plus the original
    Fact ID. Exercise these against actual native collection; arithmetic entry
    evidence does not establish current collection or final-owner expiry behavior.
+   The pure original-coordinate/report/identity arithmetic now passes thirty-eight
+   focused arithmetic and existing reader-to-Fact cases. Join it to real current
+   retained originals and consumed owner lifetimes under complete scope guards.
 4. Run the extracted producer consumer and existing read/unconditional-effect
    regressions, then the owning durable/recovery milestone. Continue complete
    active-set composition, run/step/root persistence and wider admission under

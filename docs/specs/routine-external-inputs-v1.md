@@ -1,6 +1,6 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.18. Updated: 2026-10-16. Status: accepted successor target.
+Version: 0.1.19. Updated: 2026-10-16. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition,
 signed-review verifier, retained codecs, schema-38 history/migration/recovery and
@@ -986,3 +986,15 @@ cases and six uncertainty-ceiling cases. The independent
 matches the existing frozen original Fact ID. These are arithmetic/representation
 entry evidence only; current Store collection and final-owner expiry traces still
 require their actual native implementation and tests.
+
+The pure Store arithmetic collaborator
+[ExternalInputMath](../../lib/wotex_home/durable/store/external_input_math.ex)
+now derives signed-floor receipt/owner
+bounds, checked freshness minima, final report reasons, source uncertainty ceiling
+and exact original Fact IDs. Its twenty-nine cases consume the independent entry
+vectors and match the existing public reader-to-Fact projection; the nine existing
+projection regressions also pass. The earlier inert reader fixture has a distinct
+archive-producer consumption SHA, which is checked against its own frozen oracle;
+the seven unchanged projection members match the newer entry fixture exactly.
+This establishes arithmetic and inert producer correspondence, not a current
+Store collector, owner witness join, caller authorization or physical evidence.
