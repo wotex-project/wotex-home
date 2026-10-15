@@ -2,6 +2,9 @@ defmodule WotexHome.TestSupport.MQTTFixture do
   @moduledoc false
 
   alias Wotex.Profiles.{Binding, Capture, Compiler, Profile}
+  alias WotexHome.Durable.Store
+  alias WotexHome.Profiles.{AuthoringObject, ExternalSourceOwner}
+  alias WotexHome.MQTT.Publisher
   alias WotexHome.Profiles.{ProducerIdentity, ReaderSelection}
 
   def fixture(name), do: JSON.decode!(File.read!("test/fixtures/profiles/#{name}.json"))
@@ -112,6 +115,127 @@ defmodule WotexHome.TestSupport.MQTTFixture do
 
     {%{config | projection: projection, channels: config.channels ++ [policy]},
      %{v | "profile" => profile, "envelope" => envelope}}
+  end
+
+  def select_target(c) do
+    {:ok, credential, revision} =
+      Store.provision_principal(
+        c.store,
+        "operator:mqtt",
+        ["enroll:review", "host:maintain", "profile:manage"],
+        []
+      )
+
+    docs =
+      [{"envelope", c.v["envelope"]}, {"profile", c.v["profile"]}] ++
+        Enum.map(c.v["definitions"], &{"definition", &1})
+
+    {records, revision} =
+      Enum.map_reduce(Enum.with_index(docs), revision, fn {{kind, data}, i}, rev ->
+        {:ok, bytes} = Wotex.JSON.encode(data)
+        {:ok, object} = AuthoringObject.new(kind, bytes)
+        {:ok, summary} = AuthoringObject.summary(object)
+
+        {:ok, receipt} =
+          Store.import_authoring_object(
+            c.store,
+            credential,
+            %{
+              "authority_epoch" => 1,
+              "operation_id" => "import:mqtt:#{i}",
+              "expected_revision" => rev,
+              "object" => summary
+            },
+            bytes
+          )
+
+        {%{
+           "object" => summary,
+           "payload" => bytes,
+           "first_revision" => receipt["first_revision"]
+         }, receipt["revision"]}
+      end)
+
+    [envelope, profile | definitions] = records
+
+    handle = fn r ->
+      %{"object_digest" => r["object"]["object_digest"], "first_revision" => r["first_revision"]}
+    end
+
+    objects = %{
+      "envelope_ref" => handle.(envelope),
+      "profile" => %{"reference" => c.v["envelope"]["profile"], "object_ref" => handle.(profile)},
+      "definitions" =>
+        Enum.zip_with(
+          c.v["envelope"]["definitions"],
+          definitions,
+          &%{"reference" => &1, "object_ref" => handle.(&2)}
+        )
+    }
+
+    inspection = %{
+      "authority_epoch" => 1,
+      "operation_id" => "inspection:mqtt",
+      "expected_revision" => revision,
+      "inspection" =>
+        Map.put(objects, "reader_basis_sha256", c.config.reader.data["basis_sha256"])
+    }
+
+    {:ok, prepared} =
+      WotexHome.Profiles.ExternalApprovalPreparation.build(
+        inspection,
+        Enum.sort_by(records, & &1["object"]["object_digest"]),
+        c.config.reader
+      )
+
+    {:ok, inspected} = Store.inspect_external_profile(c.store, credential, inspection)
+
+    {:ok, barrier} =
+      Store.begin_maintenance(c.store, credential, 1, "maintenance:mqtt", inspected["revision"])
+
+    {:ok, approved} =
+      Store.change_external_trust(c.store, credential, %{
+        "authority_epoch" => 1,
+        "operation_id" => "trust:mqtt",
+        "expected_revision" => barrier.revision,
+        "action" => "approve",
+        "artifact_digest" => prepared["artifact_digest"],
+        "expected_trust_revision" => 0,
+        "expected_policy_generation" => 0,
+        "inspection_ref" =>
+          Map.take(
+            inspected,
+            ~w(authority_epoch operation_id revision input_sha256 result_sha256)
+          ),
+        "acknowledgement" => "operator_digest_approval"
+      })
+
+    {:ok, catalogue} = ExternalSourceOwner.catalogue(c.sources)
+    {:ok, source} = Publisher.source(c.publisher)
+
+    {:ok, selected} =
+      Store.change_external_target(c.store, credential, %{
+        "authority_epoch" => 1,
+        "operation_id" => "select:mqtt",
+        "expected_revision" => approved["revision"],
+        "action" => "select",
+        "target_id" => "sensor:external",
+        "artifact_digest" => prepared["artifact_digest"],
+        "expected_trust_revision" => approved["revision"],
+        "expected_policy_generation" => approved["policy_generation"],
+        "expected_selection_revision" => 0,
+        "expected_resource_revision" => 0,
+        "source_ref" => source.data["source_ref"],
+        "source_owner_epoch" => catalogue["owner_epoch"],
+        "source_selection_sha256" => source.sha256,
+        "objects" => objects,
+        "acknowledgement" => "operator_external_selection"
+      })
+
+    {:ok, reader, _} =
+      Store.provision_principal(c.store, "reader:mqtt", ["read"], ["sensor:external"])
+
+    Map.merge(c, %{reader_credential: reader, selected: selected})
   end
 
   def broker(owner, options \\ []) do

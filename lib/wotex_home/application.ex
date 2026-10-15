@@ -14,8 +14,12 @@ defmodule WotexHome.Application do
   startup. Changing a setting is not hot reload of a running Host.
   `WotexHome.Host` separately selects sealed profile-authoring and generator
   policy data; neither file creates a live device capture, source publisher or
-  model adapter. Dispatch still requires the explicit host setting and current
-  Store qualification guards.
+  model adapter. The additional opt-in `mqtt-source-v1.json` can start one live
+  MQTT publisher from private authoring policy and, when required, a separately
+  sealed broker credential. `WotexHome.Host.MQTTConfiguration` owns that startup
+  selection; invalid present policy refuses Host startup rather than falling
+  back to inert authoring. No file is hot-reloaded. Dispatch still requires the
+  explicit host setting and current Store qualification guards.
   """
 
   use Application

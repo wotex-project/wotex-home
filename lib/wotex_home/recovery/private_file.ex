@@ -48,6 +48,15 @@ defmodule WotexHome.Recovery.PrivateFile do
 
   def read_sealed(path, maximum), do: read_sealed_mode(path, maximum, 0o400)
 
+  @doc "Captures canonical private-root ancestor identities for a witnessed absent file."
+  def directory_witness(directory) when is_binary(directory) do
+    with {:ok, anchors, _} <- anchors(Path.join(directory, ".private-witness")),
+         :ok <- intact(anchors),
+         do: {:ok, Enum.map(anchors, fn {path, stat} -> {path, identity(stat)} end)}
+  end
+
+  def directory_witness(_), do: unavailable()
+
   def check(%Seal{mode: 0o600} = original) do
     with {:ok, _, ^original} <- read_credential_sealed(original.path),
          do: :ok,

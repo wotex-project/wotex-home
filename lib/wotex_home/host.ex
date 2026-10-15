@@ -37,11 +37,24 @@ defmodule WotexHome.Host do
   reader bindings, accepted meanings, capture and limits plus a live publisher.
   Home binds actual compiled producer inventories before starting the Store,
   then installs empty transient source/report custody in a replaceable subtree.
-  It publishes no source or report automatically and enables no dispatch.
+  That native mode publishes no source or report automatically and enables no
+  dispatch.
   Without an explicit option, an immutable private profile-authoring-v1.json
   can supply authoring-only grammar/limits. It supplies no reader, capture or
   publisher. Explicit native nil suppresses that file; without either input
   these producer-dependent host inputs remain unavailable.
+
+  An additional sealed `mqtt-source-v1.json`, selected by
+  `WotexHome.Host.MQTTConfiguration`, opts ordinary startup into one live MQTT
+  publisher. It requires private authoring policy and, for password mode, the
+  separate sealed broker credential. Native `:profile_installation`, including
+  explicit nil, takes precedence and skips both MQTT files. Host checks the
+  original seals or witnessed absence before children, then starts the temporary
+  `WotexHome.Host.MQTTInstallation` after Store/custody and before the API.
+  Invalid present MQTT policy fails startup. Owner loss or an in-place Store
+  restart retires that composition; a full Host startup is needed to select
+  fresh files and source epochs. Attachment grants no target or dispatch.
+
   The separate immutable generation-policies-v1.json supplies actor-scoped
   export ceilings only. Trusted `:generation_installation` selects exact checked
   policies/providers, explicit nil, or private policies with checked adapter PIDs.
@@ -64,7 +77,15 @@ defmodule WotexHome.Host do
   alias WotexHome.ControllerConnections.{InstallationIdentity, PairingReview}
   alias WotexHome.ControllerConnections.Server, as: LANServer
   alias WotexHome.Durable.Store
-  alias WotexHome.Host.{GenerationConfiguration, GenerationInstallation, ProfileConfiguration}
+
+  alias WotexHome.Host.{
+    GenerationConfiguration,
+    GenerationInstallation,
+    ProfileConfiguration,
+    MQTTConfiguration,
+    MQTTInstallation
+  }
+
   alias WotexHome.Lifx.{CaptureSession, PowerDelivery}
   alias WotexHome.LocalAPI.Server
   alias WotexHome.Profiles.{Custody, ExternalReportOwner, ReviewSession}
@@ -92,13 +113,14 @@ defmodule WotexHome.Host do
          :ok <- existing_private_data_directory(data_dir),
          {:ok, selection} <- profile_selection(data_dir, opts),
          {:ok, _} <- WotexHome.Host.ProfileInstallation.prepare(profile_input(selection)),
+         {:ok, mqtt} <- mqtt_selection(data_dir, opts, selection),
          {:ok, generation} <- generation_selection(data_dir, opts),
          {:ok, _} <- GenerationInstallation.prepare(generation_input(generation)),
          :ok <- private_data_directory(data_dir),
          {:ok, canonical} <- canonical_directory(data_dir, 32) do
       Supervisor.start_link(
         __MODULE__,
-        {Keyword.put(opts, :data_dir, canonical), selection, generation},
+        {Keyword.put(opts, :data_dir, canonical), selection, generation, mqtt},
         Keyword.take(opts, [:name])
       )
     else
@@ -117,21 +139,35 @@ defmodule WotexHome.Host do
   @impl true
   def init(opts) when is_list(opts) do
     with {:ok, selection} <- profile_selection(Keyword.fetch!(opts, :data_dir), opts),
-         {:ok, generation} <- generation_selection(Keyword.fetch!(opts, :data_dir), opts) do
-      init({opts, selection, generation})
+         {:ok, generation} <- generation_selection(Keyword.fetch!(opts, :data_dir), opts),
+         {:ok, mqtt} <- mqtt_selection(Keyword.fetch!(opts, :data_dir), opts, selection) do
+      init({opts, selection, generation, mqtt})
     else
       {:error, reason} -> {:stop, reason}
     end
   end
 
   def init({opts, selection, generation}) do
+    with {:ok, mqtt} <- mqtt_selection(Keyword.fetch!(opts, :data_dir), opts, selection),
+         do: init({opts, selection, generation, mqtt}),
+         else: ({:error, reason} -> {:stop, reason})
+  end
+
+  def init({opts, selection, generation, mqtt}) do
     with {:ok, installation} <-
            WotexHome.Host.ProfileInstallation.prepare(profile_input(selection)),
          {:ok, generators} <- GenerationInstallation.prepare(generation_input(generation)),
          {:ok, data_dir} <- canonical_directory(Keyword.fetch!(opts, :data_dir), 32),
          :ok <- check_profile_selection(selection, data_dir),
-         :ok <- check_generation_selection(generation, data_dir) do
-      init_host(data_dir, opts, installation, generators)
+         :ok <- check_generation_selection(generation, data_dir),
+         :ok <- check_mqtt_selection(mqtt, data_dir, selection) do
+      installation =
+        case mqtt do
+          %MQTTConfiguration.Snapshot{prepared: prepared} -> prepared.profile
+          _ -> installation
+        end
+
+      init_host(data_dir, opts, installation, generators, mqtt)
     else
       {:error, reason} -> {:stop, reason}
     end
@@ -144,6 +180,26 @@ defmodule WotexHome.Host do
       configuration_selection(data_dir, ProfileConfiguration)
     end
   end
+
+  defp mqtt_selection(data_dir, opts, selection) do
+    if Keyword.has_key?(opts, :profile_installation) do
+      {:ok, :disabled}
+    else
+      case File.lstat(data_dir) do
+        {:ok, %{type: :directory}} ->
+          with {:ok, canonical} <- canonical_directory(data_dir, 32),
+               do: MQTTConfiguration.load(canonical, profile_input(selection))
+
+        _ ->
+          {:ok, :absent}
+      end
+    end
+  end
+
+  defp check_mqtt_selection(:disabled, _, _), do: :ok
+
+  defp check_mqtt_selection(mqtt, directory, profile),
+    do: MQTTConfiguration.check(mqtt, directory, profile_input(profile))
 
   defp configuration_selection(data_dir, loader) do
     case File.lstat(data_dir) do
@@ -200,7 +256,7 @@ defmodule WotexHome.Host do
   defp check_profile_selection(selection, data_dir),
     do: WotexHome.Host.ProfileConfiguration.check(selection, data_dir)
 
-  defp init_host(data_dir, options, installation, generators) do
+  defp init_host(data_dir, options, installation, generators, mqtt) do
     authority = authority()
     update_fence = Keyword.get(options, :update_fence, WotexHome.Host.UpdateFence.configuration())
 
@@ -217,9 +273,15 @@ defmodule WotexHome.Host do
        generation_providers: generators.providers,
        external_reader: installation && installation.reader,
        external_source_owner:
-         if(installation && installation.publisher, do: @external_source_name),
+         if(
+           installation && (installation.publisher || match?(%MQTTConfiguration.Snapshot{}, mqtt)),
+           do: @external_source_name
+         ),
        external_report_owner:
-         if(installation && installation.publisher, do: @external_report_name),
+         if(
+           installation && (installation.publisher || match?(%MQTTConfiguration.Snapshot{}, mqtt)),
+           do: @external_report_name
+         ),
        qualification_case_keys: Application.get_env(:wotex_home, :qualification_case_keys, %{}),
        qualification_decision_keys:
          Application.get_env(:wotex_home, :qualification_decision_keys, %{})},
@@ -230,11 +292,15 @@ defmodule WotexHome.Host do
     ]
 
     children =
-      if installation && installation.publisher do
-        children ++
-          [{WotexHome.Host.ExternalProfiles, installation.publisher}]
-      else
-        children
+      cond do
+        match?(%MQTTConfiguration.Snapshot{}, mqtt) ->
+          children ++ [{MQTTInstallation, mqtt}]
+
+        installation && installation.publisher ->
+          children ++ [{WotexHome.Host.ExternalProfiles, installation.publisher}]
+
+        true ->
+          children
       end
 
     children =
