@@ -1,6 +1,14 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.145. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.146. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+
+The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
+now defines fresh signed authorization after human review, unchanged first originals,
+workspace-purpose status/cancellation and ordinary manual review. Its prerequisites
+are [v8 pending custody](native-pending-paired-authoring-v8.md) and
+[v2 generation workspace](native-generation-workspace-v2.md), including monotone
+mixed-version correspondence. These additions are planned; current local evidence
+and physical dispatch guards retain their existing scope.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)
 defines durable root/attempt workspace custody, explicit policy/consent/budget,

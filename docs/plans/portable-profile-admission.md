@@ -128,7 +128,13 @@ have [executed reconciliation evidence](../provenance/native-generation-reconcil
 Compatible repair with unused budget and expired-root panel refusal are checked.
 Local withdrawal/retired/unknown and private-content retirement now have
 [executed Store/native restart evidence](../provenance/native-generation-retirement-2026-10.md).
-Continue with signed paired delivery and installed interaction/qualification. Live account/model, local OS
+The [paired composition](../specs/native-paired-authoring-generation-v1.md) now
+owns that successor, with explicit [v8 pending](../specs/native-pending-paired-authoring-v8.md)
+and [v2 workspace](../specs/native-generation-workspace-v2.md) prerequisites.
+Implement their independent representation/private CAS first, then paired manual
+consumer, paired generation consumer, selected driver/presentation and installed
+interaction/qualification. Human confirmation obtains fresh actual signed scope;
+it cannot renew a read session or edit the frozen original. Live account/model, local OS
 confinement, native/signed paired delivery and aggregate pool boundaries remain.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with

@@ -1,6 +1,14 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.119. Status: accepted target.
+Version: 0.2.120. Status: accepted target.
+
+The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
+now defines fresh signed authorization after human review, unchanged first originals,
+workspace-purpose status/cancellation and ordinary manual review. Its prerequisites
+are [v8 pending custody](native-pending-paired-authoring-v8.md) and
+[v2 generation workspace](native-generation-workspace-v2.md), including monotone
+mixed-version correspondence. These additions are planned; current local evidence
+and physical dispatch guards retain their existing scope.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)
 defines durable root/attempt workspace custody, explicit policy/consent/budget,
