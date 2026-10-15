@@ -8,7 +8,10 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
 
   Checks original paired metadata/unsigned production refusal and the closed
   adapter over actual Authority pairing, TLS, SQLite restart and exact
-  original retries; creates no signed app session.
+  original retries. Paired manual import, candidate assessment and source review
+  lose their committed replies, then resolve by existing-only reads without
+  replay. Their durable history survives native/Store restart and revocation
+  retains the original. This creates no signed app session.
 
   The result is executable software evidence for the tested boundary.
   Installed signing, private account custody and physical device qualification
@@ -50,6 +53,8 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
       args =
         [
           "-parse-as-library",
+          "-whole-module-optimization",
+          "-Onone",
           "-warnings-as-errors",
           "-swift-version",
           "6",
@@ -78,10 +83,11 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
       )
 
       actual_owner(executable, root, associations)
+      authoring_owner(executable, root)
       wrong_principal(executable, root)
 
       Mix.shell().info(
-        "native original paired publication ownership/unsigned coordinator, real pairing, original receipts/retries/restart/revocation and wrong-principal refusal passed"
+        "native paired publication/unsigned refusal, real pairing, manual authoring lost replies without replay, original recovery/restart/revocation and wrong-principal refusal passed"
       )
     after
       File.rm_rf!(root)
@@ -181,8 +187,116 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
     end
   end
 
-  defp start_owner(root, identity, binding) do
-    {:ok, store} = Store.start_link(path: Path.join(root, "owner.sqlite"))
+  defp authoring_owner(executable, parent) do
+    alias WotexHome.Profiles.{AuthoringContract, Custody, ProducerIdentity}
+    root = private_directory(parent, "authoring-owner")
+    _ = private_directory(root, "profiles")
+    family = fixture("temperature")
+    mechanics = fixture("authoring-mechanics")["temperature"]
+    {:ok, producer} = ProducerIdentity.current()
+
+    installed =
+      family |> Map.take(~w(bindings contracts home_contracts)) |> Map.put("producer", producer)
+
+    {:ok, contract} = AuthoringContract.export(installed, mechanics["limits"])
+    options = [profile_custody: __MODULE__.Custody, authoring_contract: contract]
+    now = System.os_time(:second)
+
+    {:ok, identity} =
+      InstallationIdentity.create(Path.join(root, "owner.identity"), %{
+        not_before: now - 60,
+        not_after: now + 86_400
+      })
+
+    {:ok, interfaces} = :inet.getifaddrs()
+
+    {interface, _} =
+      Enum.find(interfaces, fn {_, props} ->
+        {127, 0, 0, 1} in Keyword.get_values(props, :addr)
+      end)
+
+    {:ok, reserved} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+    {:ok, {_, port}} = :inet.sockname(reserved)
+    :gen_tcp.close(reserved)
+    binding = %{interface: List.to_string(interface), address: {127, 0, 0, 1}, port: port}
+    first = start_owner(root, identity, binding, options)
+    {store, _, _, listener, authority} = first
+
+    {:ok, custody} =
+      Custody.start_link(
+        root: Path.join(root, "profiles"),
+        store_owner: store,
+        name: __MODULE__.Custody
+      )
+
+    payload =
+      try do
+        {:ok, template} = Server.template(listener)
+        {:ok, admin, invitation} = Authority.pairing_open(authority, template)
+
+        request =
+          peer().request()
+          |> Map.merge(Map.take(invitation, ~w(controller_id invitation_id bootstrap_secret)))
+
+        {:ok, reference} = Authority.pairing_prepare(authority, admin, request)
+
+        {:ok, _} =
+          Authority.pairing_approve(authority, admin, reference, %{
+            "permissions" => ["profile:manage"],
+            "target_ids" => []
+          })
+
+        input = %{
+          "mode" => "authoring-stage",
+          "invitation" => peer().invitation_body(invitation),
+          "bootstrap" => bootstrap_body(request),
+          "directory" => private_directory(root, "native"),
+          "draft" => mechanics["draft_bytes"]
+        }
+
+        transport(executable, input)
+        {:ok, staged} = Store.revision(store)
+        true = staged == 4
+        transport(executable, %{input | "mode" => "authoring-existing"})
+        {:ok, ^staged} = Store.revision(store)
+        input
+      after
+        GenServer.stop(custody)
+        stop_owner(first)
+      end
+
+    restarted = start_owner(root, identity, binding, options)
+    {store, _, _, _, _} = restarted
+
+    {:ok, custody} =
+      Custody.start_link(
+        root: Path.join(root, "profiles"),
+        store_owner: store,
+        name: __MODULE__.Custody
+      )
+
+    try do
+      {:ok, before} = Store.revision(store)
+      transport(executable, %{payload | "mode" => "authoring-existing"})
+      {:ok, ^before} = Store.revision(store)
+      key = File.read!(Path.join(payload["directory"], "raw-fixture.key"))
+      {:ok, scope} = Store.controller_scope(store, key)
+      {:ok, _} = Store.revoke_principal(store, scope.principal_id)
+      transport(executable, %{payload | "mode" => "authoring-revoked"})
+      {:ok, %{dispatch_enabled: false}} = Store.health(store)
+    after
+      GenServer.stop(custody)
+      stop_owner(restarted)
+    end
+  end
+
+  defp fixture(name),
+    do: name |> then(&File.read!("test/fixtures/profiles/#{&1}.json")) |> JSON.decode!()
+
+  defp start_owner(root, identity, binding, options \\ []) do
+    {:ok, store} =
+      Store.start_link(Keyword.merge([path: Path.join(root, "owner.sqlite")], options))
+
     {:ok, reviews} = PairingReview.start_link(store_owner: store)
     authority = Authority.new(store: store, pairing_reviews: reviews)
 

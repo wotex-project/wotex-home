@@ -25,7 +25,7 @@ enum NativePendingRecoveryAction: Equatable, Sendable {
             return original.kind == .attempt
         }
         if entry.category == .generation { return !entry.custody.isPaired && self != .cancelReview }
-        if entry.category == .authoring { return !entry.custody.isPaired && self != .cancelReview }
+        if entry.category == .authoring { return self == .lookup || self == .retry }
         switch self {
         case .lookup: return true
         case .retry: return !entry.phase.isHeldReview

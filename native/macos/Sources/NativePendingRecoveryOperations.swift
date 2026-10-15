@@ -198,8 +198,19 @@ enum NativePendingRecoveryOperations {
             let (original, payload) = try entry.authoringOperation()
             let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socketPath, credential: credential)
             guard entry.context.matches(before) else { throw LocalHealthError.nativeGuardConflict }
-            let result = try NativeAuthoringMutationClient.deliver(socketPath: socketPath, credential: credential,
-                original: original, payload: payload, lookup: action == .lookup)
+            let result: HomeAuthoringOriginalRead?
+            if entry.custody.isPaired && action == .retry {
+                if let existing = try NativeAuthoringMutationClient.deliver(socketPath: socketPath, credential: credential,
+                    original: original, payload: payload, lookup: true) {
+                    result = existing
+                } else {
+                    result = try NativeAuthoringMutationClient.deliver(socketPath: socketPath, credential: credential,
+                        original: original, payload: payload, lookup: false)
+                }
+            } else {
+                result = try NativeAuthoringMutationClient.deliver(socketPath: socketPath, credential: credential,
+                    original: original, payload: payload, lookup: action == .lookup)
+            }
             let after = try LocalHealthClient.fetchControllerIdentity(socketPath: socketPath, credential: credential)
             guard entry.context.matches(after), after.revision >= before.revision,
                   Int64(after.revision) >= (result?.revision ?? 0) else { throw LocalHealthError.nativeGuardConflict }

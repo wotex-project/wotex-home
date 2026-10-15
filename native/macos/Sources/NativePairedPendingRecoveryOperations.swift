@@ -11,11 +11,51 @@ extension NativePendingRecoveryOperations {
               entry.custody.matches(credential),
               action != .cancelReview || entry.phase.isCancellation else { throw NativePendingError.invalidRecord }
         _ = try NativePendingDocument(revision: 1, entries: [entry]).encoded()
-        let guarded = PairedOriginalReplyTransport(base: transport, principal: entry.context.principal)
+        let replies = PairedOriginalReplyTransport(base: transport, principal: entry.context.principal)
+        let guarded: any NativeDomainTransport
+        if entry.category == .authoring {
+            let scope = try NativeDomainTransportScope.$current.withValue(replies) {
+                try LocalHealthClient.fetchControllerScope(socketPath: "", credential: credential)
+            }
+            try NativePairedSessionCorrespondence.check(scope, association: association)
+            try NativePairedSessionCorrespondence.checkProfileScope(scope, entry: entry)
+            guarded = PairedProfileOriginalTransport(base: replies, credential: credential, association: association,
+                entry: entry, initial: scope)
+        } else { guarded = replies }
         return try NativeDomainTransportScope.$current.withValue(guarded) {
             try executeOrdinary(entry, credential: credential, socketPath: "", action: action,
                 nativeAccess: { _, _ in throw NativePendingError.unavailable })
         }
+    }
+}
+
+// Read live scope through the same finite TLS owner around every closed SDK
+// exchange, including upload chunks and status. Store repeats its own grants.
+private struct PairedProfileOriginalTransport: NativeDomainTransport, CustomReflectable {
+    let base: any NativeDomainTransport
+    let credential: Data
+    let association: NativeControllerPublicAssociation
+    let entry: NativePendingEntry
+    let initial: HomeControllerScope
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+
+    func request(body: Data, allowNotFound: Bool) throws -> Data {
+        let before = try currentScope()
+        let response = try base.request(body: body, allowNotFound: allowNotFound)
+        let after = try currentScope()
+        guard after.identity.revision >= before.identity.revision else { throw NativePairedSessionError.scopeConflict }
+        return response
+    }
+
+    private func currentScope() throws -> HomeControllerScope {
+        let scope = try NativeDomainTransportScope.$current.withValue(base) {
+            try LocalHealthClient.fetchControllerScope(socketPath: "", credential: credential)
+        }
+        try NativePairedSessionCorrespondence.check(scope, association: association)
+        try NativePairedSessionCorrespondence.checkProfileScope(scope, entry: entry)
+        guard scope.permissions == initial.permissions, scope.targetIDs == initial.targetIDs,
+              scope.identity.revision >= initial.identity.revision else { throw NativePairedSessionError.scopeConflict }
+        return scope
     }
 }
 

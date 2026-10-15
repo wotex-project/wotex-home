@@ -15,6 +15,7 @@ enum NativePairedCaptureCorrespondence {
         }) else { throw NativePendingError.conflict }
         let entry = NativePendingEntry(context: context, custody: try .paired(from: association), input: input, phase: .pending)
         guard NativePendingRecoveryAction.retry.permits(entry) else { throw NativePendingError.unavailable }
+        try NativePairedSessionCorrespondence.checkProfileScope(scope, entry: entry)
         _ = try NativePendingDocument(revision: 1, entries: [entry]).encoded()
         return entry
     }
@@ -44,6 +45,9 @@ enum NativePairedRecoveryCorrespondence {
             throw NativePendingError.conflict
         }
         _ = try NativePendingDocument(revision: 1, entries: [entry]).encoded()
+        if entry.category == .authoring {
+            guard association.access.permissions.contains("profile:manage") else { throw NativePairedSessionError.scopeConflict }
+        }
         return association
     }
 

@@ -1,7 +1,7 @@
 import Darwin
 import Foundation
 
-private enum PairedRecoverySmokeError: Error { case failed(Int) }
+private enum PairedRecoverySmokeError: Error { case failed(Int), droppedReply }
 private final class RecoveryClockProbe: @unchecked Sendable {
     private let lock = NSLock()
     private var count = 0
@@ -25,6 +25,31 @@ private final class HeldPublicationProbe: @unchecked Sendable {
     var finished: Bool { lock.lock(); defer { lock.unlock() }; return ended }
 }
 
+private final class AuthoringTransportProbe: NativeDomainTransport, @unchecked Sendable {
+    private let base: any NativeDomainTransport
+    private let lock = NSLock()
+    private let dropCommitted: Bool
+    private var mutationCount = 0, didDrop = false
+    init(base: any NativeDomainTransport, dropCommitted: Bool) { self.base = base; self.dropCommitted = dropCommitted }
+    var observation: (mutations: Int, dropped: Bool) {
+        lock.lock(); defer { lock.unlock() }; return (mutationCount, didDrop)
+    }
+    func request(body: Data, allowNotFound: Bool) throws -> Data {
+        let request = try JSONSerialization.jsonObject(with: body) as! [String: Any]
+        let mutation = ["authoring_object_import", "authoring_candidate_assess", "authoring_candidate_review"].contains(request["operation"] as! String)
+        if mutation { lock.lock(); mutationCount += 1; lock.unlock() }
+        let response = try base.request(body: body, allowNotFound: allowNotFound)
+        if mutation && dropCommitted {
+            let result = try JSONSerialization.jsonObject(with: response) as! [String: Any]
+            if result["outcome"] as? String == "ok" {
+                lock.lock(); didDrop = true; lock.unlock()
+                throw LocalHealthError.invalidResponse
+            }
+        }
+        return response
+    }
+}
+
 @main
 struct NativePairedRecoverySmoke {
     static func main() async {
@@ -45,8 +70,17 @@ struct NativePairedRecoverySmoke {
             print("native original paired correspondence, publication ownership, unsigned coordinator and production refusal passed")
         } catch PairedRecoverySmokeError.failed(let line) {
             FileHandle.standardError.write(Data("native original paired assertion failed at source line \(line)\n".utf8)); exit(1)
+        } catch LocalHealthError.server(let reason) {
+            let publicReasons = ["unauthorized", "stale_revision", "invalid_authoring_request", "authoring_unavailable",
+                "stale_authoring_basis", "invalid_source_review", "invalid_authoring_review", "invalid_profile_request", "authoring_upload_unavailable"]
+            let code = publicReasons.contains(reason) ? reason : "other_server_refusal"
+            FileHandle.standardError.write(Data("native original paired server refusal: \(code)\n".utf8)); exit(1)
+        } catch LocalHealthError.invalidResponse {
+            FileHandle.standardError.write(Data("native original paired fixture rejected a response\n".utf8)); exit(1)
+        } catch LocalHealthError.invalidProfileRequest {
+            FileHandle.standardError.write(Data("native original paired fixture rejected an authoring input\n".utf8)); exit(1)
         } catch {
-            FileHandle.standardError.write(Data("native original paired fixture failed\n".utf8)); exit(1)
+            FileHandle.standardError.write(Data("native original paired fixture failed: \(String(reflecting: type(of: error)))\n".utf8)); exit(1)
         }
     }
 
@@ -149,18 +183,47 @@ struct NativePairedRecoverySmoke {
         for input in inputs {
             do { _ = try NativePairedCaptureCorrespondence.entry(input: input, scope: scope, association: association, pending: .empty); throw PairedRecoverySmokeError.failed(#line) }
             catch NativePendingError.unavailable {}
+            catch NativePairedSessionError.scopeConflict {}
             let entry = NativePendingEntry(context: c, custody: try .paired(from: association), input: input, phase: .pending)
             let directory = root.appendingPathComponent("unavailable-" + input.category.rawValue, isDirectory: true)
             try makeDirectory(directory)
             let pending = try NativePendingStorage.retaining(entry, directory: directory, expected: .empty)
             try require(pending.document.version == .v8)
             for action in [NativePendingRecoveryAction.lookup, .retry, .cancelReview, .acknowledgeUnknown, .acknowledgeAbsent] {
-                try require(!action.permits(entry))
+                try require(action.permits(entry) == (input.category == .authoring && (action == .lookup || action == .retry)))
                 let clock = RecoveryClockProbe()
                 do { _ = try await NativePairedControllerSession.recovering(entry, action: action, pending: pending, associations: associations, clock: clock.clock); throw PairedRecoverySmokeError.failed(#line) }
                 catch NativePendingError.conflict {}
+                catch NativePairedSessionError.scopeConflict {}
                 try require(clock.calls == 0 && NativePendingStorage.load(directory: directory) == pending)
             }
+        }
+
+        let approved = NativeControllerAccess(permissions: ["profile:manage"], targets: [])
+        let candidateAssociation = NativeControllerPublicAssociation(id: "", label: association.label, peer: association.peer,
+            scope: association.scope, original: association.original, access: approved, verifier: association.verifier)
+        let profileAssociation = NativeControllerPublicAssociation(id: try NativeControllerAssociationsWire.bindingID(candidateAssociation),
+            label: association.label, peer: association.peer, scope: association.scope, original: association.original,
+            access: approved, verifier: association.verifier)
+        let profileScope = HomeControllerScope(identity: scope.identity, permissions: approved.permissions, targetIDs: [])
+        let input = inputs[0]
+        let accepted = try NativePairedCaptureCorrespondence.entry(input: input, scope: profileScope,
+            association: profileAssociation, pending: .empty)
+        for permissions in [[String](), ["read"]] {
+            let changed = HomeControllerScope(identity: scope.identity, permissions: permissions, targetIDs: [])
+            do { try NativePairedSessionCorrespondence.checkProfileScope(changed, entry: accepted); throw PairedRecoverySmokeError.failed(#line) }
+            catch NativePairedSessionError.scopeConflict {}
+        }
+        let directory = root.appendingPathComponent("approved-authoring", isDirectory: true)
+        try makeDirectory(directory)
+        let pending = try NativePendingStorage.retaining(accepted, directory: directory, expected: .empty)
+        let publicAssociations = try NativeControllerAssociationStorage.retaining(profileAssociation, directory: directory, expected: .empty)
+        for action in [NativePendingRecoveryAction.lookup, .retry] {
+            let clock = RecoveryClockProbe()
+            do { _ = try await NativePairedControllerSession.recovering(accepted, action: action, pending: pending,
+                associations: publicAssociations, clock: clock.clock); throw PairedRecoverySmokeError.failed(#line) }
+            catch NativePairedSessionError.custody(.denied) {}
+            try require(clock.calls == 0 && NativePendingStorage.load(directory: directory) == pending)
         }
     }
 
@@ -415,6 +478,11 @@ struct NativePairedRecoverySmoke {
             let now = Int64(Date().timeIntervalSince1970 * 1000)
             return try NativeControllerCertificateClock(earliest: now, latest: now)
         }
+        if mode.hasPrefix("authoring-") {
+            try await authoringTransport(payload, mode: mode, invitation: invitation, peer: peer, bootstrap: bootstrap,
+                clock: clock, directory: directory)
+            print("native original paired transport case passed"); return
+        }
         let access = NativeControllerAccess(permissions: ["control:ordinary", "read"], targets: ["light:paired-original"])
         let key: Data, association: NativeControllerPublicAssociation, original: NativePendingEntry
         if mode == "stage" {
@@ -491,6 +559,150 @@ struct NativePairedRecoverySmoke {
         try NativePendingStorage.check(journal, directory: directory)
         try require(try Data(contentsOf: directory.appendingPathComponent("native-pending-v1.json")) == before)
         print("native original paired transport case passed")
+    }
+
+    // Raw fixture credentials exercise transport/Store only; this cannot build
+    // a production signed session or validate installed Keychain publication.
+    private static func authoringTransport(_ payload: [String: Any], mode: String,
+        invitation: NativeControllerInvitation, peer: NativeControllerPeer, bootstrap: NativeControllerBootstrapRequest,
+        clock: @escaping @Sendable () throws -> NativeControllerCertificateClock, directory: URL) async throws {
+        let access = NativeControllerAccess(permissions: ["profile:manage"], targets: [])
+        let key: Data, association: NativeControllerPublicAssociation
+        if mode == "authoring-stage" {
+            let response = try await NativeControllerTLSClient.bootstrap(invitation, request: bootstrap, clock: clock(), approvedAccess: access)
+            guard case .paired(let delivered) = response else { throw PairedRecoverySmokeError.failed(#line) }
+            key = delivered.credential
+            association = try NativeControllerPublicAssociation.corresponding(peer: peer, label: "Authoring fixture", delivered: delivered,
+                request: bootstrap, approvedAccess: access)
+            try writeKey(directory.appendingPathComponent("raw-fixture.key"), key)
+            _ = try NativeControllerAssociationStorage.retaining(association, directory: directory, expected: .empty)
+        } else {
+            let path = directory.appendingPathComponent("raw-fixture.key")
+            var info = stat()
+            try require(lstat(path.path, &info) == 0 && info.st_uid == getuid() && info.st_mode & 0o777 == 0o600 &&
+                info.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG) && info.st_nlink == 1 && info.st_size == 32)
+            key = try Data(contentsOf: path)
+            let journal = try NativePendingStorage.load(directory: directory)
+            guard let entry = journal.document.entries.first else { throw PairedRecoverySmokeError.failed(#line) }
+            association = try NativePairedRecoveryCorrespondence.association(for: entry, action: .lookup, pending: journal,
+                associations: NativeControllerAssociationStorage.load(directory: directory))
+        }
+        let associations = try NativeControllerAssociationStorage.load(directory: directory)
+        func remote<Value: Sendable>(_ operation: @escaping @Sendable () throws -> Value) async throws -> Value {
+            let pending = try NativePendingStorage.load(directory: directory)
+            let guardCheck = NativeControllerExchangeGuard { _ in
+                try NativePendingStorage.check(pending, directory: directory)
+                try NativeControllerAssociationStorage.check(associations, directory: directory)
+            }
+            return try await NativeControllerDomainClient.perform(association.peer, credential: key, clock: clock,
+                exchangeGuard: guardCheck, deadline: .now.advanced(by: .seconds(15)), operation: operation)
+        }
+        func execute(_ entry: NativePendingEntry, _ action: NativePendingRecoveryAction,
+                     expectMutation: Bool = false, dropCommitted: Bool = false) async throws -> NativePendingRecoveryOutcome {
+            try await remote {
+                guard let base = NativeDomainTransportScope.current else { throw PairedRecoverySmokeError.failed(#line) }
+                let probe = AuthoringTransportProbe(base: base, dropCommitted: dropCommitted)
+                do {
+                    let outcome = try NativeDomainTransportScope.$current.withValue(probe) {
+                        try NativePendingRecoveryOperations.executePaired(entry, association: association, credential: key, action: action)
+                    }
+                    try require(expectMutation ? probe.observation.mutations > 0 : probe.observation.mutations == 0)
+                    return outcome
+                } catch {
+                    if dropCommitted {
+                        try require(probe.observation.dropped && probe.observation.mutations > 0)
+                        throw PairedRecoverySmokeError.droppedReply
+                    }
+                    throw error
+                }
+            }
+        }
+        func submit(_ original: HomeAuthoringOriginal, bytes: Data?) async throws -> HomeAuthoringOriginalRead {
+            let before = try NativePendingStorage.load(directory: directory)
+            let scope = try await remote { try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key) }
+            let entry = try NativePairedCaptureCorrespondence.entry(input: .authoring(original, bytes), scope: scope,
+                association: association, pending: before)
+            let pending = try NativePendingStorage.retaining(entry, directory: directory, expected: before)
+            try NativePairedCaptureCorrespondence.publication(of: entry, before: before, after: pending)
+            try require(pending.document.version == .v8)
+            guard case .retained = try await execute(entry, .lookup) else { throw PairedRecoverySmokeError.failed(#line) }
+            do { _ = try await execute(entry, .retry, expectMutation: true, dropCommitted: true); throw PairedRecoverySmokeError.failed(#line) }
+            catch PairedRecoverySmokeError.droppedReply {}
+            try NativePendingStorage.check(pending, directory: directory)
+            guard case .resolved = try await execute(entry, .retry) else { throw PairedRecoverySmokeError.failed(#line) }
+            let receipt = try await remote {
+                try NativeAuthoringReadClient.fetchOriginal(socketPath: "", credential: key,
+                    kind: original.kind, epoch: original.epoch, operation: original.operation)
+            }
+            guard let receipt else { throw PairedRecoverySmokeError.failed(#line) }
+            try NativeAuthoringMutationClient.verify(receipt, original: original)
+            let revision = try await remote { try LocalHealthClient.fetchControllerIdentity(socketPath: "", credential: key).revision }
+            for action in [NativePendingRecoveryAction.lookup, .retry] {
+                guard case .resolved = try await execute(entry, action) else { throw PairedRecoverySmokeError.failed(#line) }
+                let after = try await remote { try LocalHealthClient.fetchControllerIdentity(socketPath: "", credential: key).revision }
+                try require(after == revision)
+            }
+            if original.kind != .review {
+                let after = try NativePendingStorage.resolving(entry, directory: directory, expected: pending)
+                _ = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: .resolved("checked transport fixture"), before: pending, after: after)
+            }
+            return receipt
+        }
+        if mode == "authoring-stage" {
+            guard let text = payload["draft"] as? String else { throw PairedRecoverySmokeError.failed(#line) }
+            let bytes = Data(text.utf8), summary = try NativeAuthoringReadClient.objectSummary(kind: "draft", payload: bytes)
+            let scope = try await remote { try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key) }
+            let imported = try authoringOriginal(["authority_epoch": scope.identity.authorityEpoch,
+                "operation_id": "op:paired-authoring-import", "expected_revision": scope.identity.revision,
+                "object": ["kind": summary.kind, "object_digest": summary.digest, "payload_sha256": summary.payloadSHA, "payload_bytes": summary.size]], kind: .import)
+            let object = try await stage("manual import") { try await submit(imported, bytes: bytes) }
+            let contract = try await stage("contract export") { try await remote { try NativeAuthoringContractClient.fetch(socketPath: "", credential: key) } }
+            var limits: [String: Any] = contract.limits.authoring.mapValues { Int($0) as Any }
+            limits["reader"] = contract.limits.reader.mapValues(Int.init)
+            let candidate = try authoringOriginal(["authority_epoch": Int(contract.epoch),
+                "operation_id": "op:paired-authoring-candidate", "expected_revision": Int(contract.revision),
+                "request": ["mode": "manual", "contract_digest": contract.contractSHA,
+                    "base_draft_ref": ["object_digest": summary.digest, "first_revision": Int(object.firstRevision!)],
+                    "source_refs": [], "fixture_refs": [], "instruction": "Assess only the retained synthetic draft.",
+                    "limits": limits]], kind: .candidate)
+            let assessed = try await stage("manual candidate") { try await submit(candidate, bytes: nil) }
+            try require(assessed.disposition == "compatible" && assessed.sourceReview == "not_assessed")
+            let current = try await remote { try LocalHealthClient.fetchControllerIdentity(socketPath: "", credential: key) }
+            let review = try authoringOriginal(["authority_epoch": current.authorityEpoch,
+                "operation_id": "op:paired-authoring-review", "expected_revision": current.revision,
+                "review": ["mode": "source", "candidate_ref": ["authority_epoch": Int(assessed.epoch), "operation_id": assessed.operation,
+                    "revision": Int(assessed.revision), "input_sha256": assessed.inputSHA!, "assessment_sha256": assessed.resultSHA!],
+                    "evidence": [], "unresolved_paths": ["/profile/binding"], "envelope_ref": NSNull()]], kind: .review)
+            _ = try await stage("source review") { try await submit(review, bytes: nil) }
+        } else {
+            let before = try NativePendingStorage.load(directory: directory)
+            guard let entry = before.document.entries.first, entry.category == .authoring else { throw PairedRecoverySmokeError.failed(#line) }
+            if mode == "authoring-revoked" {
+                do { _ = try await execute(entry, .retry); throw PairedRecoverySmokeError.failed(#line) }
+                catch LocalHealthError.server("unauthorized") {}
+            } else {
+                let revision = try await remote { try LocalHealthClient.fetchControllerIdentity(socketPath: "", credential: key).revision }
+                for action in [NativePendingRecoveryAction.lookup, .retry] {
+                    guard case .resolved = try await execute(entry, action) else { throw PairedRecoverySmokeError.failed(#line) }
+                }
+                let after = try await remote { try LocalHealthClient.fetchControllerIdentity(socketPath: "", credential: key).revision }
+                try require(after == revision)
+            }
+            try NativePendingStorage.check(before, directory: directory)
+        }
+    }
+
+    private static func authoringOriginal(_ fields: [String: Any], kind: HomeAuthoringOriginalKind, line: Int = #line) throws -> HomeAuthoringOriginal {
+        do { return try NativeAuthoringOriginalWire.encode(fields, kind: kind) }
+        catch { throw PairedRecoverySmokeError.failed(line) }
+    }
+
+    private static func stage<Value>(_ label: String, _ operation: () async throws -> Value) async throws -> Value {
+        do { return try await operation() }
+        catch {
+            FileHandle.standardError.write(Data("paired fixture stage failed: \(label)\n".utf8))
+            throw error
+        }
     }
 
     private static func context(_ association: NativeControllerPublicAssociation) -> NativePendingContext {

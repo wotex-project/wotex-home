@@ -23,6 +23,12 @@ enum NativePairedSessionError: Error, Sendable {
 
 // Pure refusal/correspondence only. A decoded scope cannot create a session.
 enum NativePairedSessionCorrespondence {
+    static func checkProfileScope(_ scope: HomeControllerScope, entry: NativePendingEntry) throws {
+        guard entry.category == .authoring || entry.category == .generation else { return }
+        guard entry.context.matches(scope.identity), scope.permissions.contains("profile:manage") else {
+            throw NativePairedSessionError.scopeConflict
+        }
+    }
     static func check(_ scope: HomeControllerScope, association: NativeControllerPublicAssociation) throws {
         _ = try association.encoded()
         let identity = scope.identity, original = association.scope
@@ -133,6 +139,9 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
                 try LocalHealthClient.fetchControllerScope(socketPath: "", credential: material.bearer)
             }
             try NativePairedSessionCorrespondence.check(scope, association: association)
+            if case .original(let entry, _, _) = purpose {
+                try NativePairedSessionCorrespondence.checkProfileScope(scope, entry: entry)
+            }
             // Correspondence work also belongs to the original owner lifetime.
             try await exchangeGuard.validate(.decoded, until: deadline)
             guard !Task.isCancelled else { throw NativeControllerTLSError.cancelled }
@@ -175,6 +184,7 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
 
     func capturing(_ entry: NativePendingEntry, pending: NativePendingSnapshot) async throws -> NativePairedControllerRecovery {
         guard entry == (try original(input: entry.input, pending: pending)) else { throw NativePendingError.conflict }
+        try await profileScope(entry, purpose: purpose)
         let next = try await NativePendingPublicationOwner.perform(until: deadline) { [self] in
             try Self.validateCurrent(expected: snapshot, association: association, custody: custody, deadline: deadline, purpose: purpose)
             try NativePendingStorage.check(pending)
@@ -185,6 +195,7 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
             return next
         }
         let continued = Purpose.original(entry: entry, action: .retry, pending: next)
+        try await profileScope(entry, purpose: continued)
         try await Self.currentGuard(expected: snapshot, association: association, custody: custody,
             deadline: deadline, purpose: continued).validate(.decoded, until: deadline)
         guard !Task.isCancelled else { throw NativePendingError.outcomeUnknown }
@@ -239,6 +250,7 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
     fileprivate func publishing(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
                                  pending: NativePendingSnapshot, outcome: NativePendingRecoveryOutcome) async throws -> (NativePendingSnapshot, NativePendingEntry) {
         guard purpose == .original(entry: entry, action: action, pending: pending) else { throw NativePendingError.conflict }
+        try await profileScope(entry, purpose: purpose)
         let next = try await NativePendingPublicationOwner.perform(until: deadline) { [self] in
             try Self.validateCurrent(expected: snapshot, association: association, custody: custody,
                 deadline: deadline, purpose: purpose)
@@ -255,12 +267,29 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
             return next
         }
         let updated = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: outcome, before: pending, after: next)
+        try await profileScope(updated, purpose: .original(entry: updated, action: action, pending: next))
         guard !Task.isCancelled else { throw NativePendingError.outcomeUnknown }
         try await Self.currentGuard(expected: snapshot, association: association, custody: custody,
             deadline: deadline, purpose: .original(entry: updated, action: action, pending: next)).validate(.decoded, until: deadline)
         guard !Task.isCancelled else { throw NativePendingError.outcomeUnknown }
         try Self.lifetime(deadline)
         return (next, updated)
+    }
+
+    // Reuse this actual seal and deadline around private publication; fetching
+    // current grants must never acquire another session after a possible send.
+    private func profileScope(_ entry: NativePendingEntry, purpose checkedPurpose: Purpose) async throws {
+        guard entry.category == .authoring else { return }
+        let exchangeGuard = Self.currentGuard(expected: snapshot, association: association,
+            custody: custody, deadline: deadline, purpose: checkedPurpose)
+        let live = try await NativeControllerDomainClient.perform(association.peer, credential: bearer,
+            clock: clock, exchangeGuard: exchangeGuard, deadline: deadline) { [bearer] in
+            try LocalHealthClient.fetchControllerScope(socketPath: "", credential: bearer)
+        }
+        try NativePairedSessionCorrespondence.check(live, association: association)
+        try NativePairedSessionCorrespondence.checkProfileScope(live, entry: entry)
+        guard live.permissions == scope.permissions, live.targetIDs == scope.targetIDs,
+              live.identity.revision >= scope.identity.revision else { throw NativePairedSessionError.scopeConflict }
     }
 
     fileprivate func publishingCancellation(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
