@@ -254,6 +254,15 @@ enum SignedSetupPeer {
         return facts.group
     }
 
+    // Public actual-self code facts, not a clock or credential seal. The clock
+    // owner must join them to its installed policy and repeat current checks.
+    static func certificateClockSigningIdentity() throws -> (team: String, executable: Data, bundle: Data) {
+        let (deadline, overflow) = DispatchTime.now().uptimeNanoseconds.addingReportingOverflow(5_000_000_000)
+        guard !overflow else { throw NativeSetupPeerError.expired }
+        let facts = try pairedKeychainFacts(deadline: deadline)
+        return (facts.team, facts.executableIdentity, facts.bundleIdentity)
+    }
+
     private static func pairedKeychainFacts(deadline: UInt64, mqtt: Bool = false) throws ->
         (outer: URL, team: String, group: String, executableIdentity: Data, bundleIdentity: Data) {
         try fresh(deadline)

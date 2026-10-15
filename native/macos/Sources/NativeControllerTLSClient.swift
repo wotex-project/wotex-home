@@ -35,20 +35,49 @@ final class NativeControllerTLSDiagnostics: @unchecked Sendable, CustomReflectab
 // Trusted host input, never a remote API field or a Home clock qualification.
 // Additional uncertainty checks cannot replace normal system-time validation.
 struct NativeControllerCertificateClock: Sendable {
+    // A timestamped uncertainty projection, never an installed-source seal.
+    // Retaining its observation avoids losing time spent in later source checks.
+    struct SourceSample: Sendable {
+        let earliest: Int64, latest: Int64, observed: ContinuousClock.Instant, driftPPM: Int64
+    }
     private let earliest: Int64
     private let latest: Int64
     private let observed: ContinuousClock.Instant
     private let expires: ContinuousClock.Instant
+    private let source: (@Sendable () throws -> SourceSample)?
     init(earliest: Int64, latest: Int64, leaseMilliseconds: Int64 = 15_000) throws {
         guard earliest >= 0, earliest <= latest, latest <= 253_402_300_799_000,
               (1...15_000).contains(leaseMilliseconds) else { throw NativeControllerTLSError.tlsClockUncertain }
         self.earliest = earliest; self.latest = latest
         observed = ContinuousClock.now
         expires = observed.advanced(by: .milliseconds(leaseMilliseconds))
+        source = nil
+    }
+    init(sourceExpiry: ContinuousClock.Instant, source: @escaping @Sendable () throws -> SourceSample) throws {
+        let now = ContinuousClock.now
+        guard now < sourceExpiry else { throw NativeControllerTLSError.tlsClockUncertain }
+        earliest = 0; latest = 0; observed = now
+        expires = min(sourceExpiry, now.advanced(by: .seconds(15)))
+        self.source = source
     }
     func bounds() throws -> (Date, Date) {
         let now = ContinuousClock.now
         guard now >= observed, now < expires else { throw NativeControllerTLSError.tlsClockUncertain }
+        if let source {
+            do {
+                let sample = try source(), delivered = ContinuousClock.now
+                guard delivered < expires, sample.observed >= observed, sample.observed <= delivered,
+                      sample.earliest >= 0, sample.earliest <= sample.latest, sample.latest <= 253_402_300_799_000,
+                      (0...1000).contains(sample.driftPPM) else { throw NativeControllerTLSError.tlsClockUncertain }
+                let d = sample.observed.duration(to: delivered).components
+                let floor = d.seconds * 1000 + d.attoseconds / 1_000_000_000_000_000
+                let ceil = floor + (d.attoseconds % 1_000_000_000_000_000 == 0 ? 0 : 1)
+                let drift = (ceil * sample.driftPPM + 999_999) / 1_000_000
+                let first = sample.earliest + floor - drift, last = sample.latest + ceil + drift
+                guard first >= 0, first <= last, last <= 253_402_300_799_000 else { throw NativeControllerTLSError.tlsClockUncertain }
+                return (Date(timeIntervalSince1970: Double(first) / 1000), Date(timeIntervalSince1970: Double(last) / 1000))
+            } catch { throw NativeControllerTLSError.tlsClockUncertain }
+        }
         let duration = observed.duration(to: now).components
         let elapsed = duration.seconds * 1000 + duration.attoseconds / 1_000_000_000_000_000
         guard latest + elapsed <= 253_402_300_799_000 else { throw NativeControllerTLSError.tlsClockUncertain }
