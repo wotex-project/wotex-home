@@ -1,6 +1,6 @@
 # Native external-profile guidance reads
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08/H18-T6/T8/T11/T12.
 Implementation: planned. Evidence: missing.
@@ -63,7 +63,8 @@ Typed values and nested values redact reflection; retain safe fields only.
   accepted. Availability with an empty list remains distinct from unavailability.
 - Target: requested target ID must match. State absent requires all four counters0,
   null artifact and trust0. Selected/revoked requires positive selection revision,
-  selection generation and binding revision, nonnegative resource revision equal
+  selection generation and binding revision, generation no greater than selection
+  revision, nonnegative resource revision equal
   generation minus1, binding not greater than selection, and a digest with positive
   current trust revision. Selection/trust cannot exceed Store revision. Selected
   binding equals selection; revoked may retain an earlier binding. Do not infer
