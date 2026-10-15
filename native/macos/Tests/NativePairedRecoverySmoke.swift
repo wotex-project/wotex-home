@@ -50,6 +50,22 @@ private final class AuthoringTransportProbe: NativeDomainTransport, @unchecked S
     }
 }
 
+private struct WorkspaceCancelReplyDrop: NativeDomainTransport {
+    let base: any NativeDomainTransport
+    let directory: URL
+    func request(body: Data, allowNotFound: Bool) throws -> Data {
+        let request = try JSONSerialization.jsonObject(with: body) as! [String: Any]
+        let cancelling = request["operation"] as? String == "authoring_generation_cancel"
+        if cancelling {
+            let workspace = try NativeGenerationWorkspaceStorage.load(directory: directory)
+            guard workspace.document.entries.first?.cancellationPending == true else { throw PairedRecoverySmokeError.failed(#line) }
+        }
+        let response = try base.request(body: body, allowNotFound: allowNotFound)
+        if cancelling { throw LocalHealthError.invalidResponse }
+        return response
+    }
+}
+
 @main
 struct NativePairedRecoverySmoke {
     static func main() async {
@@ -674,6 +690,10 @@ struct NativePairedRecoverySmoke {
                     "revision": Int(assessed.revision), "input_sha256": assessed.inputSHA!, "assessment_sha256": assessed.resultSHA!],
                     "evidence": [], "unresolved_paths": ["/profile/binding"], "envelope_ref": NSNull()]], kind: .review)
             _ = try await stage("source review") { try await submit(review, bytes: nil) }
+        } else if mode.hasPrefix("authoring-workspace") {
+            try await stage("paired workspace transport") {
+                try await workspaceTransport(mode: mode, directory: directory, association: association, key: key, clock: clock)
+            }
         } else {
             let before = try NativePendingStorage.load(directory: directory)
             guard let entry = before.document.entries.first, entry.category == .authoring else { throw PairedRecoverySmokeError.failed(#line) }
@@ -690,6 +710,134 @@ struct NativePairedRecoverySmoke {
             }
             try NativePendingStorage.check(before, directory: directory)
         }
+    }
+
+    private static func workspaceTransport(mode: String, directory: URL, association: NativeControllerPublicAssociation,
+                                           key: Data, clock: @escaping @Sendable () throws -> NativeControllerCertificateClock) async throws {
+        let associations = try NativeControllerAssociationStorage.load(directory: directory)
+        func remote<Value: Sendable>(_ operation: @escaping @Sendable () throws -> Value) async throws -> Value {
+            let workspace = try NativeGenerationWorkspaceStorage.load(directory: directory), pending = try NativePendingStorage.load(directory: directory)
+            let check = NativeControllerExchangeGuard { _ in
+                try NativeControllerAssociationStorage.check(associations, directory: directory)
+                try NativeGenerationWorkspaceStorage.check(workspace, directory: directory)
+                try NativePendingStorage.check(pending, directory: directory)
+            }
+            return try await NativeControllerDomainClient.perform(association.peer, credential: key, clock: clock,
+                exchangeGuard: check, deadline: .now.advanced(by: .seconds(15)), operation: operation)
+        }
+        func read(_ entry: NativeGenerationWorkspaceEntry) async throws -> NativePairedWorkspaceRead {
+            try await remote { try NativePairedGenerationWorkspaceOperations.read(entry, association: association, credential: key) }
+        }
+        func retainPending(_ original: HomeGenerationOriginal) throws -> NativePendingEntry {
+            let entry = NativePendingEntry(context: context(association), custody: try .paired(from: association), input: .generation(original), phase: .pending)
+            let before = try NativePendingStorage.load(directory: directory)
+            let after = try NativePendingStorage.retaining(entry, directory: directory, expected: before)
+            try NativePairedCaptureCorrespondence.publication(of: entry, before: before, after: after)
+            return entry
+        }
+        func resolve(_ entry: NativePendingEntry) throws {
+            let before = try NativePendingStorage.load(directory: directory)
+            let after = try NativePendingStorage.resolving(entry, directory: directory, expected: before)
+            _ = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: .resolved("checked raw fixture status"), before: before, after: after)
+        }
+        if mode == "authoring-workspace-revoked" {
+            let workspace = try NativeGenerationWorkspaceStorage.load(directory: directory)
+            guard let entry = workspace.document.entries.first else { throw PairedRecoverySmokeError.failed(#line) }
+            do { _ = try await read(entry); throw PairedRecoverySmokeError.failed(#line) }
+            catch LocalHealthError.server("unauthorized") {}
+            try NativeGenerationWorkspaceStorage.check(workspace, directory: directory)
+            return
+        }
+        if mode == "authoring-workspace-restart" {
+            let workspace = try NativeGenerationWorkspaceStorage.load(directory: directory)
+            guard let entry = workspace.document.entries.first else { throw PairedRecoverySmokeError.failed(#line) }
+            let status = try await read(entry)
+            try require(status.root?.state == "cancelled" && status.attempt?.result?.disposition == "candidate")
+            try NativeGenerationWorkspaceStorage.check(workspace, directory: directory)
+            return
+        }
+        let pendingBefore = try NativePendingStorage.load(directory: directory)
+        guard let review = pendingBefore.document.entries.first, review.category == .authoring else { throw PairedRecoverySmokeError.failed(#line) }
+        try resolve(review)
+        let contract = try await remote { try NativeAuthoringContractClient.fetch(socketPath: "", credential: key) }
+        let options = try await remote { try NativeGenerationClient.fetchOptions(socketPath: "", credential: key) }
+        let policy = try (options.fields()["policies"] as! [[String: Any]])[0]
+        let preparation = try NativeGenerationOriginalWire.encode(["authority_epoch": Int(options.epoch), "operation_id": "generation:paired-workspace",
+            "expected_revision": Int(options.revision), "provider_sha256": policy["provider_sha256"]!, "policy_sha256": policy["policy_sha256"]!, "remote_export": false,
+            "projection": ["contract_digest": contract.contractSHA, "instruction": "Draft the synthetic mapping only.", "passages": [], "examples": [], "limits": policy["limits"]!],
+            "budget": ["attempts": 1, "attempt_ms": 10000, "total_ms": 30000]], kind: .preparation)
+        var entry = try NativeGenerationWorkspaceEntry(context: context(association), custody: .paired(from: association), basisSHA: contract.basisSHA,
+            preparation: preparation, attempts: [], cancellationPending: false).checked()
+        var workspace = try NativeGenerationWorkspaceStorage.retaining(entry, directory: directory, expected: .empty)
+        let rootPending = try retainPending(preparation)
+        _ = try await remote { try NativeGenerationClient.submit(socketPath: "", credential: key, original: preparation) }
+        let prepared = try await read(entry)
+        try require(prepared.root?.state == "prepared")
+        try resolve(rootPending)
+        let identity = try await remote { try LocalHealthClient.fetchControllerIdentity(socketPath: "", credential: key) }
+        let attempt = try NativeGenerationOriginalWire.encode(["authority_epoch": identity.authorityEpoch, "operation_id": "generation:paired-attempt", "expected_revision": identity.revision,
+            "preparation_operation_id": preparation.operation, "preparation_sha256": preparation.sha, "attempt": 1, "previous_operation_id": NSNull(), "repair_export": false], kind: .attempt)
+        let appended = try entry.appending(attempt)
+        workspace = try NativeGenerationWorkspaceStorage.replacing(entry, with: appended, directory: directory, expected: workspace); entry = appended
+        let attemptPending = try retainPending(attempt)
+        _ = try await remote { try NativeGenerationClient.submit(socketPath: "", credential: key, original: attempt) }
+        var status = try await read(entry)
+        try require(status.attempt?.state == "running")
+        try refused { try NativePairedWorkspaceCorrespondence.permitsArchive(entry, read: status, acceptUncertainty: true) }
+        try write(directory.appendingPathComponent("model-release"), Data("release".utf8))
+        for _ in 0..<30 where status.attempt?.result == nil {
+            try await Task.sleep(for: .milliseconds(50)); status = try await read(entry)
+        }
+        try require(status.attempt?.result?.disposition == "candidate")
+        try resolve(attemptPending)
+        let completed = entry
+        let assessment = try await remote { try NativePairedGenerationWorkspaceOperations.assess(completed, association: association, credential: key,
+            operation: "manual:paired-generation-assessment", instruction: "Assess this exact generated draft.") }
+        try require(assessment.original.kind == .candidate && assessment.contract.basisSHA == entry.basisSHA)
+        let current = try await remote { try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key) }
+        let manualBefore = try NativePendingStorage.load(directory: directory)
+        let manual = try NativePairedCaptureCorrespondence.entry(input: .authoring(assessment.original, nil), scope: current, association: association, pending: manualBefore)
+        _ = try NativePendingStorage.retaining(manual, directory: directory, expected: manualBefore)
+        let outcome = try await remote { try NativePendingRecoveryOperations.executePaired(manual, association: association, credential: key, action: .retry) }
+        guard case .resolved = outcome else { throw PairedRecoverySmokeError.failed(#line) }
+        try resolve(manual)
+        try refused { _ = try NativePairedGenerationWorkspaceOperations.cancel(completed, association: association, credential: key) }
+        let intent = try entry.cancellation(true)
+        let beforeIntent = workspace
+        workspace = try NativeGenerationWorkspaceStorage.replacing(entry, with: intent, directory: directory, expected: workspace)
+        _ = try NativePairedWorkspaceCorrespondence.intent(entry, value: true, before: beforeIntent, after: workspace); entry = intent
+        do {
+            _ = try await remote {
+                guard let base = NativeDomainTransportScope.current else { throw PairedRecoverySmokeError.failed(#line) }
+                return try NativeDomainTransportScope.$current.withValue(WorkspaceCancelReplyDrop(base: base, directory: directory)) {
+                    try NativePairedGenerationWorkspaceOperations.cancel(intent, association: association, credential: key)
+                }
+            }
+            throw PairedRecoverySmokeError.failed(#line)
+        } catch NativeGenerationDeliveryError.outcomeUnknown {}
+        try require(try NativeGenerationWorkspaceStorage.load(directory: directory).document.entries.first?.cancellationPending == true)
+        let cancelled = try await read(entry)
+        try require(cancelled.root?.state == "cancelled")
+        let cleared = try entry.cancellation(false), beforeClear = workspace
+        workspace = try NativeGenerationWorkspaceStorage.replacing(entry, with: cleared, directory: directory, expected: workspace)
+        _ = try NativePairedWorkspaceCorrespondence.intent(entry, value: false, before: beforeClear, after: workspace); entry = cleared
+        let revision = cancelled.identity.revision
+        let restored = try NativePairedWorkspaceCorrespondence.restoredOriginal(entry)
+        let restoreBefore = try NativePendingStorage.load(directory: directory)
+        let restoreAfter = try NativePendingStorage.retaining(restored, directory: directory, expected: restoreBefore)
+        try NativePairedCaptureCorrespondence.publication(of: restored, before: restoreBefore, after: restoreAfter)
+        try require(restored.input == .generation(attempt))
+        try resolve(restored)
+        try NativePairedWorkspaceCorrespondence.permitsArchive(entry, read: cancelled, acceptUncertainty: false)
+        let archived = try NativeGenerationWorkspaceStorage.removing(entry, directory: directory, expected: workspace)
+        try NativePairedWorkspaceCorrespondence.publication(entry, replacement: nil, before: workspace, after: archived)
+        try require(archived.document.version == .v2 && archived.document.entries.isEmpty)
+        // Explicit fixture-only re-retention allows a fresh process to read
+        // the same owned history after restart; it sends no generation request.
+        _ = try NativeGenerationWorkspaceStorage.retaining(entry, directory: directory, expected: archived)
+        let after = try await remote { try LocalHealthClient.fetchControllerIdentity(socketPath: "", credential: key) }
+        try require(after.revision == revision)
+        _ = try NativePendingStorage.retaining(review, directory: directory, expected: NativePendingStorage.load(directory: directory))
     }
 
     private static func authoringOriginal(_ fields: [String: Any], kind: HomeAuthoringOriginalKind, line: Int = #line) throws -> HomeAuthoringOriginal {

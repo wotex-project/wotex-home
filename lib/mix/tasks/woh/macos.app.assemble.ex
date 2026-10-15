@@ -132,6 +132,7 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativePendingRecoveryOperations.swift"),
         Path.join(native, "Sources/NativePairedPendingRecoveryOperations.swift"),
         Path.join(native, "Sources/NativePairedRecoveryCorrespondence.swift"),
+        Path.join(native, "Sources/NativePairedGenerationWorkspace.swift"),
         Path.join(native, "Sources/NativePendingPublicationOwner.swift"),
         Path.join(native, "Sources/NativePendingPanel.swift"),
         Path.join(native, "Sources/HostMaintenancePanel.swift"),

@@ -14,18 +14,28 @@ extension NativePendingRecoveryOperations {
         let replies = PairedOriginalReplyTransport(base: transport, principal: entry.context.principal)
         let guarded: any NativeDomainTransport
         if entry.category == .authoring {
-            let scope = try NativeDomainTransportScope.$current.withValue(replies) {
-                try LocalHealthClient.fetchControllerScope(socketPath: "", credential: credential)
-            }
-            try NativePairedSessionCorrespondence.check(scope, association: association)
-            try NativePairedSessionCorrespondence.checkProfileScope(scope, entry: entry)
-            guarded = PairedProfileOriginalTransport(base: replies, credential: credential, association: association,
-                entry: entry, initial: scope)
+            guarded = try NativePairedProfileTransport.guarding(replies, association: association, credential: credential, entry: entry)
         } else { guarded = replies }
         return try NativeDomainTransportScope.$current.withValue(guarded) {
             try executeOrdinary(entry, credential: credential, socketPath: "", action: action,
                 nativeAccess: { _, _ in throw NativePendingError.unavailable })
         }
+    }
+}
+
+enum NativePairedProfileTransport {
+    @TaskLocal static var revisions: NativePairedScopeRevision?
+    static func guarding(_ base: any NativeDomainTransport, association: NativeControllerPublicAssociation,
+                         credential: Data, entry: NativePendingEntry) throws -> any NativeDomainTransport {
+        let scope = try NativeDomainTransportScope.$current.withValue(base) {
+            try LocalHealthClient.fetchControllerScope(socketPath: "", credential: credential)
+        }
+        try NativePairedSessionCorrespondence.check(scope, association: association)
+        try NativePairedSessionCorrespondence.checkProfileScope(scope, entry: entry)
+        let revisions = revisions ?? NativePairedScopeRevision(initial: scope.identity.revision)
+        try revisions.check(scope.identity.revision)
+        return PairedProfileOriginalTransport(base: base, credential: credential, association: association, entry: entry,
+            initial: scope, revisions: revisions)
     }
 }
 
@@ -37,6 +47,7 @@ private struct PairedProfileOriginalTransport: NativeDomainTransport, CustomRefl
     let association: NativeControllerPublicAssociation
     let entry: NativePendingEntry
     let initial: HomeControllerScope
+    let revisions: NativePairedScopeRevision
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
 
     func request(body: Data, allowNotFound: Bool) throws -> Data {
@@ -55,7 +66,19 @@ private struct PairedProfileOriginalTransport: NativeDomainTransport, CustomRefl
         try NativePairedSessionCorrespondence.checkProfileScope(scope, entry: entry)
         guard scope.permissions == initial.permissions, scope.targetIDs == initial.targetIDs,
               scope.identity.revision >= initial.identity.revision else { throw NativePairedSessionError.scopeConflict }
+        try revisions.check(scope.identity.revision)
         return scope
+    }
+}
+
+final class NativePairedScopeRevision: @unchecked Sendable {
+    private let lock = NSLock()
+    private var maximum: Int
+    init(initial: Int) { maximum = initial }
+    func check(_ revision: Int) throws {
+        lock.lock(); defer { lock.unlock() }
+        guard revision >= maximum else { throw NativePairedSessionError.scopeConflict }
+        maximum = revision
     }
 }
 

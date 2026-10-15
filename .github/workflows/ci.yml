@@ -91,6 +91,7 @@ jobs:
       - run: mix woh.native.paired.keychain.policy.smoke
       - run: mix woh.native.paired.session.smoke
       - run: mix woh.native.paired.recovery.smoke
+      - run: mix woh.native.paired.workspace.smoke
       - run: mix woh.native.controller.tls.smoke
       - run: mix woh.native.controller.api.smoke
       - run: mix woh.native.controller.domain.smoke

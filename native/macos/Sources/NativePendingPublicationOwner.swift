@@ -5,7 +5,11 @@ import Foundation
 enum NativePendingPublicationOwner {
     static func perform(until deadline: ContinuousClock.Instant,
                         operation: @escaping @Sendable () throws -> NativePendingSnapshot) async throws -> NativePendingSnapshot {
-        let owner = PendingPublicationCompletion(deadline: deadline)
+        try await performValue(until: deadline, operation: operation)
+    }
+    static func performValue<Value: Sendable>(until deadline: ContinuousClock.Instant,
+                        operation: @escaping @Sendable () throws -> Value) async throws -> Value {
+        let owner = PendingPublicationCompletion<Value>(deadline: deadline)
         return try await withTaskCancellationHandler {
             let result = try await owner.wait(operation)
             guard !Task.isCancelled, ContinuousClock.now < deadline else { throw NativePendingError.outcomeUnknown }
@@ -14,17 +18,17 @@ enum NativePendingPublicationOwner {
     }
 }
 
-private final class PendingPublicationCompletion: @unchecked Sendable, CustomReflectable {
+private final class PendingPublicationCompletion<Value: Sendable>: @unchecked Sendable, CustomReflectable {
     private let queue = DispatchQueue(label: "home.pending.publication.owner")
     private let deadline: ContinuousClock.Instant
-    private var continuation: CheckedContinuation<NativePendingSnapshot, any Error>?
+    private var continuation: CheckedContinuation<Value, any Error>?
     private var task: Task<Void, Never>?
     private var timer: DispatchSourceTimer?
     private var stopped = false
     private var cancelled = false
     init(deadline: ContinuousClock.Instant) { self.deadline = deadline }
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
-    func wait(_ operation: @escaping @Sendable () throws -> NativePendingSnapshot) async throws -> NativePendingSnapshot {
+    func wait(_ operation: @escaping @Sendable () throws -> Value) async throws -> Value {
         try await withCheckedThrowingContinuation { continuation in
             queue.async { [self] in
                 self.continuation = continuation
@@ -37,7 +41,7 @@ private final class PendingPublicationCompletion: @unchecked Sendable, CustomRef
                 }
                 self.timer = timer; timer.resume()
                 task = Task.detached { [self] in
-                    let result: Result<NativePendingSnapshot, any Error>
+                    let result: Result<Value, any Error>
                     do { result = .success(try operation()) } catch { result = .failure(error) }
                     queue.async { [self] in
                         guard !stopped else { return }
@@ -54,7 +58,7 @@ private final class PendingPublicationCompletion: @unchecked Sendable, CustomRef
             if continuation != nil { finish(.failure(NativePendingError.outcomeUnknown)) }
         }
     }
-    private func finish(_ result: Result<NativePendingSnapshot, any Error>) {
+    private func finish(_ result: Result<Value, any Error>) {
         guard !stopped else { return }
         stopped = true; timer?.cancel(); timer = nil; task?.cancel(); task = nil
         let callback = continuation; continuation = nil

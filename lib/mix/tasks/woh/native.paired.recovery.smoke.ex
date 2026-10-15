@@ -1,3 +1,48 @@
+defmodule Woh.Tool.PairedWorkspaceProvider do
+  @moduledoc false
+
+  use GenServer
+
+  def init({draft, release}),
+    do: {:ok, %{draft: draft, release: release, calls: 0, pending: nil, deadline: nil}}
+
+  def handle_call(:calls, _, state), do: {:reply, state.calls, state}
+
+  def handle_call({:generate_profile, _document, _maximum}, from, %{pending: nil} = state) do
+    Process.send_after(self(), :release, 10)
+
+    {:noreply,
+     %{
+       state
+       | pending: from,
+         calls: state.calls + 1,
+         deadline: System.monotonic_time(:millisecond) + 8000
+     }}
+  end
+
+  def handle_info(:release, state) do
+    cond do
+      File.regular?(state.release) ->
+        GenServer.reply(state.pending, {:ok, state.draft})
+        {:noreply, %{state | pending: nil}}
+
+      System.monotonic_time(:millisecond) >= state.deadline ->
+        GenServer.reply(state.pending, {:error, :fixture_release_missing})
+        {:noreply, %{state | pending: nil}}
+
+      true ->
+        Process.send_after(self(), :release, 10)
+        {:noreply, state}
+    end
+  end
+
+  def format_status(status),
+    do:
+      status
+      |> Map.put(:state, :private_paired_workspace_provider)
+      |> Map.put(:message, :redacted)
+end
+
 defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
   @moduledoc """
   Check original paired recovery custody and transport.
@@ -188,18 +233,53 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
   end
 
   defp authoring_owner(executable, parent) do
-    alias WotexHome.Profiles.{AuthoringContract, Custody, ProducerIdentity}
-    root = private_directory(parent, "authoring-owner")
+    for family <- ~w(temperature research), do: authoring_owner(executable, parent, family)
+  end
+
+  defp authoring_owner(executable, parent, family_name) do
+    alias WotexHome.Profiles.{
+      AuthoringContract,
+      Custody,
+      GenerationPolicy,
+      GenerationProvider,
+      ProducerIdentity
+    }
+
+    root = private_directory(parent, "authoring-owner-" <> family_name)
     _ = private_directory(root, "profiles")
-    family = fixture("temperature")
-    mechanics = fixture("authoring-mechanics")["temperature"]
+    family = fixture(family_name)
+    mechanics = fixture("authoring-mechanics")[family_name]
     {:ok, producer} = ProducerIdentity.current()
 
     installed =
       family |> Map.take(~w(bindings contracts home_contracts)) |> Map.put("producer", producer)
 
     {:ok, contract} = AuthoringContract.export(installed, mechanics["limits"])
-    options = [profile_custody: __MODULE__.Custody, authoring_contract: contract]
+
+    {:ok, provider_pid} =
+      GenServer.start_link(
+        Woh.Tool.PairedWorkspaceProvider,
+        {mechanics["draft_bytes"], Path.join(root, "native/model-release")}
+      )
+
+    policy_input =
+      fixture("generation-preparations")[family_name]["policy"]
+      |> Map.put("principal_id", "paired-controller-v1:1:" <> peer().request()["client_id"])
+      |> Map.put("passages", [])
+      |> Map.put("examples", [])
+      |> Map.put("remote_export", false)
+      |> update_in(["provider", "locality"], fn _ -> "local" end)
+
+    {:ok, policy} = GenerationPolicy.new(policy_input)
+    {:ok, provider} = GenerationProvider.new(policy_input["provider"], provider_pid)
+
+    options = [
+      profile_custody: __MODULE__.Custody,
+      authoring_contract: contract,
+      generation_policies: [policy],
+      generation_providers: [provider]
+    ]
+
     now = System.os_time(:second)
 
     {:ok, identity} =
@@ -259,6 +339,8 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
         true = staged == 4
         transport(executable, %{input | "mode" => "authoring-existing"})
         {:ok, ^staged} = Store.revision(store)
+        transport(executable, %{input | "mode" => "authoring-workspace"})
+        true = GenServer.call(provider_pid, :calls) == 1
         input
       after
         GenServer.stop(custody)
@@ -279,14 +361,19 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
       {:ok, before} = Store.revision(store)
       transport(executable, %{payload | "mode" => "authoring-existing"})
       {:ok, ^before} = Store.revision(store)
+      transport(executable, %{payload | "mode" => "authoring-workspace-restart"})
+      {:ok, ^before} = Store.revision(store)
+      true = GenServer.call(provider_pid, :calls) == 1
       key = File.read!(Path.join(payload["directory"], "raw-fixture.key"))
       {:ok, scope} = Store.controller_scope(store, key)
       {:ok, _} = Store.revoke_principal(store, scope.principal_id)
       transport(executable, %{payload | "mode" => "authoring-revoked"})
+      transport(executable, %{payload | "mode" => "authoring-workspace-revoked"})
       {:ok, %{dispatch_enabled: false}} = Store.health(store)
     after
       GenServer.stop(custody)
       stop_owner(restarted)
+      if Process.alive?(provider_pid), do: GenServer.stop(provider_pid)
     end
   end
 
@@ -357,12 +444,13 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
 
   defp transport(executable, input) do
     body = JSON.encode!(input)
+    timeout = if input["mode"] == "authoring-workspace", do: 30_000, else: 20_000
 
     case Command.run_diagnostic(
            executable,
            [],
            16_384,
-           20_000,
+           timeout,
            <<byte_size(body)::32, body::binary>>
          ) do
       {:ok, output} ->

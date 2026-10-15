@@ -51,6 +51,8 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
     private enum Purpose: Equatable, Sendable {
         case selected
         case original(entry: NativePendingEntry, action: NativePendingRecoveryAction, pending: NativePendingSnapshot)
+        case workspace(entry: NativeGenerationWorkspaceEntry, action: NativePairedWorkspaceAction,
+                       workspace: NativeGenerationWorkspaceSnapshot, pending: NativePendingSnapshot)
     }
     let association: NativeControllerPublicAssociation
     let scope: HomeControllerScope
@@ -60,6 +62,7 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
     private let deadline: ContinuousClock.Instant
     private let clock: @Sendable () throws -> NativeControllerCertificateClock
     private let purpose: Purpose
+    private let scopeRevisions: NativePairedScopeRevision
     fileprivate var ownerDeadline: ContinuousClock.Instant { deadline }
     // Public timing metadata for final view delivery; it carries no credential
     // or authority and cannot renew this selected session.
@@ -71,9 +74,11 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
     private init(association: NativeControllerPublicAssociation, scope: HomeControllerScope,
                  snapshot: NativeControllerAssociationSnapshot, material: PairedSessionMaterial,
                  deadline: ContinuousClock.Instant, purpose: Purpose,
-                 clock: @escaping @Sendable () throws -> NativeControllerCertificateClock) {
+                 clock: @escaping @Sendable () throws -> NativeControllerCertificateClock,
+                 revisions: NativePairedScopeRevision? = nil) {
         self.association = association; self.scope = scope; self.snapshot = snapshot
         custody = material.custody; bearer = material.bearer; self.deadline = deadline; self.clock = clock; self.purpose = purpose
+        scopeRevisions = revisions ?? NativePairedScopeRevision(initial: scope.identity.revision)
     }
 
     static func selected(expected: NativeControllerAssociationSnapshot,
@@ -97,6 +102,19 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
         let session = try await acquire(association: association, expected: associations,
             purpose: .original(entry: entry, action: action, pending: pending), deadline: deadline, clock: clock)
         return NativePairedControllerRecovery(session: session, entry: entry, action: action, pending: pending)
+    }
+
+    static func generationWorkspace(_ entry: NativeGenerationWorkspaceEntry, action: NativePairedWorkspaceAction,
+                                    workspace: NativeGenerationWorkspaceSnapshot, pending: NativePendingSnapshot,
+                                    associations: NativeControllerAssociationSnapshot,
+                                    clock: @escaping @Sendable () throws -> NativeControllerCertificateClock) async throws -> NativePairedGenerationWorkspaceSession {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        guard !Task.isCancelled else { throw NativeControllerTLSError.cancelled }
+        let association = try NativePairedWorkspaceCorrespondence.association(entry, action: action,
+            workspace: workspace, pending: pending, associations: associations)
+        let session = try await acquire(association: association, expected: associations,
+            purpose: .workspace(entry: entry, action: action, workspace: workspace, pending: pending), deadline: deadline, clock: clock)
+        return NativePairedGenerationWorkspaceSession(session: session, entry: entry, action: action, workspace: workspace, pending: pending)
     }
 
     private static func acquire(association: NativeControllerPublicAssociation,
@@ -141,6 +159,10 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
             try NativePairedSessionCorrespondence.check(scope, association: association)
             if case .original(let entry, _, _) = purpose {
                 try NativePairedSessionCorrespondence.checkProfileScope(scope, entry: entry)
+            }
+            if case .workspace(let entry, _, _, _) = purpose {
+                try NativePairedSessionCorrespondence.checkProfileScope(scope,
+                    entry: NativePendingEntry(context: entry.context, custody: entry.custody, input: .generation(entry.preparation), phase: .pending))
             }
             // Correspondence work also belongs to the original owner lifetime.
             try await exchangeGuard.validate(.decoded, until: deadline)
@@ -201,7 +223,7 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
         guard !Task.isCancelled else { throw NativePendingError.outcomeUnknown }
         try Self.lifetime(deadline)
         let session = Self(association: association, scope: scope, snapshot: snapshot,
-            material: PairedSessionMaterial(custody: custody, bearer: bearer), deadline: deadline, purpose: continued, clock: clock)
+            material: PairedSessionMaterial(custody: custody, bearer: bearer), deadline: deadline, purpose: continued, clock: clock, revisions: scopeRevisions)
         let result = NativePairedControllerRecovery(session: session, entry: entry, action: .retry, pending: next)
         try result.deliveryCurrent()
         return result
@@ -224,8 +246,10 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
         let exchangeGuard = Self.currentGuard(expected: snapshot, association: association,
             custody: custody, deadline: deadline, purpose: purpose)
         return try await NativeControllerDomainClient.perform(association.peer, credential: bearer,
-            clock: clock, exchangeGuard: exchangeGuard, deadline: deadline) { [association, bearer] in
-            try NativePendingRecoveryOperations.executePaired(entry, association: association, credential: bearer, action: action)
+            clock: clock, exchangeGuard: exchangeGuard, deadline: deadline) { [association, bearer, scopeRevisions] in
+            try NativePairedProfileTransport.$revisions.withValue(scopeRevisions) {
+                try NativePendingRecoveryOperations.executePaired(entry, association: association, credential: bearer, action: action)
+            }
         }
     }
 
@@ -243,7 +267,7 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
         guard !Task.isCancelled else { throw NativeControllerTLSError.outcomeUnknown }
         try Self.lifetime(deadline)
         let result = Self(association: association, scope: scope, snapshot: snapshot,
-            material: PairedSessionMaterial(custody: custody, bearer: bearer), deadline: deadline, purpose: continued, clock: clock)
+            material: PairedSessionMaterial(custody: custody, bearer: bearer), deadline: deadline, purpose: continued, clock: clock, revisions: scopeRevisions)
         return (result, updated)
     }
 
@@ -279,7 +303,7 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
     // Reuse this actual seal and deadline around private publication; fetching
     // current grants must never acquire another session after a possible send.
     private func profileScope(_ entry: NativePendingEntry, purpose checkedPurpose: Purpose) async throws {
-        guard entry.category == .authoring else { return }
+        guard entry.category == .authoring || entry.category == .generation else { return }
         let exchangeGuard = Self.currentGuard(expected: snapshot, association: association,
             custody: custody, deadline: deadline, purpose: checkedPurpose)
         let live = try await NativeControllerDomainClient.perform(association.peer, credential: bearer,
@@ -288,6 +312,7 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
         }
         try NativePairedSessionCorrespondence.check(live, association: association)
         try NativePairedSessionCorrespondence.checkProfileScope(live, entry: entry)
+        try scopeRevisions.check(live.identity.revision)
         guard live.permissions == scope.permissions, live.targetIDs == scope.targetIDs,
               live.identity.revision >= scope.identity.revision else { throw NativePairedSessionError.scopeConflict }
     }
@@ -301,6 +326,98 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
                 deadline: deadline, purpose: purpose)
             return try NativePendingStorage.changingPhase(of: entry, to: .cancelPending(token: token, digest: digest), expected: pending)
         }
+    }
+
+    fileprivate func performWorkspace(_ entry: NativeGenerationWorkspaceEntry, action: NativePairedWorkspaceAction,
+                                      workspace: NativeGenerationWorkspaceSnapshot, pending: NativePendingSnapshot) async throws -> NativePairedWorkspacePublication {
+        guard purpose == .workspace(entry: entry, action: action, workspace: workspace, pending: pending) else { throw NativePendingError.conflict }
+        try await workspaceScope(entry, purpose: purpose)
+        let read = try await workspaceDomain {
+            try NativePairedGenerationWorkspaceOperations.read(entry, association: association, credential: bearer)
+        }
+        var current = self, retained = entry, nextWorkspace = workspace, nextPending = pending
+        var assessment: NativePairedGeneratedAssessment?, finalRead = read, archived = false
+        switch action {
+        case .status: break
+        case .cancel:
+            guard read.root != nil else { throw NativePendingError.conflict }
+            if !entry.cancellationPending {
+                let updated = try entry.cancellation(true)
+                (current, nextWorkspace) = try await workspaceWrite(entry, replacement: updated, action: action, workspace: workspace, pending: pending)
+                retained = updated
+            }
+            let checkedEntry = retained
+            let result = try await current.workspaceDomain {
+                try NativePairedGenerationWorkspaceOperations.cancel(checkedEntry, association: association, credential: bearer)
+            }
+            finalRead = try await current.workspaceDomain {
+                try NativePairedGenerationWorkspaceOperations.read(checkedEntry, association: association, credential: bearer)
+            }
+            if result?.state == "cancelled" {
+                let updated = try retained.cancellation(false)
+                (current, nextWorkspace) = try await current.workspaceWrite(retained, replacement: updated, action: action, workspace: nextWorkspace, pending: pending)
+                retained = updated
+            }
+        case .restorePending:
+            guard !entry.cancellationPending, read.root != nil || entry.attempts.isEmpty,
+                  !pending.document.entries.contains(where: { NativePairedWorkspaceCorrespondence.sameOwner($0.context, entry.context) }) else { throw NativePendingError.conflict }
+            let original = try NativePairedWorkspaceCorrespondence.restoredOriginal(entry)
+            try await workspaceScope(entry, purpose: purpose)
+            nextPending = try await NativePendingPublicationOwner.perform(until: deadline) { [self] in
+                try Self.validateCurrent(expected: snapshot, association: association, custody: custody, deadline: deadline, purpose: purpose)
+                let next = try NativePendingStorage.retaining(original, expected: pending)
+                try NativePairedCaptureCorrespondence.publication(of: original, before: pending, after: next)
+                return next
+            }
+            current = workspaceContinuation(entry, action: action, workspace: workspace, pending: nextPending)
+        case .assessDraft(let operation, let instruction):
+            assessment = try await workspaceDomain {
+                try NativePairedGenerationWorkspaceOperations.assess(entry, association: association, credential: bearer, operation: operation, instruction: instruction)
+            }
+        case .archive(let acceptUncertainty):
+            try NativePairedWorkspaceCorrespondence.permitsArchive(entry, read: read, acceptUncertainty: acceptUncertainty)
+            (current, nextWorkspace) = try await workspaceWrite(entry, replacement: nil, action: action, workspace: workspace, pending: pending)
+            archived = true
+        }
+        try await current.workspaceScope(retained, purpose: current.purpose)
+        let result = NativePairedWorkspacePublication(entry: retained, workspace: nextWorkspace, pending: nextPending,
+            read: finalRead, assessment: assessment, archived: archived, association: association, scope: scope, deadline: deadline)
+        try result.deliveryCurrent(); return result
+    }
+
+    private func workspaceScope(_ entry: NativeGenerationWorkspaceEntry, purpose: Purpose) async throws {
+        try await profileScope(NativePendingEntry(context: entry.context, custody: entry.custody, input: .generation(entry.preparation), phase: .pending), purpose: purpose)
+        try await Self.currentGuard(expected: snapshot, association: association, custody: custody, deadline: deadline, purpose: purpose).validate(.decoded, until: deadline)
+    }
+    private func workspaceDomain<Value: Sendable>(_ operation: @escaping @Sendable () throws -> Value) async throws -> Value {
+        guard case .workspace = purpose else { throw NativePendingError.unavailable }
+        return try await NativeControllerDomainClient.perform(association.peer, credential: bearer, clock: clock,
+            exchangeGuard: Self.currentGuard(expected: snapshot, association: association, custody: custody, deadline: deadline, purpose: purpose),
+            deadline: deadline) { [scopeRevisions] in
+                try NativePairedProfileTransport.$revisions.withValue(scopeRevisions, operation: operation)
+            }
+    }
+    private func workspaceContinuation(_ entry: NativeGenerationWorkspaceEntry, action: NativePairedWorkspaceAction,
+                                       workspace: NativeGenerationWorkspaceSnapshot, pending: NativePendingSnapshot) -> Self {
+        Self(association: association, scope: scope, snapshot: snapshot, material: PairedSessionMaterial(custody: custody, bearer: bearer),
+            deadline: deadline, purpose: .workspace(entry: entry, action: action, workspace: workspace, pending: pending), clock: clock, revisions: scopeRevisions)
+    }
+    private func workspaceWrite(_ entry: NativeGenerationWorkspaceEntry, replacement: NativeGenerationWorkspaceEntry?,
+                                action: NativePairedWorkspaceAction, workspace: NativeGenerationWorkspaceSnapshot,
+                                pending: NativePendingSnapshot) async throws -> (Self, NativeGenerationWorkspaceSnapshot) {
+        try await workspaceScope(entry, purpose: purpose)
+        let next = try await NativePendingPublicationOwner.performValue(until: deadline) { [self] in
+            try Self.validateCurrent(expected: snapshot, association: association, custody: custody, deadline: deadline, purpose: purpose)
+            guard let directory = try NativePrivateDocuments.directory(create: false) else { throw NativePendingError.unavailable }
+            let next: NativeGenerationWorkspaceSnapshot
+            if let replacement { next = try NativeGenerationWorkspaceStorage.replacing(entry, with: replacement, directory: directory, expected: workspace) }
+            else { next = try NativeGenerationWorkspaceStorage.removing(entry, directory: directory, expected: workspace) }
+            try NativePairedWorkspaceCorrespondence.publication(entry, replacement: replacement, before: workspace, after: next)
+            return next
+        }
+        let continued = workspaceContinuation(replacement ?? entry, action: action, workspace: next, pending: pending)
+        try await continued.workspaceScope(replacement ?? entry, purpose: continued.purpose)
+        return (continued, next)
     }
 
     private static func currentGuard(expected: NativeControllerAssociationSnapshot,
@@ -326,6 +443,10 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
             do { try NativePendingStorage.check(pending) }
             catch { throw NativePairedSessionError.originalChanged }
         }
+        if case .workspace(_, _, let workspace, let pending) = purpose {
+            do { try NativeGenerationWorkspaceStorage.check(workspace); try NativePendingStorage.check(pending) }
+            catch { throw NativePairedSessionError.originalChanged }
+        }
     }
     private static func lifetime(_ deadline: ContinuousClock.Instant) throws {
         guard ContinuousClock.now < deadline else { throw NativePairedSessionError.expired }
@@ -335,6 +456,36 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
         if let error = error as? NativePairedKeychainError { return .custody(error) }
         if let error = error as? NativeSetupPeerError, case .expired = error { return .expired }
         return .custody(.denied)
+    }
+}
+
+struct NativePairedGenerationWorkspaceSession: Sendable, CustomReflectable {
+    private let session: NativePairedControllerSession
+    let entry: NativeGenerationWorkspaceEntry, action: NativePairedWorkspaceAction
+    let workspace: NativeGenerationWorkspaceSnapshot, pending: NativePendingSnapshot
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+    fileprivate init(session: NativePairedControllerSession, entry: NativeGenerationWorkspaceEntry, action: NativePairedWorkspaceAction,
+                     workspace: NativeGenerationWorkspaceSnapshot, pending: NativePendingSnapshot) {
+        self.session = session; self.entry = entry; self.action = action; self.workspace = workspace; self.pending = pending
+    }
+    func perform() async throws -> NativePairedWorkspacePublication {
+        try await session.performWorkspace(entry, action: action, workspace: workspace, pending: pending)
+    }
+}
+struct NativePairedWorkspacePublication: Sendable, CustomReflectable {
+    let entry: NativeGenerationWorkspaceEntry, workspace: NativeGenerationWorkspaceSnapshot, pending: NativePendingSnapshot
+    let read: NativePairedWorkspaceRead, assessment: NativePairedGeneratedAssessment?, archived: Bool
+    let association: NativeControllerPublicAssociation, scope: HomeControllerScope
+    private let deadline: ContinuousClock.Instant
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+    fileprivate init(entry: NativeGenerationWorkspaceEntry, workspace: NativeGenerationWorkspaceSnapshot, pending: NativePendingSnapshot,
+                     read: NativePairedWorkspaceRead, assessment: NativePairedGeneratedAssessment?, archived: Bool,
+                     association: NativeControllerPublicAssociation, scope: HomeControllerScope, deadline: ContinuousClock.Instant) {
+        self.entry = entry; self.workspace = workspace; self.pending = pending; self.read = read; self.assessment = assessment
+        self.archived = archived; self.association = association; self.scope = scope; self.deadline = deadline
+    }
+    func deliveryCurrent() throws {
+        guard !Task.isCancelled, ContinuousClock.now < deadline else { throw NativePendingError.outcomeUnknown }
     }
 }
 
