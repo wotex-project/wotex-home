@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.35. Updated: 2026-10-16. Status: accepted target.
+Version: 0.1.36. Updated: 2026-10-16. Status: accepted target.
 Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context, original-first input install/revoke/status, durable input withdrawal and bounded current requested-scope collection.
 Evidence: finite software subset; full acceptance cases remain open.
 
@@ -371,6 +371,7 @@ owner read and supplies no current Fact authority by itself. The native collecto
 now repeats actual private/source/runtime/review and original consumed-report
 witnesses under one scope-wide budget, preserving original receipt and expiry.
 Seventeen collector cases and the shared review/preamble/observation and selected
-installation regressions pass under the owning evidence record. Complete
-EI-T1–T9, extracted-package, active-set/composed, installed-host and physical
-acceptance remain open.
+installation regressions pass under the owning evidence record. The owning
+contract now defines the native quantity/mixed-scope and extracted-producer
+integration lanes before their implementation. Complete EI-T1–T9, extracted-
+package, active-set/composed, installed-host and physical acceptance remain open.

@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.29. Updated: 2026-10-16. Accepted build order; implementation and
+Version: 0.1.30. Updated: 2026-10-16. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -342,10 +342,14 @@ successor. Current status and remaining order:
    uncertainty corpus and thirty-eight arithmetic/projection cases retain their
    separate evidence. Complete EI-T1–T9 and extracted-package integration remain
    obligations; this software slice qualifies no installed host or physical source.
-4. Run the extracted producer consumer and existing read/unconditional-effect
-   regressions, then the owning durable/recovery milestone. Continue complete
-   active-set composition, run/step/root persistence and wider admission under
-   their owners.
+4. Complete the native integer/Boolean/enum/unfamiliar supported-quantity and
+   multi-channel/mixed-scope cases, plus collector closing drift for all four
+   runtime groups. Extend the existing five-archive external-fact lane with a
+   fresh Home native Store consumer using those exact extracted producer ebins;
+   keep the pure whole-result oracle and assertion-only mutants. Run existing
+   ordinary read/unconditional-effect regressions and the owning durable/recovery
+   milestone. Continue complete active-set composition, run/step/root persistence
+   and wider admission under their owners.
 
 Preserve original registry order and immutable wire bytes. Historical decoding
 provides no current authority. Physical review, installed hosts and later effect

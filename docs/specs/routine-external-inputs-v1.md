@@ -1,6 +1,6 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.20. Updated: 2026-10-16. Status: accepted successor target.
+Version: 0.1.21. Updated: 2026-10-16. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition,
 signed-review verifier, retained codecs, schema-38 history/migration/recovery and
@@ -913,6 +913,52 @@ Run focused tests per slice and the owning mechanism milestone after integration
 | EI-T7 | 01/03/05 | Every runtime group's bytes/version/module inventory/absence changes at opening/closing; historical assertions cannot seed current context; no smaller-scope fallback | Isolated runtime software |
 | EI-T8 | 02/06 | Deep original/package/slot/history/journal corruption, schema 37 migration, exact quotas, encrypted inclusive/database-only/normalized quarantine and source/Store restart | Durable/recovery software |
 | EI-T9 | 01–06 | Independent extracted reader/routine package consumer and identity/unit/clock/qualification mutants, plus existing ordinary read and unconditional-effect regressions | Archive/software |
+
+### Native and extracted-producer integration checks
+
+EI-T1/T5 exercise actual private import, inspection, local digest approval,
+selection, ephemeral synthetic signed input review, install, original report
+publication/consumption and Store collection. Cover integer, Boolean and enum
+values, an unfamiliar quantity with a supported dimension and an exact reviewed
+Mapping, and a multi-channel selected target. A quantity outside WRO's supported
+dimensions must retain its ordinary read meaning and refuse a routine Mapping;
+never relabel its dimension to pass. A 32-member scope containing a usable input
+and absent slots must retain every member in lexical order under the same final
+sample. Independent expected reader/Home/routine coordinates and enum values
+must catch a conversion or type substitution. None of these synthetic claims
+is evidence for the programme's physical cases.
+
+EI-T7 changes one complete artifact in each of the four runtime groups during
+actual collector private preparation. Copy only disposable compiled artifacts;
+preserve the live dependency checkout/cache. Recompute after restoration to
+show the refusal is caused by the changed basis and leaves the writer usable.
+Opening and closing inventory/version/absence obligations retain their existing
+runtime entry cases. An earlier context-only probe does not by itself establish
+the collector's complete-scope closing behavior.
+
+EI-T9 uses the existing closed bin/check_routines_shadow.exs
+--external-fact-consumer lane. It requires exactly five archive/digest pairs:
+core, Continuum, Runtime, Profiles and Routines; every SHA is unprefixed lowercase
+SHA-256, each archive is at most 32 MiB and extracted contents at most 16 MiB.
+Reject incomplete/duplicate/conflicting arguments and mismatched archives before
+extraction. The pure consumer freshly compiles the selected Home projection
+closure with only those extracted producers, preserves its frozen whole-result
+oracle and runs identity/original-coordinate mutants as assertion failures,
+not compilation or process failures.
+
+A second fresh native Home process then loads all five producer applications
+from those same extracted ebin directories and runs the actual private/native
+Store collection cases. Home retains its locked nonproducer storage/transport
+and validation dependencies. Check the actual loaded public producer modules'
+paths and freshly measured complete producer inventories; a sibling checkout or
+an old prepared context cannot substitute. This second process establishes Home
+integration with the selected archives, not that Home itself has been packaged
+or installed. Include a changed current review/signature refusal without a Fact,
+and preserve existing ordinary read/unconditional-effect regressions separately.
+The archive runner removes all owned extracted projects, mutants and build outputs
+on exit; the caller removes its owned temporary archives. Do not publish them or
+prune unrelated reusable caches. Record exact artifact hashes, commands, tests,
+seeds, failures and cleanup under the owning evidence record.
 
 These software cases do not fill the programme's hardware obligations, installed
 host validation, physical safety checks or the complete WOH.20 acceptance suite.
