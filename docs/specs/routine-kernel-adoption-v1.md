@@ -1,6 +1,6 @@
 # Explicit rule kernel adoption v1
 
-Version: 0.1.3. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.4. Updated: 2026-10-15. Status: accepted target.
 Owner: WOH.20 H20-02/03/06/08/10; WOH.04 rule admission; WOH.14 durable execution.
 Implementation: partial — pure mapping and initial-proposal checking in RKA-01–03.
 Evidence: bounded pure/software checks in the
@@ -196,6 +196,23 @@ are required. Old temporal artifacts remain historically valid; their current
 proposal/runtime comparison can withdraw an obsolete schedule under RTR-04.
 There is no receipt rewrite, schema migration, root refund, new original or
 synthetic proof upgrade on restart or restored data. Existing quarantine holds.
+
+The admission document's proposal_basis encodes every native field using its
+known string key; result, scope and the ordered obligations use their known
+string values. Decode only the exact profile-specific v3 or v4 grammar, with
+the native deterministic-term basis hash intact. Unknown keys, reordered or
+missing obligations and mixed-profile fields refuse. Never create atoms from
+untrusted strings or call the generic producer merely to decode history.
+
+The existing review_rules preview emits the current v4 proposal projection.
+Its exact keys are profile, scope, target_id, rule_digest, registry_digest,
+runtime_digest, compiler_profile, source_digest, ir_digest, obligations and the
+four kernel fields from RKA-04. It continues to omit result and basis_digest;
+preview is informative and supplies no admission authority. The native parser
+requires that exact v4 profile, ordered obligations, both compiler profiles,
+target equality and all eight bare hashes. A missing/malformed generic member,
+extra key or relabelled v3 record is an invalid response. The operation name,
+request grammar and recorded original identities do not change.
 
 ## Authority and Store transitions
 
