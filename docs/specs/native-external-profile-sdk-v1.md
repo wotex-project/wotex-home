@@ -1,12 +1,13 @@
 # Fixed native external-profile mutation and recovery
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09 and H08-T1/T5/T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08 and H18-T6/T8/T11/T12.
 Implementation: fixed status-first SDK and ordinary local pending recovery implemented.
 Evidence: [independent, framed and real Store/process checks](../provenance/native-external-profile-sdk-2026-10.md).
 [Selected local complete-file confirmations](native-external-profile-panel-v1.md) now
-have their own executed evidence. Signed paired consumption remains separate.
+have their own executed evidence. [Paired consumption](native-paired-external-profiles-v1.md)
+owns the implemented signed-session composition and its separate evidence level.
 
 ## Result and boundaries
 
@@ -59,7 +60,7 @@ and same-user peer checks remain the existing LocalHealthClient boundary. There
 is no chunk upload, source recapture, provider call, implicit fallback or polling.
 Each exchange retains its five-second local bound. Delivery has at most four
 exchanges (identity/status/optional mutation/identity), at most20 seconds of network
-waiting plus bounded decoding. A future paired owner must fit these exchanges in
+waiting plus bounded decoding. The paired owner must fit these exchanges in
 its original shorter lease; this SDK creates or renews no lease.
 
 After successful found/missing handling, fetch identity again. Require the same

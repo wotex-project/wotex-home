@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.91. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.92. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
 now defines fresh signed authorization after human review, unchanged first originals,
@@ -50,9 +50,10 @@ all five decisions from checked snapshots and object references, with
 [Selected guided decisions](native-external-profile-guided-v1.md) now compose bounded
 operator forms, fresh selected preparation and separate confirmation, with
 [executed shared app/Store, fault/recovery and mounted layout evidence](../provenance/native-external-profile-guided-2026-10.md).
-[Paired external composition](native-paired-external-profiles-v1.md) now defines
-current scope, exact originals, sealed publication and original-association recovery;
-implementation and installed/physical qualification remain successors.
+[Paired external composition](native-paired-external-profiles-v1.md) now implements
+scoped reads, guided/file confirmation, sealed publication and original-association
+recovery, with [bounded native and real TLS/Store evidence](../provenance/native-paired-external-profiles-2026-10.md).
+Positive installed signing, accessibility and physical qualification remain open.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)
 defines durable root/attempt workspace custody, explicit policy/consent/budget,

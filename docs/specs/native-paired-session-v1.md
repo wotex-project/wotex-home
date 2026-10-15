@@ -1,6 +1,6 @@
 # Native paired session v1
 
-Version: 0.1.4. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: production selected factory implemented; pure correspondence/private CAS and actual unsigned refusal pass; original-purpose factory and closed consumer implemented separately; first capture implemented separately; installed signed success and shared UI integration pending.
+Version: 0.1.5. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: production selected factory implemented; pure correspondence/private CAS and actual unsigned refusal pass; original-purpose factory and closed consumer implemented separately; first capture implemented separately; installed signed success and shared UI integration pending.
 
 This composes [public associations](native-controller-associations-v1.md),
 [actual signed app custody](native-paired-keychain-v1.md),
@@ -44,6 +44,14 @@ operation requires a new factory acquisition; cached sessions cannot renew.
 The domain adapter receives that same absolute owner deadline. Its request
 and completion owners bound blocked clock production and SDK work before I/O
 as well as each exchange and final typed delivery; none gets a fresh budget.
+
+The [paired external consumer](native-paired-external-profiles-v1.md) can supply
+an additional Sendable refusal check for its one-way prepared lifetime. Run it
+before custody acquisition and before/after actual current app/Keychain/account
+checks at exchange, private publication and delivery boundaries. Carry the same
+check into exact original-purpose and publication continuations under the original
+deadline. It grants no authority, replaces no mandatory check and cannot renew
+a session; thrown/late checks retain uncertainty after possible publication/send.
 
 ## Scope and exchanges
 

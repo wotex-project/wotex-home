@@ -1,9 +1,11 @@
 # Selected paired external-profile decisions and recovery
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09/H08-T1/T5/T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08/H18-T6/T8/T11/T12.
-Implementation: planned. Evidence: missing.
+Implementation: selected paired reads, guided/file confirmation and fixed original recovery implemented.
+Evidence: [bounded native, real pairing/TLS/Store and private-process checks](../provenance/native-paired-external-profiles-2026-10.md).
+Positive installed signed success and installed accessibility remain missing.
 
 ## Result, dependencies and ownership
 

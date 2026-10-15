@@ -1,13 +1,14 @@
 # Native external-profile decision review
 
-Version: 0.1.6. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.7. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09 and H08-T1/T5/T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08 and H18-T6/T8/T11/T12.
 Implementation: local selected reads, complete-file review/confirmation and app composition implemented.
 Evidence: [native/Store, retirement/CAS and mounted layout checks](../provenance/native-external-profile-panel-2026-10.md).
 The [selected guided successor](native-external-profile-guided-v1.md) is implemented
 with [executed evidence](../provenance/native-external-profile-guided-2026-10.md).
-Signed paired consumption and installed qualification remain.
+[Paired consumption](native-paired-external-profiles-v1.md) now has bounded software
+evidence; positive installed signing and qualification remain open.
 
 ## Result and scope
 
@@ -20,7 +21,7 @@ through [v9 custody](native-pending-external-profiles-v9.md), and uses the
 Inspection, approval, selection, grants and reports remain separate facts.
 
 This owns local selected first decisions, model lifecycle and visible review.
-Signed paired consumption remains a later delivery obligation; guided construction
+Paired consumption is owned by the paired successor; guided construction
 is owned by the selected guided successor.
 The [guidance API](external-profile-guidance-v1.md) now exposes current host-held
 reader, source-selection, target-counter and owned inspection artifact data.

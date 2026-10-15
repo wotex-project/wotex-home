@@ -169,8 +169,9 @@ now has [executed peer/Store evidence](../provenance/native-external-guidance-20
 [independent/native and actual Store evidence](../provenance/native-external-profile-builders-2026-10.md).
 [Selected guided decisions](../specs/native-external-profile-guided-v1.md) now have
 [shared app/Store, race/recovery and mounted layout evidence](../provenance/native-external-profile-guided-2026-10.md).
-Implement [paired external composition](../specs/native-paired-external-profiles-v1.md),
-including scoped reads, guided/file confirmation and original-association recovery;
+[Paired external composition](../specs/native-paired-external-profiles-v1.md) now has
+[bounded selected-native and real pairing/TLS/Store evidence](../provenance/native-paired-external-profiles-2026-10.md).
+Positive installed signing, accessibility and qualified protocol publishers remain;
 no read receipt or structurally encoded input grants current trust, selection or
 source qualification.
 

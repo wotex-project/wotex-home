@@ -1,13 +1,14 @@
 # Native external-profile guidance reads
 
-Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08/H18-T6/T8/T11/T12.
 Implementation: explicit local SDK reads and closed typed decoders implemented.
 Evidence: [executed independent-peer and Store checks](../provenance/native-external-guidance-2026-10.md).
 The [selected guided consumer](native-external-profile-guided-v1.md) is implemented
 with [executed evidence](../provenance/native-external-profile-guided-2026-10.md).
-Signed paired delivery remains a subsequent consumer.
+[Paired delivery](native-paired-external-profiles-v1.md) now has bounded software
+evidence; positive installed signing remains separate.
 
 ## Result and owners
 

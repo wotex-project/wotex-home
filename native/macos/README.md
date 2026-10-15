@@ -1488,7 +1488,7 @@ exact action, handles/digests and consequences, check confirmation and Submit.
 The reviewed bytes are retained before send; changes require a new preparation.
 Uncertain/refused submissions keep their original for Activity recovery.
 
-Paired selection remains selected and refuses this local consumer without fallback.
+Paired selection uses the separate signed consumer described below, with no local fallback.
 Opening, file choice and editing send no request. Session/access/sleep/wake/input
 changes retire prepared work, and request checks prevent a retired/cancelled decision
 from progressing from status to mutation. Current reader/source/target and owned
@@ -1560,7 +1560,7 @@ credential and repeats the comparison group before publishing the complete
 original and using the fixed status-first SDK. Changed inputs, reader, source
 owner, Store revision, selection or lifetime refuse the decision. Activity retains
 the original after uncertain delivery or failed whole-file resolution. Paired
-selection refuses before capture and has no local fallback.
+selection uses its signed session and original association, with no local fallback.
 
 Run `mix woh.native.external.guided.smoke` for both quantity families/all five
 decisions through the shared app model, actual Store and private local sockets.
@@ -1572,3 +1572,35 @@ retains complete-file regression coverage. These fixture checks do not establish
 installed signing, OS accessibility preferences, protocol publisher identity or
 physical qualification. [Executed guided evidence](../../docs/provenance/native-external-profile-guided-2026-10.md)
 records the checks and remaining delivery obligations.
+
+
+## Paired external-profile decisions
+
+The [paired external contract](../../docs/specs/native-paired-external-profiles-v1.md)
+now connects the same guided/file controls to the actual selected paired factory.
+The current controller must authenticate `profile:manage`; target decisions/history
+and source choices also need `enroll:review`. Historical approved access alone is
+insufficient. Complete files are read after current scope; guided handles must
+name imports owned by that remote principal. Preparing sends no decision.
+
+Review can outlast its read lease. Separate confirmation acquires a fresh actual
+signed session and checks the same selection, association/custody, grants, Store
+revision and complete original. One five-second submission lifetime covers fresh
+comparison, private v9 publication, fixed status-first delivery and sealed result
+publication. Retirement/cancellation only strengthens these guards; it cannot
+renew or replace them. Activity's lookup, unchanged retry and separately confirmed
+missing-original acknowledgement use the retained original association even after
+switching to This Mac. No local socket/key fallback is attempted.
+
+Run `mix woh.native.paired.external.smoke` for both quantity families/all five
+decisions over actual pairing, pinned TLS, SQLite and private disposable files.
+The task checks guided and complete-file preparation, lost committed replies,
+separate-process recovery, Store restart, present/missing acknowledgement, scope
+drift, revoked principals and actual unsigned factory refusal. Raw-key fixture
+transport does not mint a signed app seal. Keep `mix woh.native.pending.external.smoke`,
+`mix woh.native.external.guided.smoke` and `mix woh.native.external.panel.smoke`
+for journal, local workflows and mounted/refusal regressions.
+
+[Executed paired evidence](../../docs/provenance/native-paired-external-profiles-2026-10.md)
+separates these checks from positive installed signing/Keychain, installed
+accessibility, real publisher identity and physical qualification.

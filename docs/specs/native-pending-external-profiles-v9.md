@@ -1,12 +1,14 @@
 # Native external-profile pending custody v9
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09 and H08-T1/T5/T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08 and H18-T6/T8/T11/T12.
 Implementation: representation, private publication and conditional consumer guards implemented.
 Evidence: [independent/native/private-process checks](../provenance/native-pending-external-profiles-2026-10.md).
 The [fixed SDK](native-external-profile-sdk-v1.md) now enables ordinary local actions;
-paired actions remain disabled pending their signed consumer.
+the [paired consumer](native-paired-external-profiles-v1.md) now implements current-scope
+lookup/retry/explicit absent acknowledgement, with [bounded evidence](../provenance/native-paired-external-profiles-2026-10.md).
+Actual unsigned factories still refuse before private custody or transport.
 
 ## Result and ownership
 
@@ -90,10 +92,12 @@ cannot authorize dispatch or remove it. Never allocate another operation ID to
 recover an uncertain original. Downgrade readers fail closed on v9; no rollback
 rewrites its marker or strips its entries.
 
-**NP9-03.** Until the corresponding closed fixed external mutation/recovery
-consumer is implemented, external first capture and every recovery action refuse before
-credential capture, signing, clock, private publication or transport. Metadata
-access and disposable private-file representation fixtures remain available.
+**NP9-03.** The owning fixed local and paired consumers enable only lookup, retry
+and separately confirmed absent acknowledgement. Unsupported actions refuse before
+credential capture, signing, clock, private publication or transport. Paired work
+requires the actual signed original-purpose factory and current profile:manage,
+plus enroll:review for target kind; public metadata/raw keys cannot create that
+factory. Metadata access and disposable private-file fixtures remain available.
 Ordinary local recovery continues to refuse all paired custody. No automatic
 retry, cancellation or acknowledgement follows loading or displaying a record.
 Enabling lookup/retry/explicit absent acknowledgement requires its separately
@@ -112,7 +116,7 @@ external originals. The Swift encoder under test cannot allocate expected bytes.
 | --- | --- | --- | --- |
 | NP9-T1 | 01/02 | Independent exact roots/SHA for all kinds, both quantity families, multichannel, manual/native/paired, mixed/empty/max revisions; old roots, phase/type/epoch/custody/kind/slot bounds and malformed originals. Drift, widened old grammar or private reflection fails. | Independent native software |
 | NP9-T2 | 02 | Actual old-root upgrade, exact no-op, stale CAS, resolution/empty/later writes, maximum revision, process exit/reload and concurrent publishers; one winner, all other entries intact, no downgrade. | Private file/process |
-| NP9-T3 | 02/03 | Ordinary paired publication/recovery correspondence in retained v9; external capture/recovery refuses before instrumented credential/clock/network/file work, metadata still loads. Side effects, silent resolution or unsigned success fails. | Native/private file |
+| NP9-T3 | 02/03 | Ordinary paired publication/recovery correspondence in retained v9; unavailable original association/custody and actual unsigned factories refuse before instrumented credential/clock/network/file work, metadata still loads. Side effects, silent resolution or unsigned success fails. | Native/private file |
 
 These checks establish software custody, not installed signing, target storage
 power-loss survival, source qualification or physical dispatch. Record actual

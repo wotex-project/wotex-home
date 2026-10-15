@@ -1,11 +1,12 @@
 # Selected native external-profile guided decisions
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09/H08-T1/T5/T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08/H18-T6/T8/T11/T12.
 Implementation: selected local guided forms, fresh preparation and confirmation implemented.
 Evidence: [executed shared app/Store, fault/recovery and mounted layout checks](../provenance/native-external-profile-guided-2026-10.md).
-Signed paired/installed consumption and physical qualification remain separate.
+[Paired composition](native-paired-external-profiles-v1.md) is implemented separately;
+positive installed signing and physical qualification remain open.
 
 ## Result and owners
 
@@ -19,8 +20,9 @@ owns closed bodies. This owns selected local composition, forms and fresh review
 
 Keep the [existing selected panel](native-external-profile-panel-v1.md) lifetime,
 confirmation, [v9 journal](native-pending-external-profiles-v9.md), fixed SDK and
-Activity recovery. Signed paired consumption remains separate. Paired selection
-refuses before credential, file, clock, signing or transport, with no local fallback.
+Activity recovery. The [paired successor](native-paired-external-profiles-v1.md) owns
+actual signed selection, scope and publication for remote controllers; this local
+consumer never captures local custody or falls back for a paired selection.
 No Store schema, producer, dependency, grant or physical-dispatch change is needed.
 
 ## Operator inputs and local draft
