@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.16. Updated: 2026-10-15. Accepted build order; implementation and
+Version: 0.1.17. Updated: 2026-10-15. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -312,6 +312,9 @@ successor. Current status and remaining order:
    implemented; thirty-three focused retention/Definition/review/entry cases pass.
    The exact schema/retained graph and source-revision recovery projection are
    now specified, including unchanged v1 commitments after empty migration.
+   Exact DDL, quota and retained graph primitives pass eighteen focused SQLite
+   cases (fifty-one with the prior corpus). Live schema remains 37; integrate
+   migration/Integrity/backup/recovery before exposing any new Store operation.
    Implement schema 38 operation/history/current tables, exact original-first
    install/revoke, atomic withdrawal, integrity/migration and quarantined recovery.
 3. Implement Store-owned complete requested-scope collection from actual private

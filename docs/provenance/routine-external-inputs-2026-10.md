@@ -240,3 +240,66 @@ the 22-contract working catalogue pass. A disposable index projection validates
 The final scan finds zero owned temporary paths in either root; about 53 GiB is
 free. No Docker resource, native build, full application suite, Dialyzer or
 dependency update was needed. All work remains on main with local commits only.
+
+## Retained SQLite graph foundations
+
+The exact schema, retained graph and recovery normalization were frozen in
+6be13e06 before this code. Review confirmed the actual schema-37 predecessor,
+the native grant table's retained receipt rather than a nonexistent target
+column, and the requirement to omit an empty new domain from v1 retained transfer
+commitments. That migration/recovery integration remains the next slice.
+
+Durable.Store.ExternalInputs now supplies the three exact DDL definitions and
+ordered table metadata, prospective operation/history/slot/byte capacity, and a
+producer-independent retained graph validator. It checks exact DDL/autoindexes
+even when empty, original canonical wire/hash/scope correspondence, existing
+authors and targets, contiguous per-slot generations and last-install identity,
+complete operation/history/current/journal membership and the first applicable
+durable withdrawal cause. Native grant loss decodes its actual retained receipt
+and repeats principal/operation/revision correspondence. It borrows a connection,
+opens no transaction and performs no authentication, installation or current
+qualification. SQL failures propagate from capacity and normalize to
+corrupt_external_inputs during historical validation.
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/external_input_history_test.exs test/wotex_home/external_input_retention_test.exs test/wotex_home/external_input_decision_test.exs test/wotex_home/external_input_test.exs test/wotex_home/external_routine_input_schema_test.exs --warnings-as-errors`
+passes **fifty-one tests**, seed **169996**, **5.4 seconds**, on Elixir 1.19.6 /
+OTP 28.5.0.6. Eighteen new cases use actual SQLite with foreign keys and SQL CHECK
+constraints, alongside the independent frozen original. They cover install,
+explicit later-boot/epoch revoke, reinstall and cause-owned withdrawal; validly
+encoded skipped CAS/generation originals; canonical byte/hash/epoch/actor drift;
+missing/extra history/journal/heads; all durable cause families, first-loss
+ordering and regrant non-reactivation; three distinct authors and two capability
+slots; native retained receipt/entity/revision drift; empty-table DDL/index/trigger
+changes; SQL constraints and scoped FKs; inclusive quotas with repeated UTF-8 byte
+accounting and receipt exclusion; and actual SQL failure followed by complete
+transaction rollback, including the global revision.
+
+The graph fixtures deliberately seed synthetic retained rows without claiming
+enrollment, target-selection admission or physical evidence. Re-encoded author
+and second-slot claims exercise historical correspondence only, not signature
+trust. The initial test setup hit an earlier UNIQUE constraint when constructing
+a skipped-generation mutant and used a non-native principal for a native receipt.
+The corrected cases construct valid individual codecs first, use the actual
+native principal grammar and then reach the intended graph checks. No production
+guard was relaxed for the fixtures.
+
+A fresh VM opens an actual snapshot containing install/revoke history, removes
+all four actual producer code paths and redirects Home's application descriptor
+to a directory without the current programme file. Historical SQLite validation
+still passes; the live programme read refuses. The child and parent both remove
+their owned snapshot/descriptor directory. No private key or artifact is retained.
+The documentation agent changed only the new moduledoc, checked four API links
+and preserved the non-doc bytes/AST. Parent-owned formatting was applied separately.
+
+This is an EI-T3/T8 **historical graph foundation**. The live Store still reports
+schema 37; Schema/Integrity migration, exact backup inventories, source-revision
+recovery projection, actual Store installation/withdrawal and current collection
+are not implemented by this commit. Historical installed heads create no current
+authority. Full domain, installed-host and physical acceptance remain open.
+
+Formatting, warnings-as-errors compilation, the 22-contract working catalogue
+and both Git whitespace checks pass. A disposable index projection checks the
+21 committed contracts and all 41 changed indexed Markdown references, then is
+removed. Final scans find zero owned scratch paths in both temporary roots;
+about 53 GiB remains free. No Docker resource, native build, dependency update,
+full application suite or Dialyzer run was needed for this bounded slice.

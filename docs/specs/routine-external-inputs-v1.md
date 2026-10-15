@@ -1,10 +1,10 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.6. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.7. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
-WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition and
-signed-review verifier and retained codec foundations. Evidence: entry, native
-correspondence, historical package/original parsing and software trust-mechanics
+WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition,
+signed-review verifier, retained codecs and SQLite graph foundations. Evidence:
+entry, native correspondence, historical package/original/graph checks and software trust-mechanics
 checks pass. SQLite installation, current collection, EI-T1–T9 integration and
 physical obligations remain open.
 
@@ -704,5 +704,13 @@ All four encodings match the independently frozen bytes. Historical package and
 original recovery work with actual producer paths and the current programme file
 removed. Revoke can retain old installation history under a new boot/epoch;
 current verification requires exact canonical package bytes and signatures.
-These are EI-T3/T8 representation foundations. SQLite installation/invalidation,
-integrity/recovery and current collection follow next.
+These are EI-T3/T8 representation foundations. The separate ExternalInputs
+collaborator now supplies exact DDL, prospective quotas and retained graph checks;
+eighteen focused real-SQLite cases plus the thirty-three existing cases pass.
+Distinct authors, two slots, durable first-loss/native-grant links, canonical
+originals, SQL constraints, Unicode byte accounting and transaction rollback are
+covered. A fresh VM validates actual SQLite history with producers and the current
+programme file unavailable. This does not advance the live schema: Store remains
+at 37 until migration, Integrity, backup and recovery integration are implemented
+together. Actual installation/invalidation and current collection follow that
+integration. No fixture establishes current or physical qualification.
