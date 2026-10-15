@@ -9,6 +9,34 @@ defmodule WotexHome.TestSupport.MQTTFixture do
 
   def fixture(name), do: JSON.decode!(File.read!("test/fixtures/profiles/#{name}.json"))
 
+  def installation_documents do
+    {native, fixture} = configuration(1883)
+
+    authoring = %{
+      "format" => "wotex-home.profile-authoring-installation@1",
+      "installed" => Map.delete(native.reader.inputs["installed"], "producer"),
+      "authoring_limits" => fixture("authoring-mechanics")["temperature"]["limits"]
+    }
+
+    source = %{
+      "format" => "wotex-home.mqtt-source@1",
+      "profile" => fixture["profile"],
+      "definitions" => fixture["definitions"],
+      "capture" => fixture["capture"],
+      "source" => native.source,
+      "channels" => native.channels,
+      "connection" => %{
+        "address" => [127, 0, 0, 1],
+        "local_address" => [127, 0, 0, 1],
+        "port" => 1883,
+        "tls" => nil,
+        "authentication" => "none"
+      }
+    }
+
+    {JSON.encode!(authoring), JSON.encode!(source)}
+  end
+
   def configuration(port) do
     v = fixture("temperature")
     limits = v["reader_limits"]

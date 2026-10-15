@@ -21,6 +21,11 @@ defmodule WotexHome.NativeSetup.CoreHost do
   and native credential owner acquired here. This owned run terminates the VM
   with status 0 on success or 1 with a fixed diagnostic on failure.
 
+  `WotexHome.NativeSetup.MQTTProvisioning` also uses this module's internal
+  foreground stdio/Logger preparation and dependency startup. Foreground
+  preparation refuses an already running Home; these helpers do not themselves
+  start Home or open its Store. They are internal entry-point infrastructure.
+
   Installed profile and MQTT policy retain the normal `WotexHome.Host` checks.
   The entry point creates no target grant or physical qualification, and a new
   native Core startup requires a fresh bootstrap for Keychain mode.
@@ -37,9 +42,34 @@ defmodule WotexHome.NativeSetup.CoreHost do
     end
   end
 
-  defp running_home? do
+  @doc false
+  def running_home? do
     is_pid(Process.whereis(WotexHome.Supervisor)) or is_pid(Host.store()) or
       Enum.any?(Application.started_applications(), fn {name, _, _} -> name == :wotex_home end)
+  end
+
+  @doc false
+  def prepare_foreground do
+    with false <- running_home?(),
+         :ok <- :io.setopts(:standard_io, binary: true, encoding: :latin1),
+         :ok <- own_logger(),
+         do: :ok,
+         else: (_ -> {:error, :native_setup_unavailable})
+  end
+
+  @doc false
+  def start_dependencies do
+    Application.load(:wotex_home)
+    dependencies = Application.spec(:wotex_home, :applications)
+
+    with :ok <-
+           Enum.reduce_while(dependencies, :ok, fn app, _ ->
+             case Application.ensure_all_started(app) do
+               {:ok, _} -> {:cont, :ok}
+               _ -> {:halt, :error}
+             end
+           end),
+         do: own_logger()
   end
 
   defp run_owned do
@@ -76,17 +106,7 @@ defmodule WotexHome.NativeSetup.CoreHost do
 
   defp start_home(directory) do
     if System.get_env("WOTEX_HOME_NATIVE_MQTT_BOOTSTRAP") == "1" do
-      Application.load(:wotex_home)
-      dependencies = Application.spec(:wotex_home, :applications)
-
-      with :ok <-
-             Enum.reduce_while(dependencies, :ok, fn app, _ ->
-               case Application.ensure_all_started(app) do
-                 {:ok, _} -> {:cont, :ok}
-                 _ -> {:halt, :error}
-               end
-             end),
-           :ok <- own_logger(),
+      with :ok <- start_dependencies(),
            {:ok, credential} <- WotexHome.NativeSetup.MQTTBootstrap.run(directory) do
         case WotexHome.Application.start(:normal, native_mqtt_credential: credential) do
           {:ok, supervisor} ->
