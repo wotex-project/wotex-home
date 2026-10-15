@@ -1539,3 +1539,7 @@ Store revisions and private leases unchanged. The fixture then submits through
 Authority and verifies exact original receipts, including metadata-only withdrawals
 after reader/source/custody loss. No installed signing or physical qualification
 is established by these software checks.
+
+[Executed builder evidence](../../docs/provenance/native-external-profile-builders-2026-10.md)
+records the frozen inputs, strict integer compatibility and remaining guided/
+installed/physical obligations.

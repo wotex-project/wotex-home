@@ -1,9 +1,11 @@
 # Pure native external-profile decision builders
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08/H18-T6/T8/T11/T12.
-Implementation: planned. Evidence: missing.
+Implementation: pure builders and checked object-reference values implemented.
+Evidence: [independent native/owning-codec and actual Store checks](../provenance/native-external-profile-builders-2026-10.md).
+Selected guided controls and signed paired delivery remain subsequent consumers.
 
 ## Result and boundary
 
@@ -125,7 +127,8 @@ grants no access and replacement withdraws existing grants through Store.
 **NB-07 — Target withdrawal.** Inputs: context, operation ID, catalogue and target
 basis. Require selected target with retained artifact and exactly one matching
 catalogue item whose current trust revision equals the target basis's trust
-revision. Use target selection/resource counters and catalogue's current policy. Produce action revoke; source_ref,source_owner_epoch,
+revision. Use target selection/resource counters and catalogue's current policy.
+Produce action revoke; source_ref,source_owner_epoch,
 source_selection_sha256,objects,acknowledgement are all explicit null. Missing or
 already-revoked target refuses. No current reader/source/manifest is required.
 
@@ -154,7 +157,6 @@ this adds no JSON boolean/float/string/overflow coercion and changes no wire byt
 These cases establish pure construction and owning consumption only. Selected
 confirmation/lifetime races, guided layout/accessibility, installed signing,
 actual protocol publishers and physical qualification remain separate gates.
-
 
 ## Reviewed sources
 

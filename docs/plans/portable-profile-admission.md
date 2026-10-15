@@ -165,8 +165,9 @@ The [selected external decision panel](../specs/native-external-profile-panel-v1
 for current reader/source/target counters and exact owned inspection artifacts.
 The [strict native guidance reader](../specs/native-external-guidance-reads-v1.md)
 now has [executed peer/Store evidence](../provenance/native-external-guidance-2026-10.md).
-Implement [pure decision builders](../specs/native-external-profile-builders-v1.md),
-then selected guided controls and signed paired consumption;
+[Pure decision builders](../specs/native-external-profile-builders-v1.md) now have
+[independent/native and actual Store evidence](../provenance/native-external-profile-builders-2026-10.md).
+Implement selected guided controls next, then signed paired consumption;
 no read receipt or structurally encoded input grants current trust, selection or
 source qualification.
 
