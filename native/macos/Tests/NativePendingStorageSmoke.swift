@@ -29,6 +29,18 @@ struct NativePendingStorageSmoke {
             try versionedSchedules(schedules)
         case "authoring-suite": try versionedAuthoring(directory)
         case "generation-suite": try versionedGeneration(directory)
+        case "paired-authoring-suite": try pairedAuthoringSuite(directory)
+        case "paired-authoring-race": try race(directory, upgrade: true, pairedAuthoring: true)
+        case "paired-authoring-after-crash":
+            _ = try NativePendingStorage.retaining(pairedAuthoringEntries()[0], directory: directory, expected: .empty); _exit(0)
+        case "paired-authoring-loaded":
+            let snapshot = try NativePendingStorage.load(directory: directory)
+            try check(snapshot.document.version == .v8 && snapshot.document.revision == 1 && snapshot.document.entries == [pairedAuthoringEntries()[0]])
+        case "check-paired-authoring-race":
+            let snapshot = try NativePendingStorage.load(directory: directory)
+            try check(snapshot.document.revision == 2 && snapshot.document.entries.count == 2 && snapshot.document.entries.contains(original))
+            let paired = try pairedAuthoringEntries()[0]
+            try check(snapshot.document.version == (snapshot.document.entries.contains(paired) ? .v8 : .v6))
         case "generation-upgrade-race": try race(directory, upgrade: true, generation: true)
         case "generation-authoring-race": try race(directory, upgrade: true, generation: true, generationAuthoring: true)
         case "seed-generation-race":
@@ -247,7 +259,7 @@ struct NativePendingStorageSmoke {
     }
 
     private static func race(_ directory: URL, upgrade: Bool, rules: Bool = false, schedules: Bool = false, authoring: Bool = false,
-                             generation: Bool = false, generationAuthoring: Bool = false) throws {
+                             generation: Bool = false, generationAuthoring: Bool = false, pairedAuthoring: Bool = false) throws {
         guard CommandLine.arguments.count == 4, ["0", "1"].contains(CommandLine.arguments[3]) else { throw StorageSmokeError.failed }
         let index = CommandLine.arguments[3]
         let expected = try NativePendingStorage.load(directory: directory)
@@ -262,7 +274,10 @@ struct NativePendingStorageSmoke {
             try check(DispatchTime.now().uptimeNanoseconds < deadline); usleep(10_000)
         }
         let entry: NativePendingEntry
-        if generation {
+        if pairedAuthoring {
+            entry = index == "0" ? try pairedAuthoringEntries()[0] : NativePendingEntry(context: context, custody: original.custody,
+                input: .beginMaintenance(operation: "maintenance:race", revision: 9), phase: .pending)
+        } else if generation {
             if index == "0" { entry = try generationEntries()[0] }
             else if generationAuthoring { entry = try authoringImport() }
             else { entry = NativePendingEntry(context: context, custody: original.custody,
@@ -463,7 +478,7 @@ struct NativePendingStorageSmoke {
             let native = NativePendingContext(deployment: context.deployment, owner: context.owner, epoch: 7, principal: NativeCoreWire.principal(7, .operator))
             _ = try NativePendingDocument(revision: 1, entries: [NativePendingEntry(context: native, custody: .native(role: .operator, creationRevision: 3, verifier: String(repeating: "c", count: 64)), input: importEntry.input, phase: .pending)]).encoded()
             let paired = NativePendingContext(deployment: context.deployment, owner: context.owner, epoch: 7, principal: "paired-controller-v1:7:" + String(repeating: "d", count: 64))
-            try refused { _ = try NativePendingDocument(revision: 1, entries: [NativePendingEntry(context: paired, custody: .paired(association: String(repeating: "e", count: 64), controller: String(repeating: "f", count: 64), creationRevision: 3, verifier: String(repeating: "c", count: 64)), input: importEntry.input, phase: .pending)]).encoded() }
+            try refused { _ = try NativePendingDocument(revision: 1, entries: [NativePendingEntry(context: paired, custody: .paired(association: String(repeating: "e", count: 64), controller: String(repeating: "f", count: 64), creationRevision: 3, verifier: String(repeating: "c", count: 64)), input: importEntry.input, phase: .pending)], version: .v6).encoded() }
         }
         let entries = (0..<16).map { n in NativePendingEntry(context: NativePendingContext(deployment: context.deployment, owner: String(format: "%064x", n), epoch: 7, principal: context.principal), custody: original.custody, input: importEntry.input, phase: .pending) }
         let full = NativePendingDocument(revision: 1, entries: NativePendingDocument.sorted(entries))
@@ -478,6 +493,52 @@ struct NativePendingStorageSmoke {
     private static func generationVectors() throws -> [[String: Any]] {
         let data = try Data(contentsOf: URL(fileURLWithPath: "test/fixtures/profiles/native-pending-generation.json"))
         return (try JSONSerialization.jsonObject(with: data) as! [String: Any])["cases"] as! [[String: Any]]
+    }
+    private static func pairedAuthoringEntries() throws -> [NativePendingEntry] {
+        let fixture = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: "test/fixtures/profiles/native-pending-paired-authoring.json"))) as! [String: Any]
+        var entries: [NativePendingEntry] = []
+        for vector in fixture["cases"] as! [[String: Any]] {
+            let bytes = Data((vector["document"] as! String).utf8)
+            try check(LocalHealthClient.profileSHA(bytes) == vector["sha256"] as! String)
+            let document = try NativePendingDocument.decode(bytes)
+            try check(document.version == .v8 && document.encoded() == bytes)
+            if document.entries.count == 1 {
+                let entry = document.entries[0]
+                try check(entry.custody.isPaired && Mirror(reflecting: entry).children.isEmpty)
+                for action in [NativePendingRecoveryAction.lookup, .retry, .cancelReview, .acknowledgeUnknown, .acknowledgeAbsent] {
+                    try check(!action.permits(entry))
+                }
+                if entry.category == .authoring { _ = try entry.authoringOperation() }
+                else { _ = try entry.generationOperation() }
+                entries.append(entry)
+            }
+        }
+        for vector in fixture["invalid"] as! [[String: Any]] {
+            try refused { _ = try NativePendingDocument.decode(Data((vector["document"] as! String).utf8)) }
+        }
+        return entries
+    }
+    private static func pairedAuthoringSuite(_ directory: URL) throws {
+        let entries = try pairedAuthoringEntries(), file = directory.appendingPathComponent("native-pending-v1.json")
+        for version in [NativePendingVersion.v1, .v2, .v3, .v4, .v5, .v6, .v7] {
+            try write(file.path, NativePendingDocument(revision: 1, entries: [original], version: version).encoded())
+            let before = try NativePendingStorage.load(directory: directory)
+            let after = try NativePendingStorage.retaining(entries[0], directory: directory, expected: before)
+            try check(after.document.version == .v8 && after.document.revision == 2 && after.document.entries.contains(original))
+            try check(try NativePendingStorage.retaining(entries[0], directory: directory, expected: after) == after)
+            try expected(.conflict) { _ = try NativePendingStorage.resolving(entries[0], directory: directory, expected: before) }
+            let removed = try NativePendingStorage.resolving(entries[0], directory: directory, expected: after)
+            let empty = try NativePendingStorage.resolving(original, directory: directory, expected: removed)
+            try check(empty.document.version == .v8 && empty.document.entries.isEmpty)
+            let local = try NativePendingStorage.retaining(original, directory: directory, expected: empty)
+            try check(local.document.version == .v8)
+        }
+        let retained = try NativePendingStorage.load(directory: directory)
+        let content = try Data(contentsOf: file)
+        let replacement = directory.appendingPathComponent("inode-replacement")
+        try write(replacement.path, content); try check(rename(replacement.path, file.path) == 0)
+        try expected(.conflict) { _ = try NativePendingStorage.retaining(entries[0], directory: directory, expected: retained) }
+        try check(try Data(contentsOf: file) == content)
     }
     private static func generationEntries() throws -> [NativePendingEntry] {
         try generationVectors().map {
@@ -541,16 +602,16 @@ struct NativePendingStorageSmoke {
         let diagnostic = NativePendingContext(deployment: context.deployment, owner: context.owner, epoch: value.epoch,
             principal: NativeCoreWire.principal(value.epoch, .diagnostic))
         try refused { _ = try NativePendingDocument(revision: 1, entries: [NativePendingEntry(context: diagnostic,
-            custody: .native(role: .diagnostic, creationRevision: 1, verifier: original.custody.verifier), input: entry.input, phase: .pending)]).encoded() }
+            custody: .native(role: .diagnostic, creationRevision: 1, verifier: original.custody.verifier), input: entry.input, phase: .pending)], version: .v7).encoded() }
         let native = NativePendingContext(deployment: context.deployment, owner: context.owner, epoch: value.epoch,
             principal: NativeCoreWire.principal(value.epoch, .operator))
         try refused { _ = try NativePendingDocument(revision: 1, entries: [NativePendingEntry(context: native,
-            custody: .native(role: .operator, creationRevision: value.expectedRevision + 1, verifier: original.custody.verifier), input: entry.input, phase: .pending)]).encoded() }
+            custody: .native(role: .operator, creationRevision: value.expectedRevision + 1, verifier: original.custody.verifier), input: entry.input, phase: .pending)], version: .v7).encoded() }
         let paired = NativePendingContext(deployment: context.deployment, owner: context.owner, epoch: value.epoch,
             principal: "paired-controller-v1:\(value.epoch):" + String(repeating: "d", count: 64))
         try refused { _ = try NativePendingDocument(revision: 1, entries: [NativePendingEntry(context: paired,
             custody: .paired(association: String(repeating: "e", count: 64), controller: String(repeating: "f", count: 64), creationRevision: 1,
-                verifier: original.custody.verifier), input: entry.input, phase: .pending)]).encoded() }
+                verifier: original.custody.verifier), input: entry.input, phase: .pending)], version: .v7).encoded() }
         for phase in [NativePendingPhase.review(token: "review:one", digest: String(repeating: "d", count: 64)),
                       .commitPending(token: "review:one", digest: String(repeating: "d", count: 64)),
                       .cancelPending(token: "review:one", digest: String(repeating: "d", count: 64))] {
@@ -567,7 +628,7 @@ struct NativePendingStorageSmoke {
         }
         let oversizedOrdinary = Data(String(decoding: independentBytes, as: UTF8.self).replacingOccurrences(of: "power:original", with: String(repeating: "x", count: 129)).utf8)
         try refused { _ = try NativePendingDocument.decode(oversizedOrdinary) }
-        let unknownVersion = Data(String(decoding: independentBytes, as: UTF8.self).replacingOccurrences(of: NativePendingVersion.v7.rawValue, with: "wotex-home.native-pending.v8").utf8)
+        let unknownVersion = Data(String(decoding: independentBytes, as: UTF8.self).replacingOccurrences(of: NativePendingVersion.v7.rawValue, with: "wotex-home.native-pending.v9").utf8)
         try refused { _ = try NativePendingDocument.decode(unknownVersion) }
         try refused { _ = try NativePendingDocument.decode(Data(repeating: 65, count: 8_388_609)) }
         let root = try JSONSerialization.jsonObject(with: entryDocument(entry)) as! [Any]

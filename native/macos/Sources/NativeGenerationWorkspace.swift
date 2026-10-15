@@ -7,7 +7,7 @@ struct NativeGenerationWorkspaceEntry: Sendable, Equatable, CustomReflectable {
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     fileprivate var scopeKey: Data { WorkspaceValue.array([.string(context.deployment), .string(context.owner), .integer(context.epoch)]).encoded() }
     func checked() throws -> Self {
-        guard LocalHealthClient.profileDigest(basisSHA), preparation.kind == .preparation,
+        guard !custody.isPaired, LocalHealthClient.profileDigest(basisSHA), preparation.kind == .preparation,
               preparation.epoch == context.epoch, attempts.count <= 3 else { throw NativePendingError.invalidRecord }
         _ = try NativePendingEntry(context: context, custody: custody, input: .generation(preparation), phase: .pending).generationOperation()
         let fields = try preparation.fields()

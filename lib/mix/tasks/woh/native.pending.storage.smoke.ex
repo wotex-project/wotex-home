@@ -11,7 +11,10 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
 
   Pass `--generation` to run only v7 generation vectors, private publication,
   restart and concurrent upgrade cases. With no flag, older journal/storage
-  cohorts also run. Neither mode captures credentials or sends API requests.
+  cohorts also run. Pass `--paired-authoring` for independent v8 paired
+  authoring/generation roots, old-version refusals, monotone upgrade/private CAS,
+  restart and a competing ordinary publisher. No mode captures credentials or
+  sends API requests; representation creates no successful signed consumer.
 
   The result is executable software evidence for the tested boundary.
   Installed signing, private account custody and physical device qualification
@@ -24,8 +27,13 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
   alias Woh.Tool.Command
 
   @impl Mix.Task
-  def run(args) when args in [[], ["--generation"]] do
-    scope = if args == [], do: :all, else: :generation
+  def run(args) when args in [[], ["--generation"], ["--paired-authoring"]] do
+    scope =
+      case args do
+        [] -> :all
+        ["--generation"] -> :generation
+        _ -> :paired_authoring
+      end
 
     directory =
       Path.join(
@@ -74,7 +82,30 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
     end
   end
 
-  def run(_), do: Mix.raise("usage: mix woh.native.pending.storage.smoke [--generation]")
+  def run(_),
+    do:
+      Mix.raise("usage: mix woh.native.pending.storage.smoke [--generation | --paired-authoring]")
+
+  defp checks(executable, directory, :paired_authoring) do
+    with :ok <-
+           run_fixture(
+             executable,
+             private_directory(directory, "paired-authoring-suite"),
+             "paired-authoring-suite"
+           ),
+         :ok <-
+           paired_authoring_restart(
+             executable,
+             private_directory(directory, "paired-authoring-restart")
+           ),
+         :ok <-
+           race(
+             executable,
+             private_directory(directory, "paired-authoring-race"),
+             :paired_authoring
+           ),
+         do: :ok
+  end
 
   defp checks(executable, directory, scope) do
     with :ok <- legacy_checks(executable, directory, scope),
@@ -93,7 +124,7 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
              private_directory(directory, "generation-authoring-race"),
              :generation_authoring
            ),
-         do: :ok
+         do: if(scope == :all, do: checks(executable, directory, :paired_authoring), else: :ok)
   end
 
   defp legacy_checks(_, _, :generation), do: :ok
@@ -151,6 +182,20 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
          do: :ok
   end
 
+  defp paired_authoring_restart(executable, root) do
+    with {:ok, _} <-
+           Command.run_diagnostic(
+             executable,
+             [root, "paired-authoring-after-crash"],
+             16_384,
+             10_000
+           ),
+         bytes <- File.read!(Path.join(root, "native-pending-v1.json")),
+         :ok <- run_fixture(executable, root, "paired-authoring-loaded"),
+         true <- File.read!(Path.join(root, "native-pending-v1.json")) == bytes,
+         do: :ok
+  end
+
   defp race(executable, root, upgrade) do
     script = ~S"""
     import os, subprocess, sys, time
@@ -164,7 +209,7 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
       subprocess.run([sys.argv[1],root,'seed-schedule-race'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
     elif mode == 'authoring-upgrade-race':
       subprocess.run([sys.argv[1],root,'seed-authoring-race'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
-    elif mode in ['generation-upgrade-race', 'generation-authoring-race']:
+    elif mode in ['generation-upgrade-race', 'generation-authoring-race', 'paired-authoring-race']:
       subprocess.run([sys.argv[1],root,'seed-generation-race'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
     children = [subprocess.Popen([sys.argv[1],root,mode,str(index)],stdout=subprocess.PIPE,stderr=subprocess.PIPE) for index in range(2)]
     try:
@@ -196,6 +241,7 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
         :authoring -> "authoring-upgrade-race"
         :generation -> "generation-upgrade-race"
         :generation_authoring -> "generation-authoring-race"
+        :paired_authoring -> "paired-authoring-race"
       end
 
     check_mode = "check-" <> mode

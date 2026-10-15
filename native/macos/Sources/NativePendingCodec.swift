@@ -331,19 +331,25 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
         return operation
     }
     func authoringOperation() throws -> (HomeAuthoringOriginal, Data?) {
-        guard phase == .pending, !custody.isPaired, case .authoring(let original, let payload) = input,
+        guard custody.valid(context: context), phase == .pending, case .authoring(let original, let payload) = input,
               original.epoch == context.epoch else { throw NativePendingError.invalidRecord }
         if case .native(let role, let creation, _) = custody {
             guard role == .operator, original.expectedRevision >= creation else { throw NativePendingError.invalidRecord }
+        }
+        if case .paired(_, _, let creation, _) = custody {
+            guard original.expectedRevision >= creation else { throw NativePendingError.invalidRecord }
         }
         _ = try NativePendingAuthoring.checked(original, payload: payload)
         return (original, payload)
     }
     func generationOperation() throws -> HomeGenerationOriginal {
-        guard custody.valid(context: context), phase == .pending, !custody.isPaired,
+        guard custody.valid(context: context), phase == .pending,
               case .generation(let original) = input, original.epoch == context.epoch else { throw NativePendingError.invalidRecord }
         if case .native(let role, let creation, _) = custody {
             guard role == .operator, original.expectedRevision >= creation else { throw NativePendingError.invalidRecord }
+        }
+        if case .paired(_, _, let creation, _) = custody {
+            guard original.expectedRevision >= creation else { throw NativePendingError.invalidRecord }
         }
         do { _ = try original.fields() } catch { throw NativePendingError.invalidRecord }
         return original
@@ -373,8 +379,10 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
 }
 
 enum NativePendingVersion: String, Sendable {
-    case v1 = "wotex-home.native-pending.v1", v2 = "wotex-home.native-pending.v2", v3 = "wotex-home.native-pending.v3", v4 = "wotex-home.native-pending.v4", v5 = "wotex-home.native-pending.v5", v6 = "wotex-home.native-pending.v6", v7 = "wotex-home.native-pending.v7"
+    case v1 = "wotex-home.native-pending.v1", v2 = "wotex-home.native-pending.v2", v3 = "wotex-home.native-pending.v3", v4 = "wotex-home.native-pending.v4", v5 = "wotex-home.native-pending.v5", v6 = "wotex-home.native-pending.v6", v7 = "wotex-home.native-pending.v7", v8 = "wotex-home.native-pending.v8"
+    var supportsPaired: Bool { switch self { case .v5, .v6, .v7, .v8: true; default: false } }
     static func requiring(_ entries: [NativePendingEntry], keeping version: Self = .v1) -> Self {
+        if version == .v8 || entries.contains(where: { $0.custody.isPaired && ($0.category == .authoring || $0.category == .generation) }) { return .v8 }
         if version == .v7 || entries.contains(where: { $0.category == .generation }) { return .v7 }
         if version == .v6 || entries.contains(where: { $0.category == .authoring }) { return .v6 }
         if version == .v5 || entries.contains(where: { $0.custody.isPaired }) { return .v5 }
@@ -513,7 +521,7 @@ private struct PendingJSON {
             guard take(34) else { throw NativePendingError.invalidRecord }
             guard let string = String(bytes: decoded, encoding: .utf8) else { throw NativePendingError.invalidRecord }
             if path == [0] {
-                generationStrings = string == NativePendingVersion.v7.rawValue
+                generationStrings = string == NativePendingVersion.v7.rawValue || string == NativePendingVersion.v8.rawValue
                 authoringStrings = generationStrings || string == NativePendingVersion.v6.rawValue
                 guard authoringStrings || bytes.count <= 65_536 else { throw NativePendingError.invalidRecord }
                 scheduleStrings = authoringStrings || string == NativePendingVersion.v4.rawValue || string == NativePendingVersion.v5.rawValue

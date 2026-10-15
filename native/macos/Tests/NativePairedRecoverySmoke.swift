@@ -131,82 +131,121 @@ struct NativePairedRecoverySmoke {
         try publication(entry, root: root)
         try await publicationOwner(entry, root: root)
         try await coordinator(entry, associations: NativeControllerAssociationStorage.load(directory: directory), root: root)
+        try await unavailableAuthoring(original, associations: NativeControllerAssociationStorage.load(directory: directory), root: root)
+    }
+
+    private static func unavailableAuthoring(_ association: NativeControllerPublicAssociation,
+                                             associations: NativeControllerAssociationSnapshot, root: URL) async throws {
+        let candidate = try dictionary("test/fixtures/profiles/authoring-candidate.json")
+        let generation = try dictionary("test/fixtures/profiles/native-generation-originals.json")
+        let first = (generation["cases"] as! [[String: Any]])[0]
+        let inputs: [NativePendingInput] = [
+            .authoring(try NativeAuthoringOriginalWire.decode(Data((candidate["input_document"] as! String).utf8), kind: .candidate), nil),
+            .generation(try NativeGenerationOriginalWire.decode(Data((first["document"] as! String).utf8), kind: .preparation)),
+        ]
+        let c = context(association), scope = HomeControllerScope(identity: HomeControllerIdentity(deploymentID: c.deployment,
+            ownerID: c.owner, authorityEpoch: Int(c.epoch), revision: Int(association.scope.creationRevision), principalID: c.principal),
+            permissions: association.access.permissions, targetIDs: association.access.targets)
+        for input in inputs {
+            do { _ = try NativePairedCaptureCorrespondence.entry(input: input, scope: scope, association: association, pending: .empty); throw PairedRecoverySmokeError.failed(#line) }
+            catch NativePendingError.unavailable {}
+            let entry = NativePendingEntry(context: c, custody: try .paired(from: association), input: input, phase: .pending)
+            let directory = root.appendingPathComponent("unavailable-" + input.category.rawValue, isDirectory: true)
+            try makeDirectory(directory)
+            let pending = try NativePendingStorage.retaining(entry, directory: directory, expected: .empty)
+            try require(pending.document.version == .v8)
+            for action in [NativePendingRecoveryAction.lookup, .retry, .cancelReview, .acknowledgeUnknown, .acknowledgeAbsent] {
+                try require(!action.permits(entry))
+                let clock = RecoveryClockProbe()
+                do { _ = try await NativePairedControllerSession.recovering(entry, action: action, pending: pending, associations: associations, clock: clock.clock); throw PairedRecoverySmokeError.failed(#line) }
+                catch NativePendingError.conflict {}
+                try require(clock.calls == 0 && NativePendingStorage.load(directory: directory) == pending)
+            }
+        }
     }
 
     private static func cancellation(_ association: NativeControllerPublicAssociation, root: URL) throws {
-        let directory = root.appendingPathComponent("cancellation", isDirectory: true)
-        try makeDirectory(directory)
-        let input = try HomeProfileOperation([
-            "action": "select", "authority_epoch": 1, "operation_id": "op:original-review", "expected_revision": 3,
-            "artifact_digest": String(repeating: "a", count: 64), "expected_trust_revision": 1, "target_id": "light:fixture",
-            "expected_resource_revision": 1, "expected_binding_revision": 1, "expected_selection_generation": 0,
-            "expected_policy_generation": 1, "expected_rule_generation": 0,
-            "session_ref": "session:fixture", "candidate_ref": "candidate:fixture", "review_ref": "review:fixture",
-        ])
-        let entry = NativePendingEntry(context: context(association), custody: try .paired(from: association),
-            input: .profile(preparing: true, operation: input), phase: .review(token: "profile:original-token", digest: String(repeating: "b", count: 64)))
-        let before = try NativePendingStorage.retaining(entry, directory: directory, expected: .empty)
-        let after = try NativePendingStorage.changingPhase(of: entry,
-            to: .cancelPending(token: "profile:original-token", digest: String(repeating: "b", count: 64)), directory: directory, expected: before)
-        let next = try NativePairedRecoveryCorrespondence.cancellation(of: entry, action: .cancelReview, before: before, after: after)
-        try require(next.context == entry.context && next.custody == entry.custody && next.input == entry.input && next.phase.isCancellation)
-        try NativePendingStorage.check(after, directory: directory)
-        for action in [NativePendingRecoveryAction.lookup, .retry] {
-            try refused { _ = try NativePairedRecoveryCorrespondence.cancellation(of: entry, action: action, before: before, after: after) }
-        }
-        try refused { _ = try NativePairedRecoveryCorrespondence.cancellation(of: next, action: .cancelReview, before: before, after: after) }
-        try refused { _ = try NativePairedRecoveryCorrespondence.cancellation(of: entry, action: .cancelReview, before: before, after: before) }
-        for (index, document) in [
-            NativePendingDocument(revision: 2, entries: [try entry.changingPhase(.cancelPending(token: "profile:other-token", digest: String(repeating: "b", count: 64)))]),
-            NativePendingDocument(revision: 2, entries: [try entry.changingPhase(.cancelPending(token: "profile:original-token", digest: String(repeating: "c", count: 64)))]),
-            NativePendingDocument(revision: 3, entries: [next]),
-            NativePendingDocument(revision: 2, entries: [], version: .v5),
-            NativePendingDocument(revision: 2, entries: [], version: .v4),
-            NativePendingDocument(revision: 2, entries: NativePendingDocument.sorted([next,
-                NativePendingEntry(context: entry.context, custody: entry.custody,
-                    input: .power(operation: "op:other-row", target: "light:fixture", revision: 1, on: true), phase: .pending)])),
-        ].enumerated() {
-            let path = root.appendingPathComponent("bad-cancellation-\(index)", isDirectory: true)
-            try makeDirectory(path)
-            try write(path.appendingPathComponent("native-pending-v1.json"), document.encoded())
-            let bad = try NativePendingStorage.load(directory: path)
-            try refused { _ = try NativePairedRecoveryCorrespondence.cancellation(of: entry, action: .cancelReview, before: before, after: bad) }
+        for version in [NativePendingVersion.v5, .v6, .v7, .v8] {
+            let directory = root.appendingPathComponent("cancellation-" + version.rawValue, isDirectory: true)
+            try makeDirectory(directory)
+            try write(directory.appendingPathComponent("native-pending-v1.json"), NativePendingDocument(revision: 1, entries: [], version: version).encoded())
+            let input = try HomeProfileOperation([
+                "action": "select", "authority_epoch": 1, "operation_id": "op:original-review", "expected_revision": 3,
+                "artifact_digest": String(repeating: "a", count: 64), "expected_trust_revision": 1, "target_id": "light:fixture",
+                "expected_resource_revision": 1, "expected_binding_revision": 1, "expected_selection_generation": 0,
+                "expected_policy_generation": 1, "expected_rule_generation": 0,
+                "session_ref": "session:fixture", "candidate_ref": "candidate:fixture", "review_ref": "review:fixture",
+            ])
+            let entry = NativePendingEntry(context: context(association), custody: try .paired(from: association),
+                input: .profile(preparing: true, operation: input), phase: .review(token: "profile:original-token", digest: String(repeating: "b", count: 64)))
+            let before = try NativePendingStorage.retaining(entry, directory: directory, expected: NativePendingStorage.load(directory: directory))
+            let after = try NativePendingStorage.changingPhase(of: entry,
+                to: .cancelPending(token: "profile:original-token", digest: String(repeating: "b", count: 64)), directory: directory, expected: before)
+            let next = try NativePairedRecoveryCorrespondence.cancellation(of: entry, action: .cancelReview, before: before, after: after)
+            try require(next.context == entry.context && next.custody == entry.custody && next.input == entry.input && next.phase.isCancellation)
+            try NativePendingStorage.check(after, directory: directory)
+            for action in [NativePendingRecoveryAction.lookup, .retry] {
+                try refused { _ = try NativePairedRecoveryCorrespondence.cancellation(of: entry, action: action, before: before, after: after) }
+            }
+            try refused { _ = try NativePairedRecoveryCorrespondence.cancellation(of: next, action: .cancelReview, before: before, after: after) }
+            try refused { _ = try NativePairedRecoveryCorrespondence.cancellation(of: entry, action: .cancelReview, before: before, after: before) }
+            for (index, document) in [
+                NativePendingDocument(revision: before.document.revision + 1, entries: [try entry.changingPhase(.cancelPending(token: "profile:other-token", digest: String(repeating: "b", count: 64)))], version: version),
+                NativePendingDocument(revision: before.document.revision + 1, entries: [try entry.changingPhase(.cancelPending(token: "profile:original-token", digest: String(repeating: "c", count: 64)))], version: version),
+                NativePendingDocument(revision: before.document.revision + 2, entries: [next], version: version),
+                NativePendingDocument(revision: before.document.revision + 1, entries: [], version: version),
+                NativePendingDocument(revision: before.document.revision + 1, entries: [], version: .v4),
+                NativePendingDocument(revision: before.document.revision + 1, entries: NativePendingDocument.sorted([next,
+                    NativePendingEntry(context: entry.context, custody: entry.custody,
+                        input: .power(operation: "op:other-row", target: "light:fixture", revision: 1, on: true), phase: .pending)]), version: version),
+            ].enumerated() {
+                let path = root.appendingPathComponent("bad-cancellation-\(version.rawValue)-\(index)", isDirectory: true)
+                try makeDirectory(path)
+                try write(path.appendingPathComponent("native-pending-v1.json"), document.encoded())
+                let bad = try NativePendingStorage.load(directory: path)
+                try refused { _ = try NativePairedRecoveryCorrespondence.cancellation(of: entry, action: .cancelReview, before: before, after: bad) }
+            }
         }
     }
 
     private static func publication(_ original: NativePendingEntry, root: URL) throws {
-        let directory = root.appendingPathComponent("publication", isDirectory: true)
-        try makeDirectory(directory)
-        let input = try HomeProfileOperation([
-            "action": "select", "authority_epoch": 1, "operation_id": "op:publication-review", "expected_revision": 3,
-            "artifact_digest": String(repeating: "a", count: 64), "expected_trust_revision": 1, "target_id": "light:fixture",
-            "expected_resource_revision": 1, "expected_binding_revision": 1, "expected_selection_generation": 0,
-            "expected_policy_generation": 1, "expected_rule_generation": 0,
-            "session_ref": "session:fixture", "candidate_ref": "candidate:fixture", "review_ref": "review:fixture",
-        ])
-        let entry = NativePendingEntry(context: original.context, custody: original.custody,
-            input: .profile(preparing: true, operation: input), phase: .pending)
-        let other = original
-        let first = try NativePendingStorage.retaining(entry, directory: directory, expected: .empty)
-        let before = try NativePendingStorage.retaining(other, directory: directory, expected: first)
-        try require(try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: .retained("missing"), before: before, after: before) == entry)
-        let phase = NativePendingPhase.review(token: "profile:decoded-token", digest: String(repeating: "d", count: 64))
-        let reviewed = try NativePendingStorage.changingPhase(of: entry, to: phase, directory: directory, expected: before)
-        let outcome = NativePendingRecoveryOutcome.review(token: "profile:decoded-token", digest: String(repeating: "d", count: 64))
-        let updated = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: outcome, before: before, after: reviewed)
-        try require(updated == entry.changingPhase(phase) && reviewed.document.entries.contains(other))
-        try require(try NativePairedRecoveryCorrespondence.publication(of: updated, outcome: outcome, before: reviewed, after: reviewed) == updated)
-        try refused { _ = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: .retained("missing"), before: before, after: reviewed) }
-        try refused { _ = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: .resolved("held"), before: before, after: reviewed) }
-        try refused { _ = try NativePairedRecoveryCorrespondence.publication(of: entry,
-            outcome: .review(token: "profile:substituted", digest: String(repeating: "d", count: 64)), before: before, after: reviewed) }
-        let removed = try NativePendingStorage.resolving(updated, directory: directory, expected: reviewed)
-        try require(try NativePairedRecoveryCorrespondence.publication(of: updated, outcome: .resolved("held"), before: reviewed, after: removed) == updated)
-        try require(removed.document.entries == [other] && removed.document.version == .v5)
-        try refused { _ = try NativePairedRecoveryCorrespondence.publication(of: updated, outcome: .resolved("held"), before: reviewed, after: reviewed) }
-        try refused { _ = try NativePairedRecoveryCorrespondence.publication(of: updated, outcome: .resolved("held"), before: before, after: removed) }
-        try refused { _ = try NativePendingStorage.resolving(entry, directory: directory, expected: before) }
-        try require(try NativePendingStorage.load(directory: directory) == removed)
+        for version in [NativePendingVersion.v5, .v6, .v7, .v8] {
+            let directory = root.appendingPathComponent("publication-" + version.rawValue, isDirectory: true)
+            try makeDirectory(directory)
+            try write(directory.appendingPathComponent("native-pending-v1.json"), NativePendingDocument(revision: 1, entries: [], version: version).encoded())
+            let input = try HomeProfileOperation([
+                "action": "select", "authority_epoch": 1, "operation_id": "op:publication-review", "expected_revision": 3,
+                "artifact_digest": String(repeating: "a", count: 64), "expected_trust_revision": 1, "target_id": "light:fixture",
+                "expected_resource_revision": 1, "expected_binding_revision": 1, "expected_selection_generation": 0,
+                "expected_policy_generation": 1, "expected_rule_generation": 0,
+                "session_ref": "session:fixture", "candidate_ref": "candidate:fixture", "review_ref": "review:fixture",
+            ])
+            let entry = NativePendingEntry(context: original.context, custody: original.custody,
+                input: .profile(preparing: true, operation: input), phase: .pending)
+            let other = original
+            let seeded = try NativePendingStorage.load(directory: directory)
+            let first = try NativePendingStorage.retaining(entry, directory: directory, expected: seeded)
+            try NativePairedCaptureCorrespondence.publication(of: entry, before: seeded, after: first)
+            let before = try NativePendingStorage.retaining(other, directory: directory, expected: first)
+            try require(try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: .retained("missing"), before: before, after: before) == entry)
+            let phase = NativePendingPhase.review(token: "profile:decoded-token", digest: String(repeating: "d", count: 64))
+            let reviewed = try NativePendingStorage.changingPhase(of: entry, to: phase, directory: directory, expected: before)
+            let outcome = NativePendingRecoveryOutcome.review(token: "profile:decoded-token", digest: String(repeating: "d", count: 64))
+            let updated = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: outcome, before: before, after: reviewed)
+            try require(updated == entry.changingPhase(phase) && reviewed.document.entries.contains(other))
+            try require(try NativePairedRecoveryCorrespondence.publication(of: updated, outcome: outcome, before: reviewed, after: reviewed) == updated)
+            try refused { _ = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: .retained("missing"), before: before, after: reviewed) }
+            try refused { _ = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: .resolved("held"), before: before, after: reviewed) }
+            try refused { _ = try NativePairedRecoveryCorrespondence.publication(of: entry,
+                outcome: .review(token: "profile:substituted", digest: String(repeating: "d", count: 64)), before: before, after: reviewed) }
+            let removed = try NativePendingStorage.resolving(updated, directory: directory, expected: reviewed)
+            try require(try NativePairedRecoveryCorrespondence.publication(of: updated, outcome: .resolved("held"), before: reviewed, after: removed) == updated)
+            try require(removed.document.entries == [other] && removed.document.version == version)
+            try refused { _ = try NativePairedRecoveryCorrespondence.publication(of: updated, outcome: .resolved("held"), before: reviewed, after: reviewed) }
+            try refused { _ = try NativePairedRecoveryCorrespondence.publication(of: updated, outcome: .resolved("held"), before: before, after: removed) }
+            try refused { _ = try NativePendingStorage.resolving(entry, directory: directory, expected: before) }
+            try require(try NativePendingStorage.load(directory: directory) == removed)
+        }
     }
 
     private static func capture(_ entry: NativePendingEntry, association: NativeControllerPublicAssociation,

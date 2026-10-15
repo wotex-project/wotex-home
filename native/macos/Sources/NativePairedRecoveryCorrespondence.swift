@@ -14,12 +14,14 @@ enum NativePairedCaptureCorrespondence {
             $0.context.deployment == context.deployment && $0.context.owner == context.owner && $0.context.epoch == context.epoch
         }) else { throw NativePendingError.conflict }
         let entry = NativePendingEntry(context: context, custody: try .paired(from: association), input: input, phase: .pending)
+        guard NativePendingRecoveryAction.retry.permits(entry) else { throw NativePendingError.unavailable }
         _ = try NativePendingDocument(revision: 1, entries: [entry]).encoded()
         return entry
     }
     static func publication(of entry: NativePendingEntry, before: NativePendingSnapshot, after: NativePendingSnapshot) throws {
         guard entry.custody.isPaired, entry.category != .access, entry.phase == .pending,
-              before.document.revision < Int64.max, after.document.version == .v5,
+              before.document.revision < Int64.max,
+              after.document.version == NativePendingVersion.requiring(before.document.entries + [entry], keeping: before.document.version),
               after.document.revision == before.document.revision + 1,
               !before.document.entries.contains(where: {
                 $0.context.deployment == entry.context.deployment && $0.context.owner == entry.context.owner && $0.context.epoch == entry.context.epoch
@@ -49,7 +51,7 @@ enum NativePairedRecoveryCorrespondence {
                              before: NativePendingSnapshot, after: NativePendingSnapshot) throws -> NativePendingEntry {
         guard action == .cancelReview, entry.custody.isPaired, before.document.entries.contains(entry),
               case .review(let token, let digest) = entry.phase,
-              before.document.version == .v5, after.document.version == .v5,
+              before.document.version.supportsPaired, after.document.version == before.document.version,
               before.document.revision > 0, before.document.revision < Int64.max,
               after.document.revision == before.document.revision + 1 else { throw NativePendingError.conflict }
         let next = try entry.changingPhase(.cancelPending(token: token, digest: digest))
@@ -63,7 +65,7 @@ enum NativePairedRecoveryCorrespondence {
     static func publication(of entry: NativePendingEntry, outcome: NativePendingRecoveryOutcome,
                             before: NativePendingSnapshot, after: NativePendingSnapshot) throws -> NativePendingEntry {
         guard entry.custody.isPaired, entry.category != .access, before.document.entries.contains(entry),
-              before.document.version == .v5, after.document.version == .v5 else { throw NativePendingError.conflict }
+              before.document.version.supportsPaired, after.document.version == before.document.version else { throw NativePendingError.conflict }
         let updated: NativePendingEntry, entries: [NativePendingEntry]
         switch outcome {
         case .retained:
