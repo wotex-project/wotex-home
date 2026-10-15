@@ -1,0 +1,528 @@
+{
+  "evidence": "Synthetic public fixtures; no source or host accuracy qualified",
+  "runtime": "809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9",
+  "vectors": [
+    {
+      "name": "ordinary",
+      "policy": "[\"wotex-home.native-certificate-clock-policy.v1\",\"fixture:source\",\"fixture:issuer\",\"0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc\",1,\"fixture:unqualified\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",1000,10000,10,100,5]",
+      "request": "[\"wotex-home.native-certificate-clock-request.v1\",\"org.wotex.home\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",\"ISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISE\",\"de52e44a6ff866621c1330cac8a67cf96011c93fdd3dd0ebc48c662171aea9e5\"]",
+      "package": "[\"wotex-home.native-certificate-clock-package.v1\",[\"wotex-home.native-certificate-clock-record.v1\",\"org.wotex.home\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",\"ISEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISE\",\"de52e44a6ff866621c1330cac8a67cf96011c93fdd3dd0ebc48c662171aea9e5\",1792065600000],\"fLuV3jLTlx3pyB2pknDGGObe8ZVRH6aU6NcPlu9zWjQaNdJXe0rKp2H-4hAdsH-7P_Iw4_342doBRtT8RVz8CA\"]",
+      "response_elapsed": 0,
+      "accepted": true,
+      "lookups": [
+        {
+          "elapsed": 0,
+          "expected": [
+            1792065599983,
+            1792065600017
+          ]
+        },
+        {
+          "elapsed": 1,
+          "expected": [
+            1792065599983,
+            1792065600019
+          ]
+        },
+        {
+          "elapsed": 9999,
+          "expected": [
+            1792065609981,
+            1792065610017
+          ]
+        }
+      ],
+      "continuity": [
+        {
+          "continuous": 0,
+          "wall": 0,
+          "expected": true
+        },
+        {
+          "continuous": 1,
+          "wall": 1,
+          "expected": true
+        },
+        {
+          "continuous": 1000,
+          "wall": 1002,
+          "expected": true
+        },
+        {
+          "continuous": 1000,
+          "wall": 1008,
+          "expected": true
+        },
+        {
+          "continuous": 1000,
+          "wall": 1009,
+          "expected": false
+        },
+        {
+          "continuous": 5000,
+          "wall": 5002,
+          "expected": true
+        },
+        {
+          "continuous": 5000,
+          "wall": 5010,
+          "expected": false
+        },
+        {
+          "continuous": 9999,
+          "wall": 9990,
+          "expected": false
+        },
+        {
+          "continuous": 10000,
+          "wall": 10000,
+          "expected": false
+        },
+        {
+          "continuous": 0,
+          "wall": -1,
+          "expected": false
+        },
+        {
+          "continuous": 0,
+          "wall": 9223372036854775807,
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "delayed",
+      "policy": "[\"wotex-home.native-certificate-clock-policy.v1\",\"fixture:source\",\"fixture:issuer\",\"IEBA42TBDyvsnB_lAKHNTCR8idZQoB7X6CyrqGeHfCE\",1,\"fixture:unqualified\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",1000,10000,10,100,5]",
+      "request": "[\"wotex-home.native-certificate-clock-request.v1\",\"org.wotex.home\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",\"IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiI\",\"4e3d20930d27ff00923ef68310a0fd7455b5531c667e7e5a2658c0a8d142fdb4\"]",
+      "package": "[\"wotex-home.native-certificate-clock-package.v1\",[\"wotex-home.native-certificate-clock-record.v1\",\"org.wotex.home\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",\"IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiI\",\"4e3d20930d27ff00923ef68310a0fd7455b5531c667e7e5a2658c0a8d142fdb4\",1792065600000],\"RyvicDSg6sVYYxHU3C3mX-GvuBaxfSbkUXYnVYlSbEC_B35CLhkzLLwlzCsruB62w4HvIRtqgBESabaRLsi8Cg\"]",
+      "response_elapsed": 37,
+      "accepted": true,
+      "lookups": [
+        {
+          "elapsed": 37,
+          "expected": [
+            1792065599982,
+            1792065600055
+          ]
+        },
+        {
+          "elapsed": 38,
+          "expected": [
+            1792065599983,
+            1792065600056
+          ]
+        },
+        {
+          "elapsed": 1043,
+          "expected": [
+            1792065600988,
+            1792065601061
+          ]
+        },
+        {
+          "elapsed": 9999,
+          "expected": [
+            1792065609944,
+            1792065610017
+          ]
+        }
+      ],
+      "continuity": [
+        {
+          "continuous": 0,
+          "wall": 0,
+          "expected": true
+        },
+        {
+          "continuous": 1,
+          "wall": 1,
+          "expected": true
+        },
+        {
+          "continuous": 1000,
+          "wall": 1002,
+          "expected": true
+        },
+        {
+          "continuous": 1000,
+          "wall": 1008,
+          "expected": true
+        },
+        {
+          "continuous": 1000,
+          "wall": 1009,
+          "expected": false
+        },
+        {
+          "continuous": 5000,
+          "wall": 5002,
+          "expected": true
+        },
+        {
+          "continuous": 5000,
+          "wall": 5010,
+          "expected": false
+        },
+        {
+          "continuous": 9999,
+          "wall": 9990,
+          "expected": false
+        },
+        {
+          "continuous": 10000,
+          "wall": 10000,
+          "expected": false
+        },
+        {
+          "continuous": 0,
+          "wall": -1,
+          "expected": false
+        },
+        {
+          "continuous": 0,
+          "wall": 9223372036854775807,
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "zero-error",
+      "policy": "[\"wotex-home.native-certificate-clock-policy.v1\",\"fixture:source\",\"fixture:issuer\",\"Zs1gi5KLiOUODv6qM_rxxDzv4HKUsLh-n-CrpqPPdjM\",1,\"fixture:unqualified\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",1,15000,0,0,0]",
+      "request": "[\"wotex-home.native-certificate-clock-request.v1\",\"org.wotex.home\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",\"IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyM\",\"c2a5b5618fe52119a238564814f01258ead2054e6b349d65caed3abd0f477aa2\"]",
+      "package": "[\"wotex-home.native-certificate-clock-package.v1\",[\"wotex-home.native-certificate-clock-record.v1\",\"org.wotex.home\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",\"IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyM\",\"c2a5b5618fe52119a238564814f01258ead2054e6b349d65caed3abd0f477aa2\",1792065600000],\"CMvqtrbPNAlkw28WMIKu8hQ7uoPYvUpe1E_hE6JryHKKyvk-Vn-vUxwvWjEMahZJ91h3SVyIU8-dY8p69mfCDg\"]",
+      "response_elapsed": 0,
+      "accepted": true,
+      "lookups": [
+        {
+          "elapsed": 0,
+          "expected": [
+            1792065599998,
+            1792065600002
+          ]
+        },
+        {
+          "elapsed": 1,
+          "expected": [
+            1792065599999,
+            1792065600003
+          ]
+        },
+        {
+          "elapsed": 14999,
+          "expected": [
+            1792065614997,
+            1792065615001
+          ]
+        }
+      ],
+      "continuity": [
+        {
+          "continuous": 0,
+          "wall": 0,
+          "expected": true
+        },
+        {
+          "continuous": 1,
+          "wall": 1,
+          "expected": true
+        },
+        {
+          "continuous": 1000,
+          "wall": 1002,
+          "expected": true
+        },
+        {
+          "continuous": 1000,
+          "wall": 1008,
+          "expected": false
+        },
+        {
+          "continuous": 1000,
+          "wall": 1009,
+          "expected": false
+        },
+        {
+          "continuous": 5000,
+          "wall": 5002,
+          "expected": true
+        },
+        {
+          "continuous": 5000,
+          "wall": 5010,
+          "expected": false
+        },
+        {
+          "continuous": 9999,
+          "wall": 9990,
+          "expected": false
+        },
+        {
+          "continuous": 15000,
+          "wall": 15000,
+          "expected": false
+        },
+        {
+          "continuous": 0,
+          "wall": -1,
+          "expected": false
+        },
+        {
+          "continuous": 0,
+          "wall": 9223372036854775807,
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "maximum",
+      "policy": "[\"wotex-home.native-certificate-clock-policy.v1\",\"fixture:source\",\"fixture:issuer\",\"IIKL9cW9ystoSGMzbCAvtVmdpIvlWWYVdCFwcFvsqfc\",1,\"fixture:unqualified\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",60000,600000,1000,1000,1000]",
+      "request": "[\"wotex-home.native-certificate-clock-request.v1\",\"org.wotex.home\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",\"JCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQ\",\"5f9e33afe91ee5bc377a173b8c004ec7a3672f05beea0b0fffda4bf945599c4d\"]",
+      "package": "[\"wotex-home.native-certificate-clock-package.v1\",[\"wotex-home.native-certificate-clock-record.v1\",\"org.wotex.home\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",\"JCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQ\",\"5f9e33afe91ee5bc377a173b8c004ec7a3672f05beea0b0fffda4bf945599c4d\",1792065600000],\"c6tK9ZZI3ftxIvcYEsjlUw4JkfwSTjJvIreURkXR09pc-U3AI6SPtXtb2AJuII0DAJRpegOfayIgHopqu3pVAA\"]",
+      "response_elapsed": 59999,
+      "accepted": true,
+      "lookups": [
+        {
+          "elapsed": 59999,
+          "expected": [
+            1792065597938,
+            1792065662061
+          ]
+        },
+        {
+          "elapsed": 60000,
+          "expected": [
+            1792065597939,
+            1792065662062
+          ]
+        },
+        {
+          "elapsed": 599999,
+          "expected": [
+            1792066137398,
+            1792066202601
+          ]
+        }
+      ],
+      "continuity": [
+        {
+          "continuous": 0,
+          "wall": 0,
+          "expected": true
+        },
+        {
+          "continuous": 1,
+          "wall": 1,
+          "expected": true
+        },
+        {
+          "continuous": 1000,
+          "wall": 1002,
+          "expected": true
+        },
+        {
+          "continuous": 1000,
+          "wall": 1008,
+          "expected": true
+        },
+        {
+          "continuous": 1000,
+          "wall": 1009,
+          "expected": true
+        },
+        {
+          "continuous": 5000,
+          "wall": 5002,
+          "expected": true
+        },
+        {
+          "continuous": 5000,
+          "wall": 5010,
+          "expected": true
+        },
+        {
+          "continuous": 9999,
+          "wall": 9990,
+          "expected": true
+        },
+        {
+          "continuous": 600000,
+          "wall": 600000,
+          "expected": false
+        },
+        {
+          "continuous": 0,
+          "wall": -1,
+          "expected": false
+        },
+        {
+          "continuous": 0,
+          "wall": 9223372036854775807,
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "upper-limit",
+      "policy": "[\"wotex-home.native-certificate-clock-policy.v1\",\"fixture:source\",\"fixture:issuer\",\"1UIH2hlJd9z0atv-wrwudbUtWopCGE_t_cAAJPDj6No\",1,\"fixture:unqualified\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",60000,600000,1000,1000,1000]",
+      "request": "[\"wotex-home.native-certificate-clock-request.v1\",\"org.wotex.home\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",\"JSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSU\",\"5fe383d19848fa08e2cf93ff1d8e9b10b3b4d299dfe154a05f5c770f8e5373f8\"]",
+      "package": "[\"wotex-home.native-certificate-clock-package.v1\",[\"wotex-home.native-certificate-clock-record.v1\",\"org.wotex.home\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",\"JSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSUlJSU\",\"5fe383d19848fa08e2cf93ff1d8e9b10b3b4d299dfe154a05f5c770f8e5373f8\",253402300199000],\"p88-Ap4GyABWF-oU0XSVHx-7pddkQvJbVJthTagpwR_G8a7PmG79ypn-G2xoUwneBGph0fBSLUiUh0KFifCLCw\"]",
+      "response_elapsed": 0,
+      "accepted": true,
+      "lookups": [
+        {
+          "elapsed": 0,
+          "expected": [
+            253402300196998,
+            253402300201002
+          ]
+        },
+        {
+          "elapsed": 1,
+          "expected": [
+            253402300196998,
+            253402300201004
+          ]
+        },
+        {
+          "elapsed": 597000,
+          "expected": [
+            253402300793401,
+            253402300798599
+          ]
+        },
+        {
+          "elapsed": 599999,
+          "expected": "clock_unavailable"
+        }
+      ],
+      "continuity": [
+        {
+          "continuous": 0,
+          "wall": 0,
+          "expected": true
+        },
+        {
+          "continuous": 1,
+          "wall": 1,
+          "expected": true
+        },
+        {
+          "continuous": 1000,
+          "wall": 1002,
+          "expected": true
+        },
+        {
+          "continuous": 1000,
+          "wall": 1008,
+          "expected": true
+        },
+        {
+          "continuous": 1000,
+          "wall": 1009,
+          "expected": true
+        },
+        {
+          "continuous": 5000,
+          "wall": 5002,
+          "expected": true
+        },
+        {
+          "continuous": 5000,
+          "wall": 5010,
+          "expected": true
+        },
+        {
+          "continuous": 9999,
+          "wall": 9990,
+          "expected": true
+        },
+        {
+          "continuous": 600000,
+          "wall": 600000,
+          "expected": false
+        },
+        {
+          "continuous": 0,
+          "wall": -1,
+          "expected": false
+        },
+        {
+          "continuous": 0,
+          "wall": 9223372036854775807,
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "underflow",
+      "policy": "[\"wotex-home.native-certificate-clock-policy.v1\",\"fixture:source\",\"fixture:issuer\",\"URw0oaLLUh3xa7JGuN6OeZfOI1x-drIqPXUDokgZ3Yo\",1,\"fixture:unqualified\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",1000,10000,0,0,0]",
+      "request": "[\"wotex-home.native-certificate-clock-request.v1\",\"org.wotex.home\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",\"JiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiY\",\"e58db243629f6f605cf3276bd89b5aa91fb9bef2e005ed3329845c75703beff1\"]",
+      "package": "[\"wotex-home.native-certificate-clock-package.v1\",[\"wotex-home.native-certificate-clock-record.v1\",\"org.wotex.home\",\"809a4adc827ae4b57165cb40d3952b05ba84c689c5e3263e920df0f5402b39a9\",\"JiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiY\",\"e58db243629f6f605cf3276bd89b5aa91fb9bef2e005ed3329845c75703beff1\",0],\"pXeyLp-AxttVWkmmQKCKG727efGnlVQVe54O7Vqbp2ieNyiTOIUu2_NgH4ciAzNypIOnB-6SG1j9fSFcpLOfAg\"]",
+      "response_elapsed": 0,
+      "accepted": false,
+      "lookups": [
+        {
+          "elapsed": 0,
+          "expected": "clock_unavailable"
+        }
+      ],
+      "continuity": [
+        {
+          "continuous": 0,
+          "wall": 0,
+          "expected": true
+        },
+        {
+          "continuous": 1,
+          "wall": 1,
+          "expected": true
+        },
+        {
+          "continuous": 1000,
+          "wall": 1002,
+          "expected": true
+        },
+        {
+          "continuous": 1000,
+          "wall": 1008,
+          "expected": false
+        },
+        {
+          "continuous": 1000,
+          "wall": 1009,
+          "expected": false
+        },
+        {
+          "continuous": 5000,
+          "wall": 5002,
+          "expected": true
+        },
+        {
+          "continuous": 5000,
+          "wall": 5010,
+          "expected": false
+        },
+        {
+          "continuous": 9999,
+          "wall": 9990,
+          "expected": false
+        },
+        {
+          "continuous": 10000,
+          "wall": 10000,
+          "expected": false
+        },
+        {
+          "continuous": 0,
+          "wall": -1,
+          "expected": false
+        },
+        {
+          "continuous": 0,
+          "wall": 9223372036854775807,
+          "expected": false
+        }
+      ]
+    }
+  ]
+}
