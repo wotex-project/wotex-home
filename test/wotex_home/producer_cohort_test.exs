@@ -19,6 +19,8 @@ defmodule WotexHome.ProducerCohortTest do
                  :wotex_runtime -> Wotex.Runtime
                  :wotex_profiles -> Wotex.Profiles.Contract
                  :wotex_binding_mqtt -> Wotex.Binding.MQTT.JSONProjection
+                 :wotex_continuum -> WotexContinuum
+                 :wotex_routines -> Wotex.Routines.Civil
                  :ex_booking -> ExBooking.RRule
                  :wotex_udp -> Wotex.UDP
                end
@@ -65,9 +67,18 @@ defmodule WotexHome.ProducerCohortTest do
     root = Mix.Dep.Lock.read("mix.lock")
     firmware = Mix.Dep.Lock.read("native/nerves/mix.lock")
 
-    for app <- [:wotex, :wotex_runtime, :wotex_profiles, :wotex_binding_mqtt] do
+    for app <- [
+          :wotex,
+          :wotex_runtime,
+          :wotex_profiles,
+          :wotex_binding_mqtt,
+          :wotex_continuum,
+          :wotex_routines,
+          :ex_booking,
+          :wotex_udp
+        ] do
       ref = WotexHome.MixProject.source_pins()[app]
-      assert {:git, "https://github.com/wotex-project/wotex.git", ^ref, _} = root[app]
+      assert {:git, _, ^ref, _} = root[app]
       assert root[app] == firmware[app]
     end
 

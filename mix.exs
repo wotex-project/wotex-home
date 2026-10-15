@@ -6,7 +6,8 @@ defmodule WotexHome.MixProject do
   @ex_maude_version "0.5.0"
   @wotex_udp_ref "dde1837f03f88a847ba5a0ec4479711a5ff1cf96"
   @profiles_ref "687a5cd70267fa47dbfb36e28eccad6ef2964fdf"
-  @booking_ref "25ad04548c01e5a24c5505acfbe063550d3efaa0"
+  @routines_ref "f3e77a431a917b639f7b0d52a93b78c27def4344"
+  @booking_ref "3fa614cd3cf106aba7161e17015969634afc3730"
 
   def project do
     [
@@ -51,6 +52,8 @@ defmodule WotexHome.MixProject do
       wotex_runtime: @profiles_ref,
       wotex_profiles: @profiles_ref,
       wotex_binding_mqtt: @profiles_ref,
+      wotex_continuum: @profiles_ref,
+      wotex_routines: @routines_ref,
       ex_booking: @booking_ref
     }
 
@@ -59,7 +62,9 @@ defmodule WotexHome.MixProject do
       wotex: "packages/wotex",
       wotex_runtime: "packages/wotex-runtime",
       wotex_profiles: "packages/wotex-profiles",
-      wotex_binding_mqtt: "packages/wotex-binding-mqtt"
+      wotex_binding_mqtt: "packages/wotex-binding-mqtt",
+      wotex_continuum: "packages/wotex-continuum",
+      wotex_routines: "packages/wotex-routines"
     }
 
   defp deps do
@@ -76,11 +81,14 @@ defmodule WotexHome.MixProject do
       producer_dep(:wotex_runtime, "wotex-runtime"),
       producer_dep(:wotex_profiles, "wotex-profiles"),
       producer_dep(:wotex_binding_mqtt, "wotex-binding-mqtt"),
+      producer_dep(:wotex_continuum, "wotex-continuum"),
+      producer_dep(:wotex_routines, "wotex-routines", @routines_ref),
       local_or_git(
         :ex_booking,
         "../ex_booking",
         [git: "https://github.com/futhr/ex_booking.git", ref: @booking_ref],
-        env: :prod
+        env: :prod,
+        override: true
       ),
       local_or_git(
         :wotex_udp,
@@ -95,13 +103,13 @@ defmodule WotexHome.MixProject do
     ]
   end
 
-  defp producer_dep(app, directory) do
+  defp producer_dep(app, directory, revision \\ @profiles_ref) do
     local_or_git(
       app,
       "../wotex/packages/" <> directory,
       [
         git: "https://github.com/wotex-project/wotex.git",
-        ref: @profiles_ref,
+        ref: revision,
         sparse: "packages/" <> directory
       ],
       env: :prod,

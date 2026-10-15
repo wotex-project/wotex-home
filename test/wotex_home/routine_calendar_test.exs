@@ -91,14 +91,53 @@ defmodule WotexHome.RoutineCalendarTest do
              {:error, :invalid_schedule_source}
   end
 
-  test "an unavailable selected producer refuses instead of using the old calculator", c do
-    result = RoutineCalendar.resolve(c.source, ~N[2026-07-13 12:00:00], c.zone)
+  test "the selected civil producer resolves without an installed host timezone", c do
+    assert Code.ensure_loaded?(Wotex.Routines.Civil)
+    assert Code.ensure_loaded?(ExBooking)
+    assert function_exported?(ExBooking, :civil_occurrences, 3)
 
-    if Code.ensure_loaded?(Wotex.Routines.Civil) and
-         function_exported?(ExBooking, :civil_occurrences, 3) do
-      assert {:ok, [_]} = result
-    else
-      assert result == {:error, :routine_calendar_unavailable}
+    assert {:ok, [_]} = RoutineCalendar.resolve(c.source, ~N[2026-07-13 12:00:00], c.zone)
+    assert Calendar.get_time_zone_database() == Calendar.UTCOnlyTimeZoneDatabase
+  end
+
+  test "the pinned cohort preserves every frozen civil label and next-coordinate vector", c do
+    corpus = JSON.decode!(File.read!("test/fixtures/schedules/timezone_vectors.json"))
+
+    zones =
+      Map.new(corpus["zones"], fn record ->
+        {:ok, zone} = Tzif.decode(record["name"], Base.decode64!(record["data_base64"]))
+
+        for vector <- record["vectors"] do
+          nominal = NaiveDateTime.from_iso8601!(vector["local"])
+          time = Time.to_iso8601(NaiveDateTime.to_time(nominal))
+          source = %{c.source | "trigger" => ["daily", zone.name, zone.digest, time, 0, nil]}
+          assert RoutineCalendar.resolve(source, nominal, zone) == {:ok, vector["utc_ms"]}
+        end
+
+        {zone.name, zone}
+      end)
+
+    assert Enum.sum(Enum.map(corpus["zones"], &length(&1["vectors"]))) == 230
+    assert length(corpus["next_cases"]) == 112
+
+    for vector <- corpus["next_cases"] do
+      zone = zones[vector["zone"]]
+
+      trigger = [
+        "weekdays",
+        zone.name,
+        zone.digest,
+        vector["time"],
+        vector["days"],
+        vector["start_ms"],
+        vector["end_ms"]
+      ]
+
+      source = %{c.source | "trigger" => trigger}
+      assert RoutineCalendar.next(source, vector["after_ms"], zone) == {:ok, vector["next_ms"]}
+
+      if vector["next_ms"] != nil,
+        do: assert(RoutineCalendar.coordinate(source, vector["next_ms"], zone) == :ok)
     end
   end
 end

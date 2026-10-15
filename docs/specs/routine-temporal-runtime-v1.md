@@ -2,7 +2,8 @@
 
 Version: 0.1.0. Updated: 2026-10-15. Status: accepted target.
 Owner: WOH.20 H20-02/07/08, WOH.07 runtime correspondence and WOH.14 current guards.
-Implementation: planned. Evidence: missing for this Home runtime successor.
+Implementation: exact dependencies selected; complete v4 runtime and Store adoption remain planned.
+Evidence: [pinned pure corpus and source selection](../provenance/routines-runtime-2026-10.md).
 
 ## Scope and prerequisites
 
