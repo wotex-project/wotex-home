@@ -556,4 +556,35 @@ defmodule WotexHome.PrivateMQTTInstallationTest do
     send(broker, :probe)
     assert_receive {:mqtt_probe, ^broker, {:error, :closed}}
   end
+
+  test "replaced empty root and failed source synchronization preserve inactive policy", c do
+    c = prepare(c)
+    {:ok, absent} = MQTTConfiguration.load(c.root, c.profile)
+    old = c.root <> ".original"
+    File.rename!(c.root, old)
+
+    try do
+      File.mkdir!(c.root)
+      File.chmod!(c.root, 0o700)
+
+      assert {:error, :mqtt_configuration_changed} =
+               MQTTConfiguration.check(absent, c.root, c.profile)
+    after
+      File.rm_rf!(c.root)
+      File.rename!(old, c.root)
+    end
+
+    c = install(c)
+    File.rm!(Path.join(c.root, MQTTConfiguration.filename()))
+
+    assert {:error, :mqtt_configuration_unavailable} =
+             MQTTConfiguration.publish(
+               c.root,
+               Path.join(c.root, "mqtt-input.json"),
+               fn _ -> {:error, :eio} end
+             )
+
+    refute File.exists?(Path.join(c.root, MQTTConfiguration.filename()))
+    refute File.exists?(Path.join(c.root, "home.sqlite"))
+  end
 end
