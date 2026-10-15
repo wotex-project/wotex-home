@@ -145,8 +145,9 @@ Selected manual authoring driver/presentation now has
 [raw TLS/Store, actual unsigned refusal and local mounted evidence](../provenance/native-paired-authoring-ui-2026-10.md).
 Selected generation driver/presentation now has
 [bounded adapter/Store and native refusal evidence](../provenance/native-paired-generation-ui-2026-10.md).
-Continue with nonempty paired workspace assessment selectors and installed signed
-interaction/qualification. Human confirmation obtains fresh actual signed scope;
+Nonempty paired workspace selectors now have
+[independent joins and actual owned-object/Store evidence](../provenance/native-paired-workspace-selectors-2026-10.md).
+Continue with installed signed interaction/qualification. Human confirmation obtains fresh actual signed scope;
 it cannot renew a read session or edit the frozen original. Live account/model, local OS
 confinement, native/signed paired delivery and aggregate pool boundaries remain.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)

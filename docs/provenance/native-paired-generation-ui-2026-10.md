@@ -106,3 +106,9 @@ PGU-T3/T4 acceptance. Mounted local images do not establish paired interaction.
 The new raw generated-workspace selector rows are empty; nonempty source/fixture
 and conflicting-first-revision branches remain focused follow-up work. Live source
 truth/provider confinement, power-loss and physical qualification remain separate.
+
+
+Follow-up: [nonempty selector checks](native-paired-workspace-selectors-2026-10.md)
+now cover the source/fixture gap above, including both families and actual wrong
+kind/first-revision refusals. The original executed scope and installed limits
+recorded here remain historical.

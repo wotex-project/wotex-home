@@ -1,6 +1,6 @@
 # Paired native authoring and generation composition
 
-Version: 0.1.11. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.12. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18A-02/04/05 and H18-T15/T16/T17.
 Implementation: paired manual consumer, upload-owner lifecycle and existing-only
@@ -31,8 +31,9 @@ and [v2 workspace](native-generation-workspace-v2.md), now implemented as privat
 metadata dependencies with [workspace evidence](../provenance/native-generation-workspace-v2-2026-10.md).
 They create no signed session or dispatch. The paired manual closed consumer
 now has transport/Store and actual unsigned-factory refusal evidence. Continue
-with nonempty paired workspace selectors and installed signed acceptance; selected
-generation driver/panel composition now has its bounded evidence above. Paired
+with installed signed acceptance; selected generation driver/panel composition
+and [nonempty paired selectors](../provenance/native-paired-workspace-selectors-2026-10.md)
+now have bounded evidence. Paired
 generation original consumers now have [executed native/transport/Store evidence](../provenance/native-paired-generation-original-session-2026-10.md). The existing-only workspace purpose now has
 [executed transport/refusal checks](../provenance/native-paired-workspace-session-2026-10.md);
 software checks do not establish successful signed publication.

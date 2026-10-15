@@ -1315,7 +1315,7 @@ provider call, generated owned draft to fresh manual assessment, cancellation
 intent before a dropped committed reply, status reconciliation, unchanged-original
 pending restoration, metadata archival and restart/revocation. Those raw adapter
 checks establish no successful installed signing or provider confinement. Source/
-nonempty fixture selector branches and positive installed interaction continue separately; see the [executed evidence](../../docs/provenance/native-paired-workspace-session-2026-10.md).
+nonempty selector checks now have [executed evidence](../../docs/provenance/native-paired-workspace-selectors-2026-10.md), while positive installed interaction continues separately; see the [executed evidence](../../docs/provenance/native-paired-workspace-session-2026-10.md).
 
 
 ## Paired generation original consumers
@@ -1394,6 +1394,16 @@ regressions, unsigned first submission and mounted workspace layouts. Source
 inventory is checked by `mix test test/macos_app_inventory_test.exs`.
 
 See [executed evidence](../../docs/provenance/native-paired-generation-ui-2026-10.md)
-for source/toolchain, raw versus signed scope and remaining nonempty selector,
-installed app/Keychain/accessibility, live-provider and physical requirements.
+for source/toolchain and raw versus signed scope. Nonempty selectors now have
+[separate executed evidence](../../docs/provenance/native-paired-workspace-selectors-2026-10.md).
+Installed app/Keychain/accessibility, live-provider and physical requirements remain.
 No check here enables physical dispatch or qualifies a model or source.
+
+
+For nonempty generated-workspace source/fixture qualification at the software level,
+run `mix woh.native.paired.recovery.smoke --workspace-selectors` and
+`python3 test/support/native_paired_workspace_selectors_oracle.py --check`.
+The TLS cohorts check two passages joined to one source handle, a real owned
+fixture and separately corrupted kind/first-revision replies. The independent
+metadata corpus runs through `mix woh.native.paired.workspace.smoke`. These checks
+create no successful signing fixture, source authenticity or physical qualification.

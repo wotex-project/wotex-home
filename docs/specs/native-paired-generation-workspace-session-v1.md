@@ -1,6 +1,6 @@
 # Existing paired generation workspace session
 
-Version: 0.1.4. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.5. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18A-04/05, H18-T16/T17 and paired composition NPA-03/04.
 Implementation: fixed existing-only purpose, closed workspace operations and
@@ -8,6 +8,8 @@ private transitions implemented. Evidence: [native/private-file and raw TLS/Stor
 checks](../provenance/native-paired-workspace-session-2026-10.md); installed signed
 success remains unexecuted. Selected driver/presentation and cancellation lookup
 now have [bounded composition evidence](../provenance/native-paired-generation-ui-2026-10.md).
+Nonempty source/fixture joins and owned-object refusals now have
+[executed independent and raw TLS/Store evidence](../provenance/native-paired-workspace-selectors-2026-10.md).
 
 ## Purpose and fixed inputs
 
