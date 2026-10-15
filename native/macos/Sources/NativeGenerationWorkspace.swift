@@ -7,7 +7,7 @@ struct NativeGenerationWorkspaceEntry: Sendable, Equatable, CustomReflectable {
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     fileprivate var scopeKey: Data { WorkspaceValue.array([.string(context.deployment), .string(context.owner), .integer(context.epoch)]).encoded() }
     func checked() throws -> Self {
-        guard !custody.isPaired, LocalHealthClient.profileDigest(basisSHA), preparation.kind == .preparation,
+        guard LocalHealthClient.profileDigest(basisSHA), preparation.kind == .preparation,
               preparation.epoch == context.epoch, attempts.count <= 3 else { throw NativePendingError.invalidRecord }
         _ = try NativePendingEntry(context: context, custody: custody, input: .generation(preparation), phase: .pending).generationOperation()
         let fields = try preparation.fields()
@@ -42,7 +42,8 @@ struct NativeGenerationWorkspaceEntry: Sendable, Equatable, CustomReflectable {
         switch custody {
         case .manual(let verifier): custodyValues = [.string("manual"), .string(verifier)]
         case .native(let role, let revision, let verifier): custodyValues = [.string("native"), .string(role.rawValue), .integer(revision), .string(verifier)]
-        case .paired: throw NativePendingError.invalidRecord
+        case .paired(let association, let controller, let revision, let verifier):
+            custodyValues = [.string("paired"), .string(association), .string(controller), .integer(revision), .string(verifier)]
         }
         return .array([.array([.string(context.deployment), .string(context.owner), .integer(context.epoch), .string(context.principal)]),
             .array(custodyValues), .string(basisSHA), .string(String(decoding: preparation.canonical, as: UTF8.self)),
@@ -55,6 +56,9 @@ struct NativeGenerationWorkspaceEntry: Sendable, Equatable, CustomReflectable {
         if custody.count == 2, custody[0] == .string("manual") { reference = .manual(verifier: try custody[1].string()) }
         else if custody.count == 4, custody[0] == .string("native"), custody[1] == .string("operator") {
             reference = .native(role: .operator, creationRevision: try custody[2].integer(), verifier: try custody[3].string())
+        } else if custody.count == 5, custody[0] == .string("paired") {
+            reference = .paired(association: try custody[1].string(), controller: try custody[2].string(),
+                creationRevision: try custody[3].integer(), verifier: try custody[4].string())
         } else { throw NativePendingError.invalidRecord }
         let preparation = try NativeGenerationOriginalWire.decode(Data(fields[3].string().utf8), kind: .preparation)
         let attempts = try fields[4].array().map { try NativeGenerationOriginalWire.decode(Data($0.string().utf8), kind: .attempt) }
@@ -64,23 +68,36 @@ struct NativeGenerationWorkspaceEntry: Sendable, Equatable, CustomReflectable {
     }
 }
 
+enum NativeGenerationWorkspaceVersion: String, Sendable {
+    case v1 = "wotex-home.native-generation-workspace.v1", v2 = "wotex-home.native-generation-workspace.v2"
+    static func requiring(_ entries: [NativeGenerationWorkspaceEntry], keeping version: Self = .v1) -> Self {
+        version == .v2 || entries.contains(where: { $0.custody.isPaired }) ? .v2 : .v1
+    }
+}
+
 struct NativeGenerationWorkspaceDocument: Sendable, Equatable, CustomReflectable {
     static let format = "wotex-home.native-generation-workspace.v1"
     let revision: Int64, entries: [NativeGenerationWorkspaceEntry]
+    let version: NativeGenerationWorkspaceVersion
+    init(revision: Int64, entries: [NativeGenerationWorkspaceEntry], version: NativeGenerationWorkspaceVersion? = nil) {
+        self.revision = revision; self.entries = entries
+        self.version = version ?? .requiring(entries)
+    }
     static var empty: Self { Self(revision: 0, entries: []) }
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     static func sorted(_ entries: [NativeGenerationWorkspaceEntry]) -> [NativeGenerationWorkspaceEntry] { entries.sorted { $0.scopeKey.lexicographicallyPrecedes($1.scopeKey) } }
     func encoded() throws -> Data {
         guard revision > 0, entries.count <= 16, Self.sorted(entries) == entries,
+              NativeGenerationWorkspaceVersion.requiring(entries, keeping: version) == version,
               Set(entries.map(\.scopeKey)).count == entries.count else { throw NativePendingError.invalidRecord }
-        let bytes = try WorkspaceValue.array([.string(Self.format), .integer(revision), .array(entries.map { try $0.value() })]).encoded()
+        let bytes = try WorkspaceValue.array([.string(version.rawValue), .integer(revision), .array(entries.map { try $0.value() })]).encoded()
         _ = try WorkspaceJSON.decode(bytes); return bytes
     }
     static func decode(_ bytes: Data) throws -> Self {
         do {
             let root = try WorkspaceJSON.decode(bytes).array(count: 3)
-            guard try root[0].string() == format else { throw NativePendingError.invalidRecord }
-            let value = try Self(revision: root[1].integer(), entries: root[2].array().map(NativeGenerationWorkspaceEntry.decode))
+            guard let version = try NativeGenerationWorkspaceVersion(rawValue: root[0].string()) else { throw NativePendingError.invalidRecord }
+            let value = try Self(revision: root[1].integer(), entries: root[2].array().map(NativeGenerationWorkspaceEntry.decode), version: version)
             guard try value.encoded() == bytes else { throw NativePendingError.invalidRecord }; return value
         } catch { throw NativePendingError.invalidRecord }
     }
@@ -125,7 +142,8 @@ enum NativeGenerationWorkspaceStorage {
             else {
                 guard expected.document.revision < Int64.max else { throw NativePendingError.invalidRecord }
                 bytes = try NativeGenerationWorkspaceDocument(revision: expected.document.revision + 1,
-                    entries: NativeGenerationWorkspaceDocument.sorted(entries)).encoded()
+                    entries: NativeGenerationWorkspaceDocument.sorted(entries),
+                    version: .requiring(entries, keeping: expected.document.version)).encoded()
             }
             return try snapshot(NativePrivateDocuments.replace(directory: directory, kind: .generation, expected: expected.file, bytes: bytes))
         }

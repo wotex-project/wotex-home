@@ -396,7 +396,7 @@ final class NativeControllerSessionDriver: ObservableObject {
             let entry = try await Task.detached {
                 let capture = try local.capture(), identity = try LocalHealthClient.fetchControllerIdentity(socketPath: local.socket(), credential: capture.bytes)
                 try Self.nativeCapture(capture.nativeReference, credential: capture.bytes, identity: identity)
-                let entry = entries.first { $0.context.matches(identity) && $0.custody.matches(capture.bytes) }
+                let entry = entries.first { !$0.custody.isPaired && $0.context.matches(identity) && $0.custody.matches(capture.bytes) }
                 if let entry { try Self.workspaceCapture(entry, capture, identity) }
                 try completion(); return entry
             }.value
@@ -422,7 +422,7 @@ final class NativeControllerSessionDriver: ObservableObject {
     nonisolated private static func workspaceCapture(_ entry: NativeGenerationWorkspaceEntry, _ capture: LocalCredentialCapture,
                                                     _ identity: HomeControllerIdentity) throws {
         _ = try entry.checked()
-        guard entry.context.matches(identity), entry.custody.matches(capture.bytes) else { throw LocalHealthError.nativeGuardConflict }
+        guard !entry.custody.isPaired, entry.context.matches(identity), entry.custody.matches(capture.bytes) else { throw LocalHealthError.nativeGuardConflict }
         try nativeCapture(capture.nativeReference, credential: capture.bytes, identity: identity)
         if case .native = entry.custody {
             guard let reference = capture.nativeReference,
@@ -432,7 +432,7 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
     func readGeneration(_ entry: NativeGenerationWorkspaceEntry) async throws -> (HomeGenerationStatus?, HomeGenerationStatus?) {
         try await metadataChecked {
-            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
+            guard !entry.custody.isPaired, !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
             let value = try await Task.detached {
@@ -455,7 +455,7 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
     func prepareGenerationAttempt(_ entry: NativeGenerationWorkspaceEntry, feedbackConsent: Bool) async throws -> NativeGenerationDecision {
         try await metadataChecked {
-            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local, !entry.cancellationPending else { throw NativeControllerDriverError.unavailable }
+            guard !entry.custody.isPaired, !busy, !needsReload, let selected = snapshot, selected.document.selection == .local, !entry.cancellationPending else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
             let decision = try await Task.detached {
@@ -501,7 +501,7 @@ final class NativeControllerSessionDriver: ObservableObject {
                           journal: NativePendingCoordinator) async throws -> NativeGenerationWorkspaceEntry {
         try await metadataChecked {
             let context = decision.context
-            guard !busy, !needsReload, snapshot == context.selection, generation == context.generation, journal.canStart else { throw NativeControllerDriverError.unavailable }
+            guard decision.previous?.custody.isPaired != true, !busy, !needsReload, snapshot == context.selection, generation == context.generation, journal.canStart else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let local = local, completion = try fence.beginLocal()
             let capture = try await Task.detached {
@@ -542,7 +542,7 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
     func cancelGeneration(_ entry: NativeGenerationWorkspaceEntry, workspace: NativeGenerationWorkspaceCoordinator, retry: Bool) async throws -> NativeGenerationWorkspaceEntry {
         try await metadataChecked {
-            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
+            guard !entry.custody.isPaired, !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
             let capture = try await Task.detached {
@@ -577,7 +577,7 @@ final class NativeControllerSessionDriver: ObservableObject {
     func restoreGenerationPending(_ entry: NativeGenerationWorkspaceEntry, workspace: NativeGenerationWorkspaceCoordinator,
                                   journal: NativePendingCoordinator) async throws {
         try await metadataChecked {
-            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local,
+            guard !entry.custody.isPaired, !busy, !needsReload, let selected = snapshot, selected.document.selection == .local,
                   journal.canStart, !entry.cancellationPending else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
@@ -608,7 +608,7 @@ final class NativeControllerSessionDriver: ObservableObject {
 
     func prepareGeneratedDraftAssessment(_ entry: NativeGenerationWorkspaceEntry, instruction: String) async throws -> NativeAuthoringPreparedDecision {
         try await metadataChecked {
-            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local,
+            guard !entry.custody.isPaired, !busy, !needsReload, let selected = snapshot, selected.document.selection == .local,
                   let attempt = entry.attempts.last else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local

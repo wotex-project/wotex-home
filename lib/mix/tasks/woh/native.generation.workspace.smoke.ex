@@ -3,12 +3,13 @@ defmodule Mix.Tasks.Woh.Native.Generation.Workspace.Smoke do
   Checks native generation workspace originals and private publication.
 
   Run `mix woh.native.generation.workspace.smoke` on the supported macOS
-  toolchain. Independent Python roots check complete preparation/attempt links
+  toolchain. Independent Python v1/v2 roots check complete preparation/attempt links
   and canonical bytes. The compiled Swift fixture then checks private file modes,
   unsafe-file refusal, bounded records, cancellation intent and archival.
 
-  Four separate-process races cover root creation, attempt append, intent change
-  and archive; a fresh process reloads the retained root for restart checks.
+  Four separate-process races per version cover root creation, attempt append,
+  intent change and archive; a fresh process reloads retained roots for restart.
+  v2 also checks paired custody, strict v1 refusal and monotone mixed-root upgrade.
   The task creates a private temporary root, uses finite compilation/execution
   deadlines and removes its fixture state when the run ends.
 
@@ -54,33 +55,37 @@ defmodule Mix.Tasks.Woh.Native.Generation.Workspace.Smoke do
         [Path.expand("native/macos/Tests/NativeGenerationWorkspaceSmoke.swift"), "-o", executable]
 
     try do
-      with {:ok, _} <- Command.run_diagnostic("swiftc", args, 1_048_576, 90_000),
-           {:ok, output} <-
-             Command.run_diagnostic(
-               executable,
-               [directory(root, "suite"), "suite"],
-               16_384,
-               20_000
-             ),
-           true <-
-             String.trim(output) ==
-               "workspace independent originals, private CAS, intent and bounds passed" do
-        for mode <- ~w(race append-race intent-race archive-race) do
-          race(executable, directory(root, mode), mode)
-        end
+      with {:ok, _} <- Command.run_diagnostic("swiftc", args, 1_048_576, 90_000) do
+        for prefix <- ["", "paired-"] do
+          {:ok, output} =
+            Command.run_diagnostic(
+              executable,
+              [directory(root, prefix <> "suite"), prefix <> "suite"],
+              16_384,
+              20_000
+            )
 
-        restart = directory(root, "restart")
+          unless String.trim(output) ==
+                   "workspace independent originals, private CAS, intent and bounds passed",
+                 do: Mix.raise("workspace fixture did not complete")
 
-        for mode <- ~w(seed load) do
-          {:ok, _} = Command.run_diagnostic(executable, [restart, mode], 16_384, 10_000)
+          for mode <- ~w(race append-race intent-race archive-race) do
+            race(executable, directory(root, prefix <> mode), prefix <> mode)
+          end
+
+          restart = directory(root, prefix <> "restart")
+
+          for mode <- ~w(seed load) do
+            {:ok, _} =
+              Command.run_diagnostic(executable, [restart, prefix <> mode], 16_384, 10_000)
+          end
         end
 
         Mix.shell().info(
-          "native generation workspace originals, private CAS, four process races and restart passed"
+          "native generation v1/v2 workspace originals, private CAS, eight process races and restart passed"
         )
       else
         {:error, reason} -> Mix.raise("native generation workspace smoke failed: #{reason}")
-        _ -> Mix.raise("native generation workspace fixture did not complete")
       end
     after
       File.rm_rf!(root)
@@ -90,8 +95,15 @@ defmodule Mix.Tasks.Woh.Native.Generation.Workspace.Smoke do
   def run(_), do: Mix.raise("usage: mix woh.native.generation.workspace.smoke")
 
   defp race(executable, root, mode) do
-    if mode != "race",
-      do: {:ok, _} = Command.run_diagnostic(executable, [root, "seed"], 16_384, 10_000)
+    if mode not in ~w(race paired-race),
+      do:
+        {:ok, _} =
+          Command.run_diagnostic(
+            executable,
+            [root, if(String.starts_with?(mode, "paired-"), do: "paired-seed", else: "seed")],
+            16_384,
+            10_000
+          )
 
     script = ~S"""
     import os, subprocess, sys, time
@@ -107,7 +119,7 @@ defmodule Mix.Tasks.Woh.Native.Generation.Workspace.Smoke do
       assert all(c.returncode == 0 for c in children), outputs
       assert sum(b'race_committed' in out for out,_ in outputs) == 1, outputs
       assert sum(b'race_refused' in out for out,_ in outputs) == 1, outputs
-      subprocess.run([executable,root,'load'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
+      subprocess.run([executable,root,'paired-load' if mode.startswith('paired-') else 'load'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
     finally:
       for c in children:
         if c.poll() is None: c.kill(); c.communicate(timeout=5)

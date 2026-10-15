@@ -52,6 +52,28 @@ struct NativeGenerationFlowSmoke {
         }
         let context = try await controller.loadGenerationContext()
         try require(context.options.policyCount == 1 && context.identity.revision == 9)
+        let pairedFixture = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: "test/fixtures/profiles/native-generation-workspace-v2.json"))) as! [String: Any]
+        let pairedEntry = try (pairedFixture["cases"] as! [[String: Any]]).flatMap {
+            try NativeGenerationWorkspaceDocument.decode(Data(($0["document"] as! String).utf8)).entries
+        }.first { !$0.attempts.isEmpty && !$0.cancellationPending }!
+        let localOnly = NativeControllerSessionDriver(directory: metadata, local: NativeControllerLocalReadClient(capture: {
+            throw GenerationFlowAssertion.failed(#line)
+        }, socket: { "/private/tmp/must-not-open-generation-local.sock" }))
+        await localOnly.reload()
+        try require(localOnly.localSelected && localOnly.error == nil && context.selection == localOnly.snapshot)
+        let forbidden: [@MainActor () async throws -> Void] = [
+            { _ = try await localOnly.readGeneration(pairedEntry) },
+            { _ = try await localOnly.prepareGenerationAttempt(pairedEntry, feedbackConsent: true) },
+            { _ = try await localOnly.cancelGeneration(pairedEntry, workspace: workspace, retry: true) },
+            { try await localOnly.restoreGenerationPending(pairedEntry, workspace: workspace, journal: journal) },
+            { _ = try await localOnly.prepareGeneratedDraftAssessment(pairedEntry, instruction: "No local capture") },
+            { _ = try await localOnly.submitGeneration(NativeGenerationDecision(original: pairedEntry.preparation, context: context, previous: pairedEntry), workspace: workspace, journal: journal) },
+        ]
+        for action in forbidden {
+            do { try await action(); throw GenerationFlowAssertion.failed(#line) }
+            catch NativeControllerDriverError.unavailable {}
+        }
+        try require(workspace.entries.isEmpty && journal.entries.isEmpty)
         var fields = NativeGenerationDraftFields()
         fields.policySHA = context.policies[0]["policy_sha256"] as! String
         fields.passages = [0]; fields.examples = [0]; fields.instruction = "Draft only; retain exact explicit sources."
