@@ -24,6 +24,9 @@ struct NativeGenerationFlowSmoke {
     @MainActor static func main() async {
         do { try await run() }
         catch GenerationFlowAssertion.failed(let line) { FileHandle.standardError.write(Data("generation flow failed at line \(line)\n".utf8)); exit(1) }
+        catch LocalHealthError.server(let reason) where ["generation_deadline_expired", "resnapshot_required"].contains(reason) {
+            FileHandle.standardError.write(Data("generation flow refused: \(reason)\n".utf8)); exit(1)
+        }
         catch { FileHandle.standardError.write(Data("generation flow failed\n".utf8)); exit(1) }
     }
     @MainActor private static func run() async throws {
@@ -46,7 +49,7 @@ struct NativeGenerationFlowSmoke {
         var fields = NativeGenerationDraftFields()
         fields.policySHA = context.policies[0]["policy_sha256"] as! String
         fields.passages = [0]; fields.examples = [0]; fields.instruction = "Draft only; retain exact explicit sources."
-        fields.attempts = "2"; fields.attemptMS = "30000"; fields.totalMS = "60000"
+        fields.attempts = "3"; fields.attemptMS = "30000"; fields.totalMS = "90000"
         do { _ = try fields.original(context, operation: "generation:no-consent"); throw GenerationFlowAssertion.failed(#line) }
         catch LocalHealthError.invalidProfileRequest {}
         fields.remoteConsent = true
@@ -119,8 +122,11 @@ struct NativeGenerationFlowSmoke {
         try require(repair.feedbackDraft == "{}" && repair.feedbackAssessment?.disposition == "invalid")
         let repaired = try await controller.submitGeneration(repair, workspace: workspace, journal: journal)
         let result = try await awaitResult(controller, repaired)
-        try require(result.result?.disposition == "candidate")
+        try require(result.result?.disposition == "candidate" && result.result?.assessment?.disposition == "compatible")
         await recover(journal, repaired, .lookup, credential, socket)
+        do { _ = try await controller.prepareGenerationAttempt(repaired, feedbackConsent: true); throw GenerationFlowAssertion.failed(#line) }
+        catch LocalHealthError.invalidProfileRequest {}
+        try require(workspace.entries == [repaired] && journal.entries.isEmpty)
         let manual = try await controller.prepareGeneratedDraftAssessment(repaired, instruction: "Assess under the current installed contract.")
         let candidate = try await controller.submitAuthoring(manual, journal: journal)
         try require(candidate.kind == .candidate && candidate.sourceReview == "not_assessed")
@@ -164,6 +170,17 @@ struct NativeGenerationFlowSmoke {
         let cancelled = try await controller.cancelGeneration(intent, workspace: workspace, retry: false)
         try require(!cancelled.cancellationPending)
         try await workspace.archive(cancelled)
+        try require(workspace.entries.isEmpty && journal.entries.isEmpty)
+        let expirationContext = try await controller.loadGenerationContext()
+        fields.attempts = "1"; fields.attemptMS = "1"; fields.totalMS = "1000"
+        let expirationDecision = try await controller.prepareGeneration(expirationContext, fields: fields)
+        let expired = try await controller.submitGeneration(expirationDecision, workspace: workspace, journal: journal)
+        try await Task.sleep(for: .milliseconds(1100))
+        try require(try await controller.readGeneration(expired).0?.state == "expired")
+        let expirationView = NativeGenerationViewModel(controller: controller, journal: journal, workspace: workspace)
+        await expirationView.load(); await expirationView.refresh(); await expirationView.prepareAttempt()
+        try require(expirationView.rootStatus?.state == "expired" && expirationView.decision == nil && expirationView.error != nil && journal.entries.isEmpty && workspace.entries == [expired])
+        expirationView.archiveConfirmed = true; await expirationView.archive()
         try require(workspace.entries.isEmpty && journal.entries.isEmpty)
         print("native generation first decisions, publication, repair, manual assessment and cancellation passed")
     }
