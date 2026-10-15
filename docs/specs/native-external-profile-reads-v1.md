@@ -1,6 +1,6 @@
 # Native external-profile catalogue and original reads
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09 and H08-T1/T5/T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08 and H18-T6/T8/T11/T12.
 Implementation: planned. Evidence: missing.
@@ -45,7 +45,11 @@ Require identical deployment/owner/active epoch/principal and nondecreasing curr
 revision. Catalogue revision equals both identity reads and catalogue epoch equals
 active epoch; drift refuses nativeGuardConflict. A status receipt keeps its requested
 historical epoch, operation and kind even when active epoch is later. Final current
-revision must be at least that receipt revision. No read renews a receipt or proves
+revision must be at least that receipt revision. Catalogue, inspection and trust reads require current profile:manage; target
+history additionally requires enroll:review. Catalogue metadata is shared with
+such authorized managers, but original status remains scoped to the authenticated
+principal: another permitted principal sees missing, not another actor's receipt.
+No read renews a receipt or proves
 current permission beyond its actual authenticated exchanges. Returned values are
 typed metadata with redacted reflection and contain no bearer or reusable session.
 
