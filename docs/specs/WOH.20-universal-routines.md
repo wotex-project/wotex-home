@@ -1,7 +1,7 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.34. Updated: 2026-10-16. Status: accepted target.
-Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context, original-first input install/revoke/status and durable input withdrawal.
+Version: 0.1.35. Updated: 2026-10-16. Status: accepted target.
+Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context, original-first input install/revoke/status, durable input withdrawal and bounded current requested-scope collection.
 Evidence: finite software subset; full acceptance cases remain open.
 
 ## Purpose, ownership and current subset
@@ -340,7 +340,7 @@ private reader, source, receipt clock and complete runtime twice, with independe
 caller/author permissions and target grants before private reads. Restart,
 original replay, owner timeout, source drift and corruption have focused software
 coverage; four isolated Store probes reject closing byte drift across all runtime
-groups. Current collection remains open. Linux-only execution, physical
+groups. The current native collector is recorded below. Linux-only execution, physical
 qualification and complete composed execution
 retain their separate obligations.
 
@@ -364,8 +364,13 @@ The collection successor now fixes whole-scope caller authentication separately
 from installation-author authority, deterministic item refusal/field stages and
 whole-call owner failure behavior. Original owner deadlines use signed floor
 projection, and expiry during final checks remains an expired item under the one
-final Store sample. Its implementation and native collection evidence remain open.
+final Store sample. The bounded native collector is now implemented.
 The pure receipt/expiry/report arithmetic foundation is implemented and passes
 thirty-eight focused arithmetic/public-projection cases. It performs no Store or
-owner read and supplies no current Fact authority; the full native collection
-boundary remains the next implementation step.
+owner read and supplies no current Fact authority by itself. The native collector
+now repeats actual private/source/runtime/review and original consumed-report
+witnesses under one scope-wide budget, preserving original receipt and expiry.
+Seventeen collector cases and the shared review/preamble/observation and selected
+installation regressions pass under the owning evidence record. Complete
+EI-T1–T9, extracted-package, active-set/composed, installed-host and physical
+acceptance remain open.

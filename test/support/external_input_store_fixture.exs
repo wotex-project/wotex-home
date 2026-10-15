@@ -74,7 +74,10 @@ defmodule WotexHome.ExternalInputStoreFixture do
     reports =
       start_supervised!(
         {WotexHome.Profiles.ExternalReportOwner,
-         publisher: self(), source_owner: c.sources, store_owner: @owner}
+         publisher: self(),
+         source_owner: c.sources,
+         store_owner: @owner,
+         ttl_ms: Keyword.get(options, :report_ttl_ms, 60_000)}
       )
 
     store =

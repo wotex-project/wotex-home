@@ -2,7 +2,7 @@ defmodule WotexHome.Durable.Store do
   @moduledoc """
   Owns Home's single SQLite writer, durable revisions and host lock.
 
-  The host supplies one owned database path and supervises `start_link/1`.
+  The host supplies one owned database path and supervises `WotexHome.Durable.Store.start_link/1`.
   Authority calls this boundary for authenticated reads and scoped operations;
   stateless Store collaborators borrow its connection only for a synchronous
   call. Store owns transactions, revision checks and immutable original receipts
@@ -14,16 +14,16 @@ defmodule WotexHome.Durable.Store do
   Clients must recover that identity after a lost reply rather than treating
   transport timeout as proof that nothing committed.
 
-  `external_routine_input_context/4` authenticates the credential and target/key
+  `WotexHome.Durable.Store.external_routine_input_context/4` authenticates the credential and target/key
   scope, then returns `{:ok, context}` or `{:error, reason}` for native input review.
   `WotexHome.Durable.Store.ExternalInputContext` repeats the current database,
   private owner, reader, clock and runtime basis under one preparation budget.
   This read allocates no lease or durable operation and grants no continuing
   authority; subsequent installation must repeat its own current guards.
 
-  `change_external_routine_input/3` authenticates current actor/scope before
+  `WotexHome.Durable.Store.change_external_routine_input/3` authenticates current actor/scope before
   recovering an immutable original or admitting new work. It returns
-  `{:ok, receipt}` or `{:error, reason}`. `external_routine_input_status/4` returns
+  `{:ok, receipt}` or `{:error, reason}`. `WotexHome.Durable.Store.external_routine_input_status/4` returns
   that actor's receipt, `:not_found` or an error without fresh input producers,
   sources or reviewers. Input revocation also avoids those live dependencies.
   New installs require a signed decision not previously installed for that slot
@@ -31,6 +31,18 @@ defmodule WotexHome.Durable.Store do
   one preparation/commit deadline. It repeats actual current context and signature
   checks after tentative rows before final validation and COMMIT. A receipt alone
   grants no effect authority.
+
+  `WotexHome.Durable.Store.external_routine_facts/3` takes a credential and a proper
+  scope of 1 through 32 exact `"target_id"`/`"capability_key"` maps, unique and
+  sorted by that pair. It returns `{:ok, snapshot}` or `{:error, reason}`.
+  The caller needs `rule:review`, `read` and grants for every target; Store
+  independently checks the installer, selector and approver's current authority.
+  Collection repeats actual private/source/runtime/review/report/lifetime
+  witnesses across the whole scope within ten seconds. The snapshot preserves
+  scope order, includes explicit unavailable items and classifies every report
+  at one final Store elapsed sample using its original receipt and expiry.
+  Changed witnesses or failed owners refuse the complete call. This read creates
+  no lease, operation, revision, input change, edge memory or effect authority.
 
   Held requests and pre-handoff claims carry no send authority. Store retains
   separate admission, handoff, acknowledgement and observation state and repeats
@@ -714,6 +726,9 @@ defmodule WotexHome.Durable.Store do
 
   def change_external_routine_input(server, credential, input),
     do: GenServer.call(server, {:change_external_routine_input, credential, input}, 15_000)
+
+  def external_routine_facts(server, credential, scope),
+    do: GenServer.call(server, {:external_routine_facts, credential, scope}, 15_000)
 
   def external_routine_input_status(server, credential, epoch, operation),
     do:
@@ -3237,6 +3252,21 @@ defmodule WotexHome.Durable.Store do
       )
 
     {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:external_routine_facts, _, _}, _, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:external_routine_facts, credential, scope}, _, state) do
+    case WotexHome.Durable.Store.ExternalInputCollection.collect(
+           state.db,
+           state,
+           credential,
+           scope
+         ) do
+      {:ok, _} = result -> {:reply, result, state}
+      error -> external_input_error(state, error)
+    end
   end
 
   defp handle_current_call({:change_external_routine_input, credential, input}, _from, state) do

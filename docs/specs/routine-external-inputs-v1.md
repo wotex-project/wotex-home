@@ -1,14 +1,15 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.19. Updated: 2026-10-16. Status: accepted successor target.
+Version: 0.1.20. Updated: 2026-10-16. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition,
 signed-review verifier, retained codecs, schema-38 history/migration/recovery and
 measured native review context, computed retirement reserve, atomic durable
-withdrawal and original-first native install/revoke/status. Evidence:
-entry, native correspondence, historical package/original/graph checks and software trust-mechanics
-checks pass. Complete current collection, EI-T1–T9 integration and
-physical obligations remain open.
+withdrawal, original-first native install/revoke/status and bounded native
+requested-scope collection. Evidence: entry, native correspondence, historical
+package/original/graph and focused current collection software checks pass.
+Complete EI-T1–T9 integration, composed execution, installed-host and physical
+obligations remain open.
 
 ## Result and ownership
 
@@ -976,16 +977,17 @@ scope before new work, reserves retirement capacity, refuses consumed decisions
 for new installs and repeats actual context and signatures after tentative rows.
 Native maintenance, principal/grant loss, restart, source drift, corruption and
 SQL rollback have focused software coverage under the owning evidence record.
-Current requested collection, composed execution and complete integration remain
-next. No fixture establishes physical qualification.
+The requested-scope native collector is implemented as recorded below. Composed
+execution and complete integration remain next. No fixture establishes physical
+qualification.
 
 The [collection entry vectors](../../test/fixtures/profiles/external-input-collection.json)
 freeze eleven signed-floor/expiry/overflow cases, fourteen report refusal-order
 cases and six uncertainty-ceiling cases. The independent
 [Python checker](../../test/support/external_input_collection_oracle.py) also
 matches the existing frozen original Fact ID. These are arithmetic/representation
-entry evidence only; current Store collection and final-owner expiry traces still
-require their actual native implementation and tests.
+entry evidence only; actual native collection and final-owner expiry results
+are recorded separately below.
 
 The pure Store arithmetic collaborator
 [ExternalInputMath](../../lib/wotex_home/durable/store/external_input_math.ex)
@@ -996,5 +998,15 @@ vectors and match the existing public reader-to-Fact projection; the nine existi
 projection regressions also pass. The earlier inert reader fixture has a distinct
 archive-producer consumption SHA, which is checked against its own frozen oracle;
 the seven unchanged projection members match the newer entry fixture exactly.
-This establishes arithmetic and inert producer correspondence, not a current
-Store collector, owner witness join, caller authorization or physical evidence.
+This establishes arithmetic and inert producer correspondence. The separate
+current native collector now joins actual immutable observation pointers, private
+reconstruction and consumed owner lifetimes. Seventeen collector cases cover
+whole-scope authentication, explicit absent/revoked/old-boot/unqualified items,
+quality/sequence/continuity, source/private loss and drift, timeout/owner exit,
+malformed lifetime results, null source UTC, typed invalid original clocks,
+corruption fencing and real expiry between passes. Fifteen review-context, five
+byte-preamble and two observation regressions pass alongside the first sixteen
+collector cases; the added owner-exit case and two actual native installation
+regressions pass separately. This is bounded software evidence under the owning
+record, not complete EI-T1–T9, extracted-package, installed-host or physical
+acceptance. Complete active-set collection and composed execution remain open.

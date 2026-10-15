@@ -1,39 +1,61 @@
 defmodule WotexHome.Durable.Store.ExternalInputContext do
   @moduledoc """
-  Measures an exact current review context for one external routine input.
+  Measures the current native basis for reviewing or collecting external inputs.
 
-  Native callers use `WotexHome.Authority.external_routine_input_context/4`.
-  Store invokes `current/5` with its borrowed SQLite connection, owned dependency
-  configuration, caller credential, target ID and capability key. Success returns
-  `{:ok, context}` as a closed string-key map; refusal returns `{:error, reason}`.
+  Native review callers use
+  `WotexHome.Authority.external_routine_input_context/4`.
+  `WotexHome.Durable.Store.ExternalInputContext.current/5` takes Store's borrowed
+  SQLite connection, owned dependency configuration, caller credential, target
+  ID and capability key. It returns `{:ok, context}` with a closed string-keyed
+  map, or `{:error, reason}` with no partial context.
 
-  Before private reads, the caller must have `qualify:profile`, `rule:review`,
-  `read` and a whole-Thing grant. The original selector and trust approver must
-  independently retain their permissions and target grants. The selected target
-  must be current for this Store boot and its capability must be a supported read.
+  Review requires the caller's current `qualify:profile`, `rule:review`, `read`
+  and whole-Thing grant before private reads. The selected target must belong to
+  this Store boot and expose a supported read. Its original selector and trust
+  approver independently retain their required permissions and target grants.
 
   Preparation rebuilds the envelope from checked private objects and the live
   source selection, derives the reader from its projection and retained
   declaration, and measures the receipt-clock relation and all four groups in
-  `WotexHome.Rules.ExternalInputRuntime`. It captures the complete basis twice
-  and requires exact equality. Each pass also repeats source/report-owner identity
-  checks after private reads and freshly checks the closing runtime inventory.
-  Synthetic-lab sources refuse `:unsupported_external_input`.
+  `WotexHome.Rules.ExternalInputRuntime`. Review captures the complete basis
+  twice and requires equality, including closing source/report-owner identity
+  and a fresh runtime inventory. Synthetic-lab sources refuse
+  `:unsupported_external_input`.
 
-  `current/5` starts a 10-second monotonic preparation budget. Store's internal
-  six-argument entry point accepts its existing deadline, so repeated measurements
-  during installation share the change's preparation/commit budget rather than
-  renewing it. Each five-second owner call requires at least five seconds remaining
-  before it starts. Exhaustion or an unavailable owner returns
-  `{:error, :external_input_unavailable}`. Differing opening/closing captures
-  return `{:error, :external_input_basis_changed}`.
-  Authentication, limit, maintenance and corruption refusals retain their named
-  codes. There is no partial context or background continuation.
+  `WotexHome.Durable.Store.ExternalInputContext.current/5` starts a ten-second
+  monotonic budget; `WotexHome.Durable.Store.ExternalInputContext.current/6`
+  accepts Store's existing deadline so installation shares its preparation and
+  commit budget. Each five-second owner call requires at least five seconds
+  remaining before it starts. Exhaustion or an unavailable owner returns
+  `{:error, :external_input_unavailable}`; changed witnesses return
+  `{:error, :external_input_basis_changed}`. Authentication, limit, maintenance
+  and corruption refusals retain their named codes.
+
+  `WotexHome.Durable.Store.ExternalInputCollection` first calls
+  `WotexHome.Durable.Store.ExternalInputContext.collection_basis/4` to measure
+  durable correspondence with author checks deferred. This preserves refusal
+  order: compare the installed durable context before classifying current author
+  availability. The result alone authorizes no private read or Fact projection.
+
+  `WotexHome.Durable.Store.ExternalInputContext.collection_authors/3` then takes
+  that basis and target ID and returns the current selector/approver permission
+  and grant witnesses, or an author refusal. The collector separately checks
+  the original installer's `qualify:profile`, `rule:review`, `read` and target
+  grant. Its caller needs only `rule:review`, `read` and a target grant.
+
+  `WotexHome.Durable.Store.ExternalInputContext.collection_capture/7` repeats
+  current author checks before private reads and returns an internal frame with
+  the actual envelope. It uses the collector's fresh pass-wide runtime inventory
+  and shared deadline.
+  `WotexHome.Durable.Store.ExternalInputContext.collection_guard/3` closes source
+  and report-owner identity against that frame. The collector owns whole-scope
+  repetition and final classification. These internal entry points preserve
+  review's three-permission requirement and supply no continuing authorization.
 
   Store retains connection ownership; source and custody owners receive neither
-  its handle nor the bearer. This read allocates no lease, retains no operation,
-  changes no revision and installs no input. The returned basis is review metadata,
-  not continuing authorization, a current Fact or physical qualification.
+  its handle nor the bearer. Measurement creates no lease, operation, revision
+  or input installation. A returned context is review metadata, with no
+  continuing authorization, current Fact or physical qualification.
   """
 
   alias WotexHome.Durable.Registry
@@ -49,6 +71,7 @@ defmodule WotexHome.Durable.Store.ExternalInputContext do
   alias WotexHome.Profiles.{
     AuthoringObject,
     Custody,
+    EnvelopeCodec,
     ExternalReportOwner,
     ExternalSourceOwner,
     ExternalSourceSelection,
@@ -92,43 +115,119 @@ defmodule WotexHome.Durable.Store.ExternalInputContext do
     :exit, _ -> {:error, :external_input_unavailable}
   end
 
-  defp capture(db, config, credential, target, key, deadline) do
-    with {:ok, basis} <- basis(db, credential, target, key),
+  @doc false
+  def collection_basis(db, credential, target, key),
+    do: basis(db, credential, target, key, :collection_durable)
+
+  @doc false
+  def collection_authors(db, basis, target),
+    do: authors(db, basis.selected.principal, basis.trust.principal, target, :collection)
+
+  @doc false
+  def collection_guard(config, frame, deadline) do
+    with {:ok, source} <- closing_source(config, frame.basis, deadline, :collection),
+         :ok <- same(source, frame.source),
+         {:ok, clock} <- report_clock(config, deadline, :collection),
+         do: same(clock["epoch"], frame.context["report_owner_epoch"])
+  end
+
+  @doc false
+  def collection_capture(db, config, credential, target, key, deadline, {runtime, sha}) do
+    capture(db, config, credential, target, key, deadline, {:collection, runtime, sha})
+  rescue
+    _ -> {:error, :store_unavailable}
+  catch
+    :exit, _ -> {:error, :external_input_unavailable}
+  end
+
+  defp capture(db, config, credential, target, key, deadline, mode \\ :review) do
+    with {:ok, basis} <- basis(db, credential, target, key, mode),
          :ok <- boot_selection(config, target, basis.selected.current.selection_revision),
-         {:ok, runtime, runtime_sha} <- ExternalInputRuntime.current(),
-         {:ok, source} <- source(config, basis, deadline),
-         {:ok, clock} <- report_clock(config, deadline),
-         {:ok, inspection} <-
-           native(fn ->
-             ExternalTargetPreparation.inspection_input(
-               basis.selected.input,
-               source.selection.inputs["reader"]
-             )
-           end),
+         {:ok, runtime, runtime_sha} <- runtime(mode),
+         {:ok, source} <- source(config, basis, deadline, mode) do
+      with {:ok, clock} <- report_clock(config, deadline, mode) do
+        result =
+          capture_native(
+            db,
+            config,
+            credential,
+            target,
+            key,
+            deadline,
+            mode,
+            basis,
+            runtime,
+            runtime_sha,
+            source,
+            clock
+          )
+
+        case result do
+          {:item, reason} ->
+            {:item, reason,
+             %{basis: basis, source: source, context: %{"report_owner_epoch" => clock["epoch"]}}}
+
+          _ ->
+            result
+        end
+      end
+    end
+  end
+
+  defp capture_native(
+         db,
+         config,
+         credential,
+         target,
+         key,
+         deadline,
+         mode,
+         basis,
+         runtime,
+         runtime_sha,
+         source,
+         clock
+       ) do
+    with {:ok, inspection} <-
+           native(
+             fn ->
+               ExternalTargetPreparation.inspection_input(
+                 basis.selected.input,
+                 source.selection.inputs["reader"]
+               )
+             end,
+             mode
+           ),
          {:ok, owned} <-
            ExternalInspections.owned_records(db, basis.selected.principal, inspection),
-         {:ok, records} <- records(config.profile_custody, owned, deadline),
+         {:ok, records} <- records(config.profile_custody, owned, deadline, mode),
          {:ok, prepared} <-
-           native(fn ->
-             ExternalTargetPreparation.build_with_envelope(
-               basis.selected.input,
-               Enum.sort_by(records, & &1["object"]["object_digest"]),
-               source.selection,
-               basis.selected.current.outcome["artifact_document"]
-             )
-           end),
-         :ok <- same(prepared.outcome, basis.selected.current.outcome),
+           native(
+             fn ->
+               ExternalTargetPreparation.build_with_envelope(
+                 basis.selected.input,
+                 Enum.sort_by(records, & &1["object"]["object_digest"]),
+                 source.selection,
+                 basis.selected.current.outcome["artifact_document"]
+               )
+             end,
+             mode
+           ),
+         :ok <- static_same(prepared.outcome, basis.selected.current.outcome, mode),
          {:ok, %{"data" => summary}} <-
-           native(fn -> ExternalSourceSelection.to_map(source.selection) end),
+           native(fn -> ExternalSourceSelection.to_map(source.selection) end, mode),
          :ok <- supported_source(summary),
          limits = source.selection.inputs["reader"].inputs["reader_limits"],
          {:ok, projection} <-
-           native(fn ->
-             Wotex.Profiles.Projection.to_map(prepared.envelope.projection, limits)
-           end),
+           native(
+             fn ->
+               Wotex.Profiles.Projection.to_map(prepared.envelope.projection, limits)
+             end,
+             mode
+           ),
          :ok <-
-           native_producer(source.selection, basis.declaration, runtime["profiles"]),
-         {:ok, reader} <- native(fn -> reader(projection, basis.declaration) end),
+           native_producer(source.selection, basis.declaration, runtime["profiles"], mode),
+         {:ok, reader} <- native(fn -> reader(projection, basis.declaration) end, mode),
          {:ok, receipt_clock} <- receipt_clock(config, clock),
          context =
            context(
@@ -143,20 +242,21 @@ defmodule WotexHome.Durable.Store.ExternalInputContext do
              runtime_sha
            ),
          :ok <- checked_context(context),
-         {:ok, current_source} <- source(config, basis, deadline),
+         {:ok, current_source} <- closing_source(config, basis, deadline, mode),
          :ok <- same(current_source, source),
-         {:ok, current_clock} <- report_clock(config, deadline),
+         {:ok, current_clock} <- report_clock(config, deadline, mode),
          :ok <- same(current_clock["epoch"], clock["epoch"]),
-         {:ok, current_basis} <- basis(db, credential, target, key),
+         {:ok, current_basis} <- basis(db, credential, target, key, mode),
          :ok <- same(current_basis, basis),
-         :ok <- ExternalInputRuntime.check_current(runtime, runtime_sha),
+         :ok <- closing_runtime(mode, runtime, runtime_sha),
          :ok <- budget(deadline, 0) do
-      {:ok, %{context: context, basis: basis, records: records, source: source}}
+      frame = %{context: context, basis: basis, records: records, source: source}
+      {:ok, if(mode == :review, do: frame, else: Map.put(frame, :envelope, prepared.envelope))}
     end
   end
 
-  defp basis(db, credential, target, key) do
-    with {:ok, actor} <- actor(db, credential, target),
+  defp basis(db, credential, target, key, mode) do
+    with {:ok, actor} <- actor(db, credential, target, mode),
          :ok <- MaintenanceWriter.guard(db),
          :ok <- ExternalInputs.validate_if_current(db),
          {:ok, thing, resource} <- Access.enrolled_thing(db, target),
@@ -167,21 +267,24 @@ defmodule WotexHome.Durable.Store.ExternalInputContext do
          true <- cursor.state == "selected" and cursor.resource_revision == resource,
          {:ok, retained} <- RetainedSource.decode(cursor.outcome["source_document"]),
          {:ok, selected} <-
-           ExternalTargets.observation_basis(db, %{
-             "source_ref" => retained.inputs["source"]["source_ref"],
-             "source_owner_epoch" => retained.owner_epoch,
-             "source_selection_sha256" => retained.sha256
-           }),
+           ExternalTargets.observation_basis(
+             db,
+             %{
+               "source_ref" => retained.inputs["source"]["source_ref"],
+               "source_owner_epoch" => retained.owner_epoch,
+               "source_selection_sha256" => retained.sha256
+             },
+             if(mode == :review, do: :current, else: :deferred)
+           ),
          true <- selected.target_id == target and selected.current == cursor,
          {:ok, trust} <- ExternalTargets.trust(db, selected.input["artifact_digest"]),
-         {:ok, selector} <- author(db, selected.principal, target, @selector),
-         {:ok, approver} <- author(db, trust.principal, target, ["profile:manage"]),
+         {:ok, authors} <- authors(db, selected.principal, trust.principal, target, mode),
          {:ok, [[epoch]]} <- query(db, "SELECT value FROM meta WHERE key='authority_epoch'") do
       {:ok,
        %{
          actor: actor,
-         selector: selector,
-         approver: approver,
+         selector: authors.selector,
+         approver: authors.approver,
          selected: Map.delete(selected, :revision),
          trust: trust,
          retained: retained,
@@ -191,14 +294,24 @@ defmodule WotexHome.Durable.Store.ExternalInputContext do
        }}
     else
       false -> {:error, :external_input_basis_changed}
-      error -> refusal(error)
+      error -> if(mode == :review, do: refusal(error), else: error)
     end
   end
 
-  defp actor(db, credential, target) do
+  defp authors(_db, _selector, _approver, _target, :collection_durable),
+    do: {:ok, %{selector: nil, approver: nil}}
+
+  defp authors(db, selector, approver, target, mode) do
+    with {:ok, selector} <- author(db, selector, target, @selector, mode),
+         {:ok, approver} <- author(db, approver, target, ["profile:manage"], mode),
+         do: {:ok, %{selector: selector, approver: approver}}
+  end
+
+  defp actor(db, credential, target, mode) do
     with {:ok, hash} <- Registry.credential_hash(credential),
          {:ok, principal, permissions} <- Access.authenticate(db, hash),
-         true <- Enum.all?(@caller, &(&1 in permissions)),
+         required = if(mode == :review, do: @caller, else: ~w(rule:review read)),
+         true <- Enum.all?(required, &(&1 in permissions)),
          {:ok, grants} <- Access.allowed_targets(db, principal),
          true <- MapSet.member?(grants, target) do
       {:ok, %{principal: principal, permissions: permissions, grants: grants}}
@@ -209,15 +322,15 @@ defmodule WotexHome.Durable.Store.ExternalInputContext do
     end
   end
 
-  defp author(db, principal, target, required) do
+  defp author(db, principal, target, required, mode) do
     with {:ok, permissions} <- Access.active_principal_permissions(db, principal),
          true <- Enum.all?(required, &(&1 in permissions)),
          {:ok, grants} <- Access.allowed_targets(db, principal),
          true <- MapSet.member?(grants, target) do
       {:ok, %{principal: principal, permissions: permissions, grants: grants}}
     else
-      false -> {:error, :external_input_basis_changed}
-      {:error, :principal_unavailable} -> {:error, :external_input_basis_changed}
+      false -> author_unavailable(mode)
+      {:error, :principal_unavailable} -> author_unavailable(mode)
       error -> error
     end
   end
@@ -241,32 +354,50 @@ defmodule WotexHome.Durable.Store.ExternalInputContext do
       else: {:error, :external_input_basis_changed}
   end
 
-  defp source(config, basis, deadline) do
-    owner_call(deadline, fn ->
-      ExternalSourceOwner.current(
-        config.external_source_owner,
-        basis.selected.principal,
-        basis.retained.inputs["source"]["source_ref"],
-        basis.retained.owner_epoch,
-        basis.retained.sha256
-      )
-    end)
+  defp source(config, basis, deadline, mode) do
+    with {:ok, source} <-
+           owner_call(deadline, :source, mode, fn ->
+             ExternalSourceOwner.current(
+               config.external_source_owner,
+               basis.selected.principal,
+               basis.retained.inputs["source"]["source_ref"],
+               basis.retained.owner_epoch,
+               basis.retained.sha256
+             )
+           end) do
+      expected = %{
+        owner_epoch: basis.retained.owner_epoch,
+        source_ref: basis.retained.inputs["source"]["source_ref"],
+        source_selection_sha256: basis.retained.sha256
+      }
+
+      if mode == :review or source.guard == expected,
+        do: {:ok, source},
+        else: {:error, :external_input_unavailable}
+    end
   end
 
-  defp report_clock(config, deadline),
+  defp report_clock(config, deadline, mode),
     do:
-      owner_call(deadline, fn ->
+      owner_call(deadline, :clock, mode, fn ->
         ExternalReportOwner.receipt_clock(config.external_report_owner)
       end)
 
-  defp records(custody, owned, deadline) do
+  defp closing_source(config, basis, deadline, mode) do
+    case source(config, basis, deadline, mode) do
+      {:item, _} -> {:error, :external_input_basis_changed}
+      result -> result
+    end
+  end
+
+  defp records(custody, owned, deadline, mode) do
     Enum.reduce_while(owned, {:ok, []}, fn item, {:ok, records} ->
       with {:ok, object} <-
-             owner_call(deadline, fn ->
+             owner_call(deadline, :object, mode, fn ->
                Custody.read_object(custody, item["object"]["object_digest"])
              end),
            {:ok, summary} <- AuthoringObject.summary(object),
-           :ok <- same(summary, item["object"]) do
+           :ok <- static_same(summary, item["object"], mode) do
         {:cont, {:ok, [Map.put(item, "payload", object.payload) | records]}}
       else
         error -> {:halt, error}
@@ -279,11 +410,15 @@ defmodule WotexHome.Durable.Store.ExternalInputContext do
 
   defp supported_source(_), do: :ok
 
-  defp native_producer(selection, declaration, producer) do
+  defp native_producer(selection, declaration, producer, mode) do
     if selection.inputs["reader"].inputs["installed"]["producer"] == producer and
          declaration["producer"] == producer,
        do: :ok,
-       else: {:error, :external_input_unavailable}
+       else:
+         if(mode == :review,
+           do: {:error, :external_input_unavailable},
+           else: {:item, "producer_unavailable"}
+         )
   end
 
   defp reader(projection, declaration) do
@@ -369,9 +504,12 @@ defmodule WotexHome.Durable.Store.ExternalInputContext do
          )
   end
 
-  defp owner_call(deadline, callback) do
+  defp owner_call(deadline, kind, mode, callback) do
     with :ok <- budget(deadline, 5000) do
       case callback.() do
+        {:ok, value} when mode != :review ->
+          collection_owner_result(kind, value)
+
         {:ok, _} = result ->
           result
 
@@ -381,7 +519,18 @@ defmodule WotexHome.Durable.Store.ExternalInputContext do
                :external_source_owner_changed,
                :external_source_retired
              ] ->
-          {:error, :external_input_basis_changed}
+          if mode == :review,
+            do: {:error, :external_input_basis_changed},
+            else: {:item, "source_unavailable"}
+
+        :not_found when mode != :review and kind == :source ->
+          {:item, "source_unavailable"}
+
+        :not_found when mode != :review and kind == :object ->
+          {:item, "input_basis_changed"}
+
+        {:error, :authoring_object_unavailable} when mode != :review and kind == :object ->
+          {:item, "input_basis_changed"}
 
         _ ->
           {:error, :external_input_unavailable}
@@ -391,7 +540,55 @@ defmodule WotexHome.Durable.Store.ExternalInputContext do
     :exit, _ -> {:error, :external_input_unavailable}
   end
 
-  defp native(callback) do
+  defp collection_owner_result(
+         :source,
+         %{selection: %ExternalSourceSelection{} = selection, guard: guard} = value
+       )
+       when map_size(value) == 2 and is_map(guard) do
+    if Enum.sort(Map.keys(guard)) == [:owner_epoch, :source_ref, :source_selection_sha256] and
+         epoch?(guard.owner_epoch) and WotexHome.Id.valid?(guard.source_ref) and
+         EnvelopeCodec.digest?(guard.source_selection_sha256) and
+         guard.source_selection_sha256 == selection.sha256 and is_map(selection.data) and
+         guard.source_ref == selection.data["source_ref"] and is_map(selection.inputs),
+       do: {:ok, value},
+       else: {:error, :external_input_unavailable}
+  end
+
+  defp collection_owner_result(:clock, value) do
+    if EnvelopeCodec.keys?(value, ~w(epoch monotonic_us)) and epoch?(value["epoch"]) and
+         signed_clock?(value["monotonic_us"]),
+       do: {:ok, value},
+       else: {:error, :external_input_unavailable}
+  end
+
+  defp collection_owner_result(:object, %AuthoringObject{} = value) do
+    case AuthoringObject.summary(value) do
+      {:ok, _} -> {:ok, value}
+      _ -> {:error, :external_input_unavailable}
+    end
+  end
+
+  defp collection_owner_result(_, _), do: {:error, :external_input_unavailable}
+
+  defp epoch?(value),
+    do: is_binary(value) and byte_size(value) == 32 and Regex.match?(~r/\A[0-9a-f]{32}\z/, value)
+
+  defp signed_clock?(value) when is_binary(value) and byte_size(value) in 1..20 do
+    value != "-0" and Regex.match?(~r/\A-?(0|[1-9][0-9]*)\z/, value) and
+      String.to_integer(value) in @minimum..@maximum
+  end
+
+  defp signed_clock?(_), do: false
+
+  defp native(callback, mode) do
+    result = native_result(callback)
+
+    if mode != :review and result == {:error, :external_input_unavailable},
+      do: {:item, "producer_unavailable"},
+      else: result
+  end
+
+  defp native_result(callback) do
     case callback.() do
       {:ok, _} = result ->
         result
@@ -429,6 +626,19 @@ defmodule WotexHome.Durable.Store.ExternalInputContext do
   defp refusal(_), do: {:error, :store_unavailable}
   defp same(value, value), do: :ok
   defp same(_, _), do: {:error, :external_input_basis_changed}
+
+  defp runtime(:review), do: ExternalInputRuntime.current()
+  defp runtime({:collection, runtime, sha}), do: {:ok, runtime, sha}
+
+  defp closing_runtime(:review, runtime, sha),
+    do: ExternalInputRuntime.check_current(runtime, sha)
+
+  defp closing_runtime(_, _, _), do: :ok
+  defp author_unavailable(:review), do: {:error, :external_input_basis_changed}
+  defp author_unavailable(_), do: {:item, "input_author_unavailable"}
+  defp static_same(value, value, _mode), do: :ok
+  defp static_same(_, _, :review), do: {:error, :external_input_basis_changed}
+  defp static_same(_, _, _), do: {:item, "input_basis_changed"}
 
   defp budget(deadline, reserve) do
     if deadline - now() >= reserve, do: :ok, else: {:error, :external_input_unavailable}

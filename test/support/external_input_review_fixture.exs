@@ -24,7 +24,7 @@ defmodule WotexHome.ExternalInputReviewFixture do
   # These are synthetic signed claims for software trust-mechanics tests. Neither
   # the generated assertions nor their hardware-labelled case fields are bench
   # evidence; no test private key or resulting package is written to disk.
-  def review(c, nonce \\ "first", key \\ "sample") do
+  def review(c, nonce \\ "first", key \\ "sample", options \\ []) do
     v = R.read("routine-external-inputs")
 
     {:ok, context} =
@@ -35,6 +35,11 @@ defmodule WotexHome.ExternalInputReviewFixture do
       |> put_in(["implementation_digest"], "sha256:" <> context["runtime_sha256"])
       |> put_in(["compiler_digest"], "sha256:" <> context["runtime_sha256"])
       |> put_in(["affordance", "name"], context["reader"]["affordance"]["name"])
+      |> put_in(["evidence", "freshness_ms"], Keyword.get(options, :freshness_ms, 1000))
+      |> put_in(
+        ["evidence", "require_source_time"],
+        Keyword.get(options, :require_source_time, true)
+      )
 
     body = Map.drop(basis, ~w(byte_digest semantic_digest implementation_digest compiler_digest))
     basis = Map.put(basis, "byte_digest", "sha256:" <> digest(R.encode(body)))
@@ -54,6 +59,14 @@ defmodule WotexHome.ExternalInputReviewFixture do
       })
       |> put_in(["observation", "source_ref"], context["source_ref"])
       |> put_in(["observation", "source_epoch"], context["source_epoch"])
+      |> put_in(
+        ["observation", "source_time_basis"],
+        Keyword.get(
+          options,
+          :source_time_basis,
+          v["definition"]["mapping"]["observation"]["source_time_basis"]
+        )
+      )
 
     mapping =
       R.install(

@@ -2,7 +2,7 @@ defmodule WotexHome.Authority do
   @moduledoc """
   Coordinates transport-independent Home application operations.
 
-  Trusted host composition uses `new/1` to select the single Store and explicitly
+  Trusted host composition uses `WotexHome.Authority.new/1` to select the single Store and explicitly
   owned custody, review and device sessions. Adapters authenticate their local
   peer, decode a closed request and call this boundary with its credential and
   original operation identity. Authority sequences pure domain decisions,
@@ -14,26 +14,38 @@ defmodule WotexHome.Authority do
   records an exact authorized basis, but performs no provider handoff. Workers
   receive scoped work rather than a Store connection or operator bearer.
 
-  `external_profile_context/2`, `external_source_catalogue/2` and
-  `external_target_basis/3` expose authenticated reader/source/target comparison
-  metadata. `external_inspection_artifact/3` rebuilds the caller's exact retained
+  `WotexHome.Authority.external_profile_context/2`, `WotexHome.Authority.external_source_catalogue/2` and
+  `WotexHome.Authority.external_target_basis/3` expose authenticated reader/source/target comparison
+  metadata. `WotexHome.Authority.external_inspection_artifact/3` rebuilds the caller's exact retained
   inspection manifest from currently checked bytes. These reads create no new
   original or source lease and grant no approval or target selection; later mutations
   still repeat current guards rather than trusting a cached guidance snapshot.
 
-  `external_routine_input_context/4` takes the credential, target ID and capability
+  `WotexHome.Authority.external_routine_input_context/4` takes the credential, target ID and capability
   key and returns `{:ok, context}` or `{:error, reason}`. Store measures the exact
   reader, private source, receipt-clock and current runtime basis for native input
   review. This bounded read creates no operation or lease and installs no input;
   its metadata grants no continuing authorization or physical qualification.
 
-  `change_external_routine_input/3` takes a closed install/revoke input and returns
-  `{:ok, receipt}` or `{:error, reason}`. `external_routine_input_status/4` recovers
+  `WotexHome.Authority.change_external_routine_input/3` takes a closed install/revoke input and returns
+  `{:ok, receipt}` or `{:error, reason}`. `WotexHome.Authority.external_routine_input_status/4` recovers
   that actor's receipt by authority epoch and operation ID, or returns `:not_found`
   or an error. Both require current permissions and target grants. Exact original
   replay precedes fresh admission; replay, status and revocation need no live input
   producer or reviewer. Each new install requires a fresh signed decision and
   Store's repeated actual current-context checks, without granting effect authority.
+
+  `WotexHome.Authority.external_routine_facts/3` takes a credential and a proper
+  scope of 1 through 32 exact `"target_id"`/`"capability_key"` maps, unique and
+  sorted by that pair. It returns `{:ok, snapshot}` or `{:error, reason}`.
+  The caller needs `rule:review`, `read` and grants for every target; Store
+  independently checks the installer, selector and approver's current authority.
+  Collection repeats actual private/source/runtime/review/report/lifetime
+  witnesses across the whole scope within ten seconds. The snapshot preserves
+  scope order, includes explicit unavailable items and classifies every report
+  at one final Store elapsed sample using its original receipt and expiry.
+  Changed witnesses or failed owners refuse the complete call. This read creates
+  no lease, operation, revision, input change, edge memory or effect authority.
 
   After a lost reply, recover the same original operation and immutable receipt
   before deciding whether further work is needed. Staging, admission, durable
@@ -679,6 +691,10 @@ defmodule WotexHome.Authority do
   @doc "Recovers this actor's exact input receipt without requiring a current reader or reviewer."
   def external_routine_input_status(%__MODULE__{store: store}, credential, epoch, operation),
     do: Store.external_routine_input_status(store, credential, epoch, operation)
+
+  @doc "Collects the complete requested current external-input scope without granting effect authority."
+  def external_routine_facts(%__MODULE__{store: store}, credential, scope),
+    do: Store.external_routine_facts(store, credential, scope)
 
   @doc "Native host receipt admission; no socket/model report body or credential enters this boundary."
   def accept_external_report(%__MODULE__{store: store}, input),

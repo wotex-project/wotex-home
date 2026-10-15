@@ -2,14 +2,38 @@ defmodule WotexHome.Durable.Store.ExternalTargets do
   @moduledoc """
   Retains external target selection history and atomic current-use retirement.
 
-  Preparation resolves actor, artifact trust, source identity and expected
-  selection/resource/policy revisions. `retain_tx/4` records a checked selected
-  or revoked outcome and its original receipt; withdrawal removes invalidated
-  current use with the related grants and pending work in Store's transaction.
+  `WotexHome.Durable.Store.ExternalTargets.prepare/3` borrows Store's connection
+  to resolve the actor and scoped original from a credential and canonical input
+  document. New selection preparation checks artifact trust, source identity and
+  expected selection/resource/policy revisions.
+  `WotexHome.Durable.Store.ExternalTargets.retain_tx/4` records the checked
+  selected or revoked outcome and immutable original receipt inside Store's
+  transaction. Withdrawal removes invalidated current use with related grants
+  and pending work; historical outcomes remain immutable.
 
-  History remains immutable after withdrawal. The collaborator retains no SQLite
-  handle and creates no source lease, producer installation or physical
-  qualification. A selected read target is not a command capability.
+  `WotexHome.Durable.Store.ExternalTargets.observation_basis/2` resolves an exact
+  selected source reference, owner epoch and selection digest against current
+  durable rows. It returns `{:ok, basis}` with the target, original selection
+  author/input/receipt, current cursor and Store metadata, or `{:error, reason}`.
+  It checks the selector's current `profile:manage`/`enroll:review` permissions,
+  current approved artifact trust and the approver's `profile:manage` permission.
+  The owning use case must additionally authenticate its caller, check target
+  grants and measure live source/private/report witnesses as needed.
+
+  The internal
+  `WotexHome.Durable.Store.ExternalTargets.observation_basis/3` accepts
+  `:current` for that behavior or `:deferred` to retain durable selection,
+  approved-trust and revision correspondence while deferring current author
+  permission checks. The external-input collector uses this to compare durable
+  context before reporting author availability. Its owner must then check the
+  installer, selector and approver's current permissions and target grants
+  before any private read, and repeat the reached basis before publication.
+  A deferred basis provides no current-use authorization by itself.
+
+  `WotexHome.Durable.Store` owns the connection, transactions and revisions;
+  this collaborator retains no SQLite handle. These operations create no live
+  source lease or producer installation and establish no physical qualification.
+  A selected read target is not a command capability.
   """
 
   alias WotexHome.Durable.Registry
@@ -40,7 +64,10 @@ defmodule WotexHome.Durable.Store.ExternalTargets do
   def tables, do: @tables
 
   @doc "Current native observation basis; creates no report, grant or effect pin."
-  def observation_basis(db, source) do
+  def observation_basis(db, source), do: observation_basis(db, source, :current)
+
+  @doc false
+  def observation_basis(db, source, authors) when authors in [:current, :deferred] do
     with :ok <- validate(db),
          {:ok, [[target]]} <-
            query(
@@ -61,9 +88,9 @@ defmodule WotexHome.Durable.Store.ExternalTargets do
            ),
          {:ok, input} <- ExternalTarget.decode(input_doc),
          {:ok, receipt} <- ExternalTarget.decode_receipt(receipt_doc),
-         true <- selection_author?(db, principal),
+         true <- authors == :deferred or selection_author?(db, principal),
          {:ok, trust} <- trust(db, input["artifact_digest"]),
-         :ok <- allowed_trust(db, input, trust),
+         :ok <- observation_trust(db, input, trust, authors),
          :ok <-
            same(trust.receipt["revision"], receipt["trust_revision"], :external_trust_changed),
          {:ok, [[revision, epoch, policy]]} <- meta(db),
@@ -87,6 +114,14 @@ defmodule WotexHome.Durable.Store.ExternalTargets do
            error -> error
          )
   end
+
+  defp observation_trust(_db, _input, %{receipt: %{"action" => "approve"}}, :deferred),
+    do: :ok
+
+  defp observation_trust(_db, _input, _trust, :deferred),
+    do: {:error, :external_trust_changed}
+
+  defp observation_trust(db, input, trust, :current), do: allowed_trust(db, input, trust)
 
   def actor(db, credential) do
     with {:ok, p} <- ProfileWriter.review_actor(db, credential),

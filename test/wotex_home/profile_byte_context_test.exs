@@ -144,7 +144,8 @@ defmodule WotexHome.ProfileByteContextTest do
       for request <- [
             {:external_routine_input_context, :untrusted, "sensor:1", "sample"},
             {:change_external_routine_input, :untrusted, %{}},
-            {:external_routine_input_status, :untrusted, 1, "operation:1"}
+            {:external_routine_input_status, :untrusted, 1, "operation:1"},
+            {:external_routine_facts, :untrusted, []}
           ] do
         assert :ok = ProfileByteContext.prepare(c.db, c.custody, request)
         assert {:error, :profile_artifact_unavailable} = available(c, runtime)

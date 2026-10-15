@@ -724,3 +724,109 @@ removes its scratch tree. Both temporary roots contain zero owned scratch paths.
 No Docker, native/release artifacts, dependency update, broad application suite
 or Dialyzer is used. Dependency locks, existing reusable caches and unrelated
 research/client files are preserved.
+
+
+## Current requested-scope native collection
+
+The committed collection boundary and arithmetic entry preceded this native
+implementation. Authority.external_routine_facts/3 now delegates the closed
+1–32-member scope to Store's single serialized owner. Whole-scope caller
+rule:review/read and target grants precede slot/private lookup; current
+installer/selector/approver authority is checked independently. Durable context
+comparison precedes author availability. The internal deferred target basis
+supplies no current authorization; normal observation_basis/2 retains its
+current author checks. The preamble clears temporary byte checks without
+reading private custody before complete scope authentication.
+
+Each pass obtains a fresh full runtime inventory, rebuilds actual selected
+private bytes and the native source/envelope, verifies the retained Definition
+and current signed review, and joins the validated immutable observation/pointer
+to the original consumed lifetime. Native original interpretation must reproduce
+the complete retained observation outcome. Public ExternalFact.project/4 then
+uses that actual reader value, exact Mapping and original receipt coordinate;
+Home's already-converted coordinate is never relabelled as the reader value.
+Opening/closing witnesses and Store metadata must match across the complete
+scope, within one shared ten-second budget. Owner calls retain their five-second
+limits and require that reserve before starting. No asynchronous continuation,
+partial positive result, lease, journal row, operation or revision is created.
+
+Successful snapshots retain requested order and explicit unavailable items.
+Original signed-floor receipt, owner deadline and checked declaration/Mapping
+freshness bounds are classified under one final Store sample. If the real owner
+expires between passes, only the validated opening original pair may retain its
+unchanged cap as an expired projection; it never supplies a fresh Fact. Null
+source UTC stays null, receipt UTC stays null and unsupported/null sequence or
+continuity never manufactures an ordinary fresh positive. Closed malformed
+owner responses refuse the whole call; typed semantic absence remains an item.
+Corrupt retained originals fence the writer; policy/availability refusals do not.
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/external_input_collection_test.exs test/wotex_home/external_input_context_test.exs test/wotex_home/profile_byte_context_test.exs test/wotex_home/external_observation_test.exs --warnings-as-errors`
+
+passes **38 tests**, seed **795742**, **118.2 seconds**: the first **16 collector**,
+**15 review-context**, **5 byte-preamble** and **2 observation** cases. Collector
+cases exercise an actual private native install and consumed original, a caller
+with only the two collection permissions, 32 absent members with suspended
+private owners, malformed/foreign scopes, ten actual report quality/sequence/
+continuity variants, missing report, revoke, real Store restart, removed reviewer
+keys, source replacement, missing private bytes, a hung owner, source drift during
+actual custody reads, real owner expiry between passes, retained corruption,
+null source UTC, six malformed lifetime results and a typed invalid clock pair.
+Successful reads compare retained tables before/after. The expiry case waits for
+the actual original owner deadline; no runtime timeout or clock is shortened.
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/external_input_collection_test.exs:434 test/wotex_home/external_input_installation_test.exs:22 test/wotex_home/external_input_installation_test.exs:73 --warnings-as-errors`
+
+also passes **3 tests**, seed **336663**, **11.0 seconds**, with **30 excluded**:
+the seventeenth collector case stops the actual report owner and checks a whole-
+call availability refusal without writer damage; two native installation/original/
+producer-free-history cases verify the shared context changes. Line selectors
+record this run's source coordinates.
+
+An initial 13-case collector run passed twelve and exposed an unavailable
+Integer.ceil_div/2 call in the expiry test helper. The corrected mathematical
+ceiling passes the dedicated expiry/preamble run (**6 tests**, seed **963920**,
+**6.5 seconds**, **12 excluded**) and the expanded run above. Production timeouts
+and lifetime bounds were unchanged. A later malformed-source test extension was
+initially inserted in the wrong test scope; its compile failure was corrected
+before the focused rerun.
+
+The documentation-only agent updated the six affected public/collaborator
+module docs with inputs/results, permission separation, ownership and limits.
+Tests, probes and helpers retain moduledoc=false and one following blank line.
+These are native synthetic software trust-mechanics and read-only collection
+results. Their ephemeral signed claims do not qualify hardware. Complete
+EI-T1–T9/extracted-package integration, full active-set collection, composed
+run/step/root persistence, wider admission, installed hosts and physical
+acceptance remain open. No framed or Swift API or effect authority is added;
+physical dispatch stays default-disabled.
+
+
+The final source-owner response check also requires a closed typed guard matching
+the exact requested owner/source/selection and its native selection fields. A
+source result cannot silently substitute another guard. The malformed-owner case
+now includes both an invalid epoch and a different well-formed epoch, alongside
+the six lifetime mutations; all refuse the complete scope and leave tables and
+writer health unchanged.
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/external_input_collection_test.exs:372 test/wotex_home/external_input_collection_test.exs:41 --warnings-as-errors`
+
+passes **2 tests**, seed **792287**, **12.9 seconds**, with **15 excluded**:
+the full updated malformed-owner case and actual successful native collection.
+An additional targeted null-UTC/review-context rerun passes **2 tests**, seed
+**429413**, **10.7 seconds**, with **30 excluded**.
+
+Final formatting, warnings-as-errors compilation, the **22-contract** working
+catalogue, the independent **31-vector plus Fact-ID** Python oracle and both Git
+whitespace checks pass. The disposable index projection validates **21 contracts**
+and **45 relative Markdown references**, then removes its scratch tree. Home and
+firmware lock SHA-256 values are unchanged from the preceding checkpoint.
+
+Cleanup inspection after all test processes completed finds **zero owned scratch
+paths** in both temporary roots. Home _build remains **67 MiB**, dependencies
+**803 MiB**, the existing firmware build **49 MiB**, and sibling WoTEx/ExBooking
+builds **23/36 MiB**. No Docker resources were created: its unchanged inventory
+has zero containers, 14 images, 99 volumes and 30 build-cache records. Existing
+Docker volumes/caches and unrelated running work remain untouched. About
+**51 GiB** remains free at this scan. No native/release/archive artifacts, broad
+application suite or Dialyzer run was used. The remaining research/client changes
+stay outside the logical local implementation commit on main.
