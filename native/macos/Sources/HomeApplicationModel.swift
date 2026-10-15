@@ -107,7 +107,7 @@ final class HomeApplicationModel: ObservableObject {
         authoring.workAllowed = { [weak self] in self?.busy == false }
         authoring.sourceAllowed = { [weak self] in self?.controller.needsReload == false }
         authoringOperations.workAllowed = { [weak self] in self?.busy == false && self?.controller.needsReload == false }
-        generation.workAllowed = { [weak self] in self?.busy == false && self?.controller.localSelected == true }
+        generation.workAllowed = { [weak self] in self?.busy == false && self?.controller.needsReload == false }
         generation.didAssess = { [weak self] in self?.authoringOperations.useGeneratedCandidate($0) }
         things.changesAllowed = { [weak self] in self?.busy == false && self?.pending.canStart == true }
         things.didRefreshReports = { [weak self] in self?.health.invalidateSessionView() }

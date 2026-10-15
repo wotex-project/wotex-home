@@ -94,6 +94,20 @@ struct NativeControllerSessionDriverSmoke {
                 catch NativePairedSessionError.custody(.denied) {}
                 try require(source.captures == captures && !signed.busy)
             }
+            let generationVectors = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: "test/fixtures/profiles/native-generation-workspace-v2.json"))) as! [String: Any]
+            let retainedGeneration = try (generationVectors["cases"] as! [[String: Any]]).flatMap {
+                try NativeGenerationWorkspaceDocument.decode(Data(($0["document"] as! String).utf8)).entries
+            }.first { $0.custody.isPaired && !$0.cancellationPending }!
+            let generationReads: [@MainActor () async throws -> Void] = [
+                { _ = try await signed.loadGenerationContext() },
+                { _ = try await signed.loadGenerationWorkspaceDelivery([]) },
+                { _ = try await signed.prepareGenerationAttempt(retainedGeneration, feedbackConsent: true) },
+            ]
+            for operation in generationReads {
+                do { try await operation(); throw DriverAssertion.failed(#line) }
+                catch NativePairedSessionError.custody(.denied) {}
+                try require(source.captures == captures && !signed.busy)
+            }
             try require(source.captures == captures && !application.health.canStagePower(thing))
             try require(association.access.permissions.contains("control:ordinary"))
             application.health.stagePower(thing, on: true)

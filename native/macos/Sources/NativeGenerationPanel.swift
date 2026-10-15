@@ -26,7 +26,7 @@ final class NativeGenerationViewModel: ObservableObject, CustomReflectable {
     @Published private(set) var attemptStatus: HomeGenerationStatus?
     @Published private(set) var decision: NativeGenerationDecision?
     @Published private(set) var assessment: NativeAuthoringPreparedDecision?
-    @Published private(set) var status = "Load the local generator configuration explicitly."
+    @Published private(set) var status = "Load the selected controller’s generator configuration explicitly."
     @Published private(set) var error: String?
     private var viewGeneration: UInt64 = 0
     nonisolated var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
@@ -53,10 +53,14 @@ final class NativeGenerationViewModel: ObservableObject, CustomReflectable {
             let keepOriginal = (error as? NativePendingError).map {
                 if case .conflict = $0 { return !workspace.needsReload && !journal.needsReload }; return false
             } ?? false
-            if keepInput || keepOriginal { retireDecision() } else { invalidate() }
+            if !Task.isCancelled && (keepInput || keepOriginal) { retireDecision() } else { invalidate() }
             self.error = error.localizedDescription
             status = "Original custody remains retained. Reload metadata or look up the original before continuing."
         }
+    }
+    private func accept(_ value: NativeGenerationDelivery, generation: UInt64) throws -> Bool {
+        guard !Task.isCancelled, generation == viewGeneration else { value.unconfirmed(workspace: workspace, journal: journal); return false }
+        try value.deliveryCurrent(workspace: workspace, journal: journal); return true
     }
     func load() async {
         await run {
@@ -65,13 +69,14 @@ final class NativeGenerationViewModel: ObservableObject, CustomReflectable {
             let generation = self.viewGeneration
             self.context = nil; self.entry = nil; self.rootStatus = nil; self.attemptStatus = nil
             try await self.workspace.reload()
-            let saved = try await self.controller.loadGenerationWorkspace(self.workspace.entries)
-            guard generation == self.viewGeneration else { return }
-            self.entry = saved
-            if saved == nil {
+            let saved = try await self.controller.loadGenerationWorkspaceDelivery(self.workspace.entries)
+            guard !Task.isCancelled, generation == self.viewGeneration else { return }
+            try saved.deliveryCurrent()
+            self.entry = saved.entry
+            if saved.entry == nil {
                 let value = try await self.controller.loadGenerationContext()
-                guard generation == self.viewGeneration else { return }
-                self.context = value
+                guard !Task.isCancelled, generation == self.viewGeneration else { return }
+                try value.deliveryCurrent(); self.context = value
             }
             self.status = self.entry == nil ? "Choose a policy, selections, instruction and explicit budget." : "Saved original workspace loaded. Read its status explicitly."
         }
@@ -90,7 +95,8 @@ final class NativeGenerationViewModel: ObservableObject, CustomReflectable {
         await run {
             let generation = self.viewGeneration
             let value = try await self.controller.prepareGenerationAttempt(entry, feedbackConsent: self.feedbackConsent)
-            guard generation == self.viewGeneration else { return }
+            guard !Task.isCancelled, generation == self.viewGeneration else { return }
+            try value.context.deliveryCurrent()
             self.decision = value; self.confirmed = false; self.status = "Review the explicit attempt. Confirming may export the selected model input."
         }
     }
@@ -99,9 +105,9 @@ final class NativeGenerationViewModel: ObservableObject, CustomReflectable {
         self.decision = nil; confirmed = false
         await run {
             let generation = self.viewGeneration
-            let value = try await self.controller.submitGeneration(decision, workspace: self.workspace, journal: self.journal)
-            guard generation == self.viewGeneration else { return }
-            self.entry = value; self.rootStatus = nil; self.attemptStatus = nil
+            let value = try await self.controller.submitGenerationDelivery(decision, workspace: self.workspace, journal: self.journal)
+            guard try self.accept(value, generation: generation) else { return }
+            self.entry = value.entry; self.rootStatus = nil; self.attemptStatus = nil
             self.status = decision.original.kind == .preparation ? "Preparation recorded. Read its current status before starting." : "Handoff reserved. Use original lookup to learn the result."
         }
     }
@@ -109,18 +115,18 @@ final class NativeGenerationViewModel: ObservableObject, CustomReflectable {
         guard canWork, let entry else { return }
         await run {
             self.retireDecision()
-            let generation = self.viewGeneration, values = try await self.controller.readGeneration(entry)
-            guard generation == self.viewGeneration else { return }
-            self.rootStatus = values.0; self.attemptStatus = values.1
-            self.status = "Preparation: \(values.0?.state ?? "not found") · Attempt: \(values.1?.state ?? "not found"). Mechanics remain separate from review and approval."
+            let generation = self.viewGeneration, values = try await self.controller.readGenerationDelivery(entry, workspace: self.workspace, journal: self.journal)
+            guard try self.accept(values, generation: generation) else { return }
+            self.rootStatus = values.root; self.attemptStatus = values.attempt
+            self.status = "Preparation: \(values.root?.state ?? "not found") · Attempt: \(values.attempt?.state ?? "not found"). Mechanics remain separate from review and approval."
         }
     }
     func restorePending() async {
-        guard canWork, journal.canStart, let entry, !entry.cancellationPending else { return }
+        guard canWork, let entry, !journal.busy, !journal.needsReload, !journal.hasOriginal(entry.context), !entry.cancellationPending else { return }
         await run {
             self.retireDecision(); let generation = self.viewGeneration
-            try await self.controller.restoreGenerationPending(entry, workspace: self.workspace, journal: self.journal)
-            guard generation == self.viewGeneration else { return }
+            let value = try await self.controller.restoreGenerationPendingDelivery(entry, workspace: self.workspace, journal: self.journal)
+            guard try self.accept(value, generation: generation) else { return }
             self.status = "Unchanged original restored to pending recovery. Choose explicit lookup or retry there; no generation mutation was sent."
         }
     }
@@ -129,18 +135,19 @@ final class NativeGenerationViewModel: ObservableObject, CustomReflectable {
         cancellationConfirmed = false
         await run {
             let generation = self.viewGeneration
-            let value = try await self.controller.cancelGeneration(entry, workspace: self.workspace, retry: retry)
-            guard generation == self.viewGeneration else { return }
-            self.entry = value; self.rootStatus = nil; self.attemptStatus = nil
-            self.status = value.cancellationPending ? "Cancellation remains unconfirmed. Look up the same root or explicitly retry it." : "Cancellation intent reconciled. This does not prove a remote model stopped."
+            let value = try await self.controller.cancelGenerationDelivery(entry, workspace: self.workspace, journal: self.journal, retry: retry)
+            guard try self.accept(value, generation: generation) else { return }
+            self.entry = value.entry; self.rootStatus = nil; self.attemptStatus = nil
+            self.status = value.entry.cancellationPending ? "Cancellation remains unconfirmed. Look up the same root or explicitly retry it." : "Cancellation intent reconciled. This does not prove a remote model stopped."
         }
     }
     func prepareAssessment() async {
         guard canWork, journal.canStart, let entry else { return }
         await run {
             let generation = self.viewGeneration
-            let value = try await self.controller.prepareGeneratedDraftAssessment(entry, instruction: self.assessmentInstruction)
-            guard generation == self.viewGeneration else { return }
+            let value = try await self.controller.prepareGeneratedDraftAssessment(entry, instruction: self.assessmentInstruction, workspace: self.workspace, journal: self.journal)
+            guard !Task.isCancelled, generation == self.viewGeneration else { return }
+            try value.preparationDeliveryCurrent()
             self.assessment = value; self.confirmed = false; self.status = "Review a fresh manual assessment of the owned generated draft."
         }
     }
@@ -148,22 +155,21 @@ final class NativeGenerationViewModel: ObservableObject, CustomReflectable {
         guard canWork, journal.canStart, confirmed, let assessment else { return }
         self.assessment = nil; confirmed = false
         await run {
-            let generation = self.viewGeneration, value = try await self.controller.submitAuthoring(assessment, journal: self.journal)
-            guard generation == self.viewGeneration else { return }
-            self.didAssess(value); self.status = "Manual candidate recorded. Continue explicit attribution and review in Local authoring."
+            let generation = self.viewGeneration, value = try await self.controller.submitAuthoringDelivery(assessment, journal: self.journal)
+            guard !Task.isCancelled, generation == self.viewGeneration else { value.unconfirmed(journal: self.journal); return }
+            try value.deliveryCurrent(journal: self.journal)
+            self.didAssess(value.receipt); self.status = "Manual candidate recorded. Continue explicit attribution and review in Authoring."
         }
     }
     func archive() async {
-        guard canWork, journal.canStart, archiveConfirmed, let entry, !entry.cancellationPending else { return }
+        guard canWork, archiveConfirmed, let entry, !journal.busy, !journal.needsReload, !journal.hasOriginal(entry.context), !entry.cancellationPending else { return }
         let acknowledgedUncertainty = archiveUncertaintyConfirmed
         archiveConfirmed = false; archiveUncertaintyConfirmed = false
         await run {
             let generation = self.viewGeneration
-            let values = try await self.controller.readGeneration(entry)
-            guard generation == self.viewGeneration, values.1?.state != "running" else { throw NativePendingError.conflict }
-            let uncertain = values.0 == nil || (!entry.attempts.isEmpty && (values.1 == nil || (values.1?.state == "unknown" && values.1?.result == nil)))
-            guard !uncertain || acknowledgedUncertainty else { throw NativePendingError.conflict }
-            try await self.workspace.archive(entry); self.entry = nil; self.invalidate()
+            let value = try await self.controller.archiveGeneration(entry, workspace: self.workspace, journal: self.journal, acceptUncertainty: acknowledgedUncertainty)
+            guard try self.accept(value, generation: generation) else { return }
+            self.entry = nil; self.invalidate()
             self.status = "Client workspace archived. Controller history remains retained."
         }
     }
@@ -258,7 +264,7 @@ struct NativeGenerationPanel: View {
                 }
             }
             Button("Read Original Generation Status") { Task { await generation.refresh() } }.disabled(!generation.canWork)
-            Button("Restore Original to Pending Recovery") { Task { await generation.restorePending() } }.disabled(!generation.canWork || !generation.journal.canStart || entry.cancellationPending)
+            Button("Restore Original to Pending Recovery") { Task { await generation.restorePending() } }.disabled(!generation.canWork || generation.journal.busy || generation.journal.needsReload || generation.journal.hasOriginal(entry.context) || entry.cancellationPending)
             if let result = generation.attemptStatus?.result {
                 Text("Recorded outcome: \(result.disposition)")
                 if let a = result.assessment, let fields = try? a.fields(), let report = fields["report"] as? [String: Any], let diagnostics = report["diagnostics"] as? [[String: Any]] {
@@ -274,7 +280,7 @@ struct NativeGenerationPanel: View {
             Button("Assess This Generated Draft") { Task { await generation.prepareAssessment() } }.disabled(!generation.canWork || !generation.journal.canStart || generation.attemptStatus?.result?.disposition != "candidate")
             Toggle("Archive this client workspace after original work is reconciled", isOn: $generation.archiveConfirmed)
             Toggle("If status is missing or unknown, acknowledge uncertainty and that a later result may arrive", isOn: $generation.archiveUncertaintyConfirmed)
-            Button("Archive Client Workspace") { Task { await generation.archive() } }.disabled(!generation.canWork || !generation.journal.canStart || !generation.archiveConfirmed)
+            Button("Archive Client Workspace") { Task { await generation.archive() } }.disabled(!generation.canWork || generation.journal.busy || generation.journal.needsReload || generation.journal.hasOriginal(entry.context) || !generation.archiveConfirmed)
         }
     }
 }

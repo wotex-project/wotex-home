@@ -2,7 +2,7 @@ import Foundation
 
 // Closed metadata choices. None can manufacture a signed workspace session.
 enum NativePairedWorkspaceAction: Sendable, Equatable {
-    case status, cancel, restorePending, assessDraft(operation: String, instruction: String), archive(acceptUncertainty: Bool)
+    case status, cancel, lookupCancellation, restorePending, assessDraft(operation: String, instruction: String), archive(acceptUncertainty: Bool)
 }
 
 struct NativePairedWorkspaceRead: Sendable, CustomReflectable {
@@ -30,6 +30,8 @@ enum NativePairedWorkspaceCorrespondence {
                   !entry.attempts.isEmpty else { throw LocalHealthError.invalidProfileRequest }
         case .restorePending, .archive:
             guard !entry.cancellationPending, !pending.document.entries.contains(where: { sameOwner($0.context, entry.context) }) else { throw NativePendingError.conflict }
+        case .lookupCancellation:
+            guard entry.cancellationPending else { throw NativePendingError.conflict }
         case .status, .cancel: break
         }
         return association

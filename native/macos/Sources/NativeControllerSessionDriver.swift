@@ -138,7 +138,7 @@ final class NativeControllerSessionDriver: ObservableObject {
     private var pairedSelected: Bool {
         if let snapshot, case .remote = snapshot.document.selection { return true }; return false
     }
-    private func pairedAuthoring<Value: Sendable>(_ operation: @escaping @Sendable (NativePairedAuthoringBasis, Data) throws -> Value) async throws -> (Value, NativeControllerAssociationSnapshot, UInt64, ContinuousClock.Instant) {
+    private func pairedProfile<Value: Sendable>(_ operation: @escaping @Sendable (NativePairedAuthoringBasis, Data) throws -> Value) async throws -> (Value, NativeControllerAssociationSnapshot, UInt64, ContinuousClock.Instant) {
         return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, case .remote = selected.document.selection else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
@@ -157,7 +157,7 @@ final class NativeControllerSessionDriver: ObservableObject {
         }
     }
     private func pairedPreparation(_ operation: @escaping @Sendable (NativePairedAuthoringBasis, Data) throws -> NativePairedAuthoringPreparation) async throws -> NativeAuthoringPreparedDecision {
-        let (value, selection, generation, deadline) = try await pairedAuthoring(operation)
+        let (value, selection, generation, deadline) = try await pairedProfile(operation)
         return NativeAuthoringPreparedDecision(paired: value, selection: selection, generation: generation, readDeadline: deadline)
     }
     func readHome() async throws -> NativeHomeRead {
@@ -406,6 +406,12 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
 
     func loadGenerationContext() async throws -> NativeGenerationContext {
+        if pairedSelected {
+            let (value, selection, generation, deadline) = try await pairedProfile { basis, credential in
+                try NativePairedGenerationClient.context(basis, credential: credential)
+            }
+            return NativeGenerationContext(paired: value, selection: selection, generation: generation, deadline: deadline)
+        }
         return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
@@ -440,6 +446,16 @@ final class NativeControllerSessionDriver: ObservableObject {
             try current(selected, generation: capturedGeneration); return entry
         }
     }
+    func loadGenerationWorkspaceDelivery(_ entries: [NativeGenerationWorkspaceEntry]) async throws -> NativeGenerationWorkspaceSelection {
+        if pairedSelected {
+            let (value, _, _, deadline) = try await pairedProfile { basis, credential in
+                _ = try NativePairedAuthoringClient.contract(basis, credential: credential)
+                return entries.first { $0.custody.isPaired && $0.custody.matches(association: basis.association, context: $0.context) && $0.context == basis.context }
+            }
+            return NativeGenerationWorkspaceSelection(entry: value, deadline: deadline)
+        }
+        return NativeGenerationWorkspaceSelection(entry: try await loadGenerationWorkspace(entries), deadline: nil)
+    }
     nonisolated private static func generationBasis(socket: String, capture: LocalCredentialCapture) throws -> (HomeControllerIdentity, HomeAuthoringContractRead, HomeGenerationOptions) {
         let (before, contract) = try manualBasis(socket: socket, capture: capture)
         let options = try NativeGenerationClient.fetchOptions(socketPath: socket, credential: capture.bytes)
@@ -450,11 +466,12 @@ final class NativeControllerSessionDriver: ObservableObject {
         return (after, contract, options)
     }
     nonisolated private static func generationCustody(_ context: NativeGenerationContext) throws -> NativePendingCustody {
-        if let reference = context.capture.nativeReference {
+        guard let capture = context.capture, context.paired == nil else { throw NativeControllerDriverError.unavailable }
+        if let reference = capture.nativeReference {
             guard case .recover(let original) = try NativeBrokerWire.request(reference), original.receipt.role == .operator else { throw LocalHealthError.nativeGuardConflict }
-            return .native(role: .operator, creationRevision: original.receipt.revision, verifier: context.capture.verifier)
+            return .native(role: .operator, creationRevision: original.receipt.revision, verifier: capture.verifier)
         }
-        return .manual(verifier: context.capture.verifier)
+        return .manual(verifier: capture.verifier)
     }
     nonisolated private static func workspaceCapture(_ entry: NativeGenerationWorkspaceEntry, _ capture: LocalCredentialCapture,
                                                     _ identity: HomeControllerIdentity) throws {
@@ -491,6 +508,15 @@ final class NativeControllerSessionDriver: ObservableObject {
         }
     }
     func prepareGenerationAttempt(_ entry: NativeGenerationWorkspaceEntry, feedbackConsent: Bool) async throws -> NativeGenerationDecision {
+        if pairedSelected {
+            let operation = "generation:attempt:" + UUID().uuidString.lowercased()
+            let (value, selection, generation, deadline) = try await pairedProfile { basis, credential in
+                try NativePairedGenerationClient.attempt(basis, credential: credential, entry: entry, operation: operation, feedbackConsent: feedbackConsent)
+            }
+            return NativeGenerationDecision(original: value.original,
+                context: NativeGenerationContext(paired: value.context, selection: selection, generation: generation, deadline: deadline),
+                previous: entry, feedbackDraft: value.feedbackDraft, feedbackAssessment: value.feedbackAssessment)
+        }
         return try await metadataChecked {
             guard !entry.custody.isPaired, !busy, !needsReload, let selected = snapshot, selected.document.selection == .local, !entry.cancellationPending else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
@@ -536,14 +562,15 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
     func submitGeneration(_ decision: NativeGenerationDecision, workspace: NativeGenerationWorkspaceCoordinator,
                           journal: NativePendingCoordinator) async throws -> NativeGenerationWorkspaceEntry {
+        guard decision.context.paired == nil, let originalCapture = decision.context.capture else { throw NativeControllerDriverError.unavailable }
         return try await metadataChecked {
             let context = decision.context
-            guard decision.previous?.custody.isPaired != true, !busy, !needsReload, snapshot == context.selection, generation == context.generation, journal.canStart else { throw NativeControllerDriverError.unavailable }
+            guard snapshot?.document.selection == .local, decision.previous?.custody.isPaired != true, !busy, !needsReload, snapshot == context.selection, generation == context.generation, journal.canStart else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let local = local, completion = try fence.beginLocal()
             let capture = try await Task.detached {
                 let fresh = try local.capture()
-                guard fresh.bytes == context.capture.bytes, fresh.nativeReference == context.capture.nativeReference else { throw LocalHealthError.sessionChanged }
+                guard fresh.bytes == originalCapture.bytes, fresh.nativeReference == originalCapture.nativeReference else { throw LocalHealthError.sessionChanged }
                 let (identity, contract, options) = try Self.generationBasis(socket: local.socket(), capture: fresh)
                 guard identity.matchesAuthority(context.identity), identity.revision == context.identity.revision,
                       contract.basisSHA == context.contract.basisSHA, options == context.options else { throw LocalHealthError.nativeGuardConflict }
@@ -576,6 +603,100 @@ final class NativeControllerSessionDriver: ObservableObject {
             if decision.original.kind == .preparation { try await journal.resolving(currentOriginal) }
             return entry
         }
+    }
+    func submitGenerationDelivery(_ decision: NativeGenerationDecision, workspace: NativeGenerationWorkspaceCoordinator,
+                                  journal: NativePendingCoordinator) async throws -> NativeGenerationDelivery {
+        guard let paired = decision.context.paired else {
+            return try NativeGenerationDelivery(local: await submitGeneration(decision, workspace: workspace, journal: journal))
+        }
+        return try await metadataChecked {
+            let context = decision.context
+            guard !busy, !needsReload, let selected = snapshot, selected == context.selection, generation == context.generation,
+                  case .remote = selected.document.selection, journal.canStart else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let session = try await self.selected(selected)
+            let fresh = NativePairedAuthoringBasis(association: session.association, scope: session.scope)
+            let reviewed = NativePairedGenerationContext(options: context.options, contract: context.contract, identity: context.identity, paired: paired)
+            try await session.perform { try NativePairedGenerationClient.validate(reviewed, fresh: fresh, credential: $0,
+                original: decision.original, previous: decision.previous) }
+            try current(selected, generation: context.generation, checkMetadata: false)
+            let entry: NativeGenerationWorkspaceEntry
+            if let previous = decision.previous { try workspace.current(previous); entry = try previous.appending(decision.original) }
+            else {
+                entry = try NativeGenerationWorkspaceEntry(context: paired.context, custody: .paired(from: session.association),
+                    basisSHA: context.contract.basisSHA, preparation: decision.original, attempts: [], cancellationPending: false).checked()
+            }
+            do {
+                let retained = try await workspace.publishPaired(entry, previous: decision.previous, session: session)
+                try current(selected, generation: context.generation, checkMetadata: false)
+                let publication = try await journal.submittingPaired(.generation(decision.original), session: session, workspace: retained)
+                do {
+                    try current(selected, generation: context.generation, checkMetadata: false); try publication.deliveryCurrent()
+                    return try NativeGenerationDelivery(original: publication, entry: entry)
+                } catch { journal.pairedDeliveryUnconfirmed(publication); throw error }
+            } catch { workspace.deliveryUnconfirmed(entry); throw error }
+        }
+    }
+    private func pairedWorkspace(_ entry: NativeGenerationWorkspaceEntry, action: NativePairedWorkspaceAction,
+                                 workspace: NativeGenerationWorkspaceCoordinator, journal: NativePendingCoordinator,
+                                 requireSelection: Bool = false) async throws -> NativePairedWorkspacePublication {
+        try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot else { throw NativeControllerDriverError.unavailable }
+            if requireSelection {
+                guard case .remote(let id) = selected.document.selection,
+                      let association = selected.document.records.first(where: { $0.id == id }),
+                      entry.custody.matches(association: association, context: entry.context) else { throw NativeControllerDriverError.unavailable }
+            }
+            guard let clock = certificateClock else { throw NativeControllerDriverError.clockUnavailable }
+            busy = true; defer { busy = false }
+            let capturedGeneration = generation
+            let publication = try await workspace.performPaired(entry, action: action, journal: journal, associations: selected, clock: clock)
+            do {
+                try current(selected, generation: capturedGeneration, checkMetadata: false); try publication.deliveryCurrent(); return publication
+            } catch { workspace.deliveryUnconfirmed(entry); journal.pairedWorkspaceUnconfirmed(publication); throw error }
+        }
+    }
+    func readGenerationDelivery(_ entry: NativeGenerationWorkspaceEntry, workspace: NativeGenerationWorkspaceCoordinator,
+                                journal: NativePendingCoordinator) async throws -> NativeGenerationDelivery {
+        if entry.custody.isPaired { return NativeGenerationDelivery(workspace: try await pairedWorkspace(entry, action: .status, workspace: workspace, journal: journal)) }
+        let value = try await readGeneration(entry)
+        return try NativeGenerationDelivery(local: entry, root: value.0, attempt: value.1)
+    }
+    func cancelGenerationDelivery(_ entry: NativeGenerationWorkspaceEntry, workspace: NativeGenerationWorkspaceCoordinator,
+                                  journal: NativePendingCoordinator, retry: Bool) async throws -> NativeGenerationDelivery {
+        if entry.custody.isPaired {
+            return NativeGenerationDelivery(workspace: try await pairedWorkspace(entry, action: retry ? .cancel : .lookupCancellation, workspace: workspace, journal: journal))
+        }
+        return try NativeGenerationDelivery(local: await cancelGeneration(entry, workspace: workspace, retry: retry))
+    }
+    func restoreGenerationPendingDelivery(_ entry: NativeGenerationWorkspaceEntry, workspace: NativeGenerationWorkspaceCoordinator,
+                                         journal: NativePendingCoordinator) async throws -> NativeGenerationDelivery {
+        if entry.custody.isPaired { return NativeGenerationDelivery(workspace: try await pairedWorkspace(entry, action: .restorePending, workspace: workspace, journal: journal)) }
+        try await restoreGenerationPending(entry, workspace: workspace, journal: journal)
+        return try NativeGenerationDelivery(local: entry)
+    }
+    func prepareGeneratedDraftAssessment(_ entry: NativeGenerationWorkspaceEntry, instruction: String,
+                                         workspace: NativeGenerationWorkspaceCoordinator, journal: NativePendingCoordinator) async throws -> NativeAuthoringPreparedDecision {
+        guard entry.custody.isPaired else { return try await prepareGeneratedDraftAssessment(entry, instruction: instruction) }
+        let publication = try await pairedWorkspace(entry, action: .assessDraft(operation: "authoring:generated-assess:" + UUID().uuidString.lowercased(), instruction: instruction),
+            workspace: workspace, journal: journal, requireSelection: true)
+        guard let value = publication.assessment, let selected = snapshot else { throw NativePendingError.outcomeUnknown }
+        try publication.deliveryCurrent()
+        return NativeAuthoringPreparedDecision(paired: NativePairedAuthoringPreparation(original: value.original, payload: nil, identity: value.identity,
+            paired: NativePairedAuthoringBasis(association: publication.association, scope: publication.scope), manualBasis: value.contract.basisSHA),
+            selection: selected, generation: generation, readDeadline: publication.viewDeliveryDeadline)
+    }
+    func archiveGeneration(_ entry: NativeGenerationWorkspaceEntry, workspace: NativeGenerationWorkspaceCoordinator,
+                           journal: NativePendingCoordinator, acceptUncertainty: Bool) async throws -> NativeGenerationDelivery {
+        guard !journal.busy, !journal.needsReload, !journal.hasOriginal(entry.context), !entry.cancellationPending else { throw NativePendingError.conflict }
+        if entry.custody.isPaired {
+            return NativeGenerationDelivery(workspace: try await pairedWorkspace(entry, action: .archive(acceptUncertainty: acceptUncertainty), workspace: workspace, journal: journal))
+        }
+        let values = try await readGeneration(entry)
+        guard values.1?.state != "running" else { throw NativePendingError.conflict }
+        let uncertain = values.0 == nil || (!entry.attempts.isEmpty && (values.1 == nil || (values.1?.state == "unknown" && values.1?.result == nil)))
+        guard !uncertain || acceptUncertainty else { throw NativePendingError.conflict }
+        try await workspace.archive(entry); return try NativeGenerationDelivery(local: entry)
     }
     func cancelGeneration(_ entry: NativeGenerationWorkspaceEntry, workspace: NativeGenerationWorkspaceCoordinator, retry: Bool) async throws -> NativeGenerationWorkspaceEntry {
         return try await metadataChecked {
@@ -693,7 +814,7 @@ final class NativeControllerSessionDriver: ObservableObject {
 
     func loadMappingEditorContext() async throws -> NativeMappingEditorContext {
         if pairedSelected {
-            let (value, selection, generation, deadline) = try await pairedAuthoring { basis, credential in
+            let (value, selection, generation, deadline) = try await pairedProfile { basis, credential in
                 let read = try NativePairedAuthoringClient.contract(basis, credential: credential)
                 return (try HomeMappingGrammar.parse(read.contract), read)
             }

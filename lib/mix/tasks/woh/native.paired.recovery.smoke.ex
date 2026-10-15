@@ -3,8 +3,17 @@ defmodule Woh.Tool.PairedWorkspaceProvider do
 
   use GenServer
 
-  def init({draft, release}),
-    do: {:ok, %{draft: draft, release: release, calls: 0, pending: nil, deadline: nil}}
+  def init({draft, release, invalid_first}),
+    do:
+      {:ok,
+       %{
+         draft: draft,
+         release: release,
+         invalid_first: invalid_first,
+         calls: 0,
+         pending: nil,
+         deadline: nil
+       }}
 
   def handle_call(:calls, _, state), do: {:reply, state.calls, state}
 
@@ -23,7 +32,8 @@ defmodule Woh.Tool.PairedWorkspaceProvider do
   def handle_info(:release, state) do
     cond do
       File.regular?(state.release) ->
-        GenServer.reply(state.pending, {:ok, state.draft})
+        draft = if state.invalid_first && state.calls == 1, do: "{}", else: state.draft
+        GenServer.reply(state.pending, {:ok, draft})
         {:noreply, %{state | pending: nil}}
 
       System.monotonic_time(:millisecond) >= state.deadline ->
@@ -59,7 +69,10 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
   retains the original. Both quantity families also exercise generation
   preparation/start reply loss, workspace-required retry, running-to-unknown
   restart, separately confirmed acknowledgements and unsafe workspace isolation.
-  A gated synthetic provider is called once per cohort. This creates no signed
+  A gated synthetic provider is called once per ordinary cohort. Pass
+  `--generation-ui` for the focused two-family invalid-draft/explicit-repair cohort:
+  no-consent refusal, checked feedback bytes, two bounded provider calls and the
+  same original recovery, restart and revocation checks. This creates no signed
   app session.
 
   The result is executable software evidence for the tested boundary.
@@ -78,7 +91,7 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
   alias WotexHome.LocalAPI.Server, as: UDS
   alias WotexHome.Semantics.Thing
 
-  def run([]) do
+  def run(scope) when scope in [[], ["--generation-ui"]] do
     Code.require_file("test/support/controller_tls_fixture.exs")
     root = Path.join("/private/tmp", "woh-paired-recovery-#{System.unique_integer([:positive])}")
     File.mkdir!(root)
@@ -101,7 +114,7 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
         Enum.uniq(
           sources ++
             Woh.Tool.NativePairedRecoverySources.names() ++
-            ~w(NativeAuthoringFiles NativeAuthoringSelections NativePairedAuthoringClient)
+            ~w(NativeAuthoringFiles NativeAuthoringSelections NativePairedAuthoringClient NativePairedGenerationClient)
         )
 
       args =
@@ -136,9 +149,14 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
         "fresh original paired journal check passed"
       )
 
-      actual_owner(executable, root, associations)
-      authoring_owner(executable, root)
-      wrong_principal(executable, root)
+      if scope == ["--generation-ui"] do
+        for family <- ~w(temperature research),
+            do: authoring_owner(executable, root, family, "repair")
+      else
+        actual_owner(executable, root, associations)
+        authoring_owner(executable, root)
+        wrong_principal(executable, root)
+      end
 
       Mix.shell().info(
         "native paired publication/unsigned refusal, real pairing, manual authoring lost replies without replay, original recovery/restart/revocation and wrong-principal refusal passed"
@@ -148,7 +166,7 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
     end
   end
 
-  def run(_), do: Mix.raise("usage: mix woh.native.paired.recovery.smoke")
+  def run(_), do: Mix.raise("usage: mix woh.native.paired.recovery.smoke [--generation-ui]")
 
   defp actual_owner(executable, root, associations) do
     now = System.os_time(:second)
@@ -270,7 +288,7 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
     {:ok, provider_pid} =
       GenServer.start_link(
         Woh.Tool.PairedWorkspaceProvider,
-        {mechanics["draft_bytes"], Path.join(root, "native/model-release")}
+        {mechanics["draft_bytes"], Path.join(root, "native/model-release"), scenario == "repair"}
       )
 
     policy_input =
@@ -356,12 +374,14 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
         true = imported == staged + 1
 
         mode =
-          if scenario == "complete",
-            do: "authoring-workspace",
-            else: "authoring-generation-restart-seed"
+          case scenario do
+            "complete" -> "authoring-workspace"
+            "repair" -> "authoring-workspace-repair"
+            "restart" -> "authoring-generation-restart-seed"
+          end
 
         transport(executable, %{input | "mode" => mode})
-        true = GenServer.call(provider_pid, :calls) == 1
+        true = GenServer.call(provider_pid, :calls) == if(scenario == "repair", do: 2, else: 1)
         input
       after
         GenServer.stop(custody)
@@ -381,7 +401,7 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
     try do
       {:ok, before} = Store.revision(store)
 
-      if scenario == "complete" do
+      if scenario != "restart" do
         transport(executable, %{payload | "mode" => "authoring-existing"})
         transport(executable, %{payload | "mode" => "authoring-workspace-restart"})
       else
@@ -389,12 +409,12 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
       end
 
       {:ok, ^before} = Store.revision(store)
-      true = GenServer.call(provider_pid, :calls) == 1
+      true = GenServer.call(provider_pid, :calls) == if(scenario == "repair", do: 2, else: 1)
       key = File.read!(Path.join(payload["directory"], "raw-fixture.key"))
       {:ok, scope} = Store.controller_scope(store, key)
       {:ok, _} = Store.revoke_principal(store, scope.principal_id)
 
-      if scenario == "complete" do
+      if scenario != "restart" do
         transport(executable, %{payload | "mode" => "authoring-revoked"})
         transport(executable, %{payload | "mode" => "authoring-workspace-revoked"})
       else
@@ -478,7 +498,9 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
     body = JSON.encode!(input)
 
     timeout =
-      if input["mode"] in ~w(authoring-stage authoring-workspace), do: 45_000, else: 20_000
+      if input["mode"] in ~w(authoring-stage authoring-workspace authoring-workspace-repair),
+        do: 45_000,
+        else: 20_000
 
     case Command.run_diagnostic(
            executable,

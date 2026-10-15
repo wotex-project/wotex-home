@@ -141,7 +141,7 @@ struct NativePairedWorkspaceSmoke {
             custody: .paired(from: association), basisSHA: template.basisSHA, preparation: template.preparation, attempts: template.attempts, cancellationPending: false).checked()
         let directory = root.appendingPathComponent("unsigned", isDirectory: true)
         try makeDirectory(directory)
-        let workspace = try NativeGenerationWorkspaceStorage.retaining(entry, directory: directory, expected: .empty)
+        var workspace = try NativeGenerationWorkspaceStorage.retaining(entry, directory: directory, expected: .empty)
         let associations = try NativeControllerAssociationStorage.retaining(association, directory: directory, expected: .empty)
         for action in [NativePairedWorkspaceAction.status, .cancel, .restorePending, .assessDraft(operation: "manual:paired-generated", instruction: "Review the original draft."), .archive(acceptUncertainty: true)] {
             try require(try NativePairedWorkspaceCorrespondence.association(entry, action: action, workspace: workspace, pending: .empty, associations: associations) == association)
@@ -153,6 +153,18 @@ struct NativePairedWorkspaceSmoke {
             } catch NativePairedSessionError.custody(.denied) {}
             try require(clock.calls == 0)
         }
+        try refused { _ = try NativePairedWorkspaceCorrespondence.association(entry, action: .lookupCancellation, workspace: workspace, pending: .empty, associations: associations) }
+        let lookupIntent = try entry.cancellation(true)
+        let lookupIntentWorkspace = try NativeGenerationWorkspaceStorage.replacing(entry, with: lookupIntent, directory: directory, expected: workspace)
+        try require(try NativePairedWorkspaceCorrespondence.association(lookupIntent, action: .lookupCancellation, workspace: lookupIntentWorkspace, pending: .empty, associations: associations) == association)
+        let lookupClock = WorkspaceClockProbe()
+        do {
+            _ = try await NativePairedControllerSession.generationWorkspace(lookupIntent, action: .lookupCancellation, workspace: lookupIntentWorkspace,
+                pending: .empty, associations: associations, clock: lookupClock.clock)
+            throw WorkspaceSessionSmokeError.failed(#line)
+        } catch NativePairedSessionError.custody(.denied) {}
+        try require(lookupClock.calls == 0)
+        workspace = try NativeGenerationWorkspaceStorage.replacing(lookupIntent, with: entry, directory: directory, expected: lookupIntentWorkspace)
         try refused { _ = try NativePairedWorkspaceCorrespondence.association(entry, action: .status, workspace: .empty, pending: .empty, associations: associations) }
         try refused { _ = try NativePairedWorkspaceCorrespondence.association(entry, action: .status, workspace: workspace, pending: .empty, associations: .empty) }
         try refused { _ = try NativePairedGenerationWorkspaceOperations.read(entry, association: association, credential: Data(repeating: 8, count: 32)) }

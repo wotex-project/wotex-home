@@ -107,6 +107,9 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
         if let index = knownPaired.firstIndex(where: { Self.sameOriginal($0, entry) }) { knownPaired[index] = entry }
         else { guard knownCount < 16 else { throw NativePendingError.capacity }; knownPaired.append(entry) }
     }
+    func hasOriginal(_ context: NativePendingContext) -> Bool {
+        entries.contains { NativePairedWorkspaceCorrespondence.sameOwner($0.context, context) }
+    }
     var hasCurrentOriginal: Bool {
         guard let owner else { return !entries.isEmpty }
         return entries.contains { $0.context.deployment == owner.deployment && $0.context.owner == owner.owner && $0.context.epoch == owner.epoch }
@@ -393,5 +396,38 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
         catch { self.error = "Original recovery memory is full. Reload its records before continuing." }
         needsReload = true
         status = "Original result delivery was not confirmed. Reload its records before continuing."
+    }
+    func performingPairedWorkspace(_ entry: NativeGenerationWorkspaceEntry, action: NativePairedWorkspaceAction,
+                                  workspace: NativeGenerationWorkspaceSnapshot, associations: NativeControllerAssociationSnapshot,
+                                  clock: @escaping @Sendable () throws -> NativeControllerCertificateClock) async throws -> NativePairedWorkspacePublication {
+        guard !busy, !needsReload, let pending = snapshot else { throw NativePendingError.conflict }
+        switch action {
+        case .restorePending, .archive:
+            guard !hasOriginal(entry.context) else { throw NativePendingError.conflict }
+        default: break
+        }
+        if action == .restorePending { guard knownCount < 16 else { throw NativePendingError.capacity } }
+        busy = true; defer { busy = false }
+        do {
+            let session = try await NativePairedControllerSession.generationWorkspace(entry, action: action, workspace: workspace,
+                pending: pending, associations: associations, clock: clock)
+            let publication = try await session.perform()
+            try publication.deliveryCurrent()
+            if action == .restorePending { try rememberPaired(NativePairedWorkspaceCorrespondence.restoredOriginal(entry)) }
+            snapshot = publication.pending
+            return publication
+        } catch {
+            if action == .restorePending { try? rememberPaired(NativePairedWorkspaceCorrespondence.restoredOriginal(entry)) }
+            needsReload = true; self.error = error.localizedDescription
+            status = "Original workspace action not confirmed. Reload its records before continuing."
+            throw error
+        }
+    }
+    func pairedWorkspaceUnconfirmed(_ publication: NativePairedWorkspacePublication) {
+        if publication.pending.document.entries.contains(where: { $0.context == publication.entry.context && $0.category == .generation }) {
+            try? rememberPaired(NativePairedWorkspaceCorrespondence.restoredOriginal(publication.entry))
+        }
+        needsReload = true
+        status = "Original workspace delivery was not confirmed. Reload its records before continuing."
     }
 }

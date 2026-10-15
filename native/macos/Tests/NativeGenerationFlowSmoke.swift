@@ -81,6 +81,7 @@ struct NativeGenerationFlowSmoke {
         do { _ = try fields.original(context, operation: "generation:no-consent"); throw GenerationFlowAssertion.failed(#line) }
         catch LocalHealthError.invalidProfileRequest {}
         fields.remoteConsent = true
+        try await unsignedSubmission(context: context, fields: fields, directory: directory, workspace: workspace, journal: journal)
         if CommandLine.arguments[1] != "--flow" {
             let decision = try await controller.prepareGeneration(context, fields: fields)
             do { _ = try await controller.submitGeneration(decision, workspace: workspace, journal: journal); throw GenerationFlowAssertion.failed(#line) }
@@ -183,6 +184,7 @@ struct NativeGenerationFlowSmoke {
         try require(view.fields.passages.isEmpty && view.fields.examples.isEmpty && !view.fields.remoteConsent && !view.confirmed)
         await view.load()
         try require(view.entry?.preparation == root.preparation)
+        for width in [480, 720, 1320] { try await render(view, width: width) }
         view.assessmentInstruction = "Private instruction"; view.confirmed = true
         view.invalidate(); try require(view.context == nil && view.entry == nil && !view.confirmed && view.assessmentInstruction.isEmpty)
         let gate = GenerationCaptureGate()
@@ -243,6 +245,49 @@ struct NativeGenerationFlowSmoke {
         try require(revocationView.entry == nil && revocationView.context == nil && revocationView.rootStatus == nil && revocationView.attemptStatus == nil && revocationView.assessmentInstruction.isEmpty && !revocationView.confirmed && revocationView.error != nil)
         try require(workspace.entries == [revokeRoot] && journal.entries.isEmpty)
         print("native generation first decisions, publication, repair, manual assessment and cancellation passed")
+    }
+    @MainActor private static func unsignedSubmission(context: NativeGenerationContext, fields: NativeGenerationDraftFields,
+        directory: URL, workspace: NativeGenerationWorkspaceCoordinator, journal: NativePendingCoordinator) async throws {
+        let vectors = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: "test/fixtures/controller_connections/native_associations_v1.json"))) as! [String: Any]
+        let row = (vectors["valid_records"] as! [[String: Any]])[4]
+        let association = try NativeControllerPublicAssociation.decode(Data((row["body"] as! String).utf8))
+        let path = directory.appendingPathComponent("unsigned-generation", isDirectory: true)
+        try FileManager.default.createDirectory(at: path, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        let retained = try NativeControllerAssociationStorage.retaining(association, directory: path, expected: .empty)
+        let selection = try NativeControllerAssociationStorage.selecting(.remote(association.id), directory: path, expected: retained)
+        let controller = NativeControllerSessionDriver(certificateClock: { throw GenerationFlowAssertion.failed(#line) }, directory: path,
+            local: NativeControllerLocalReadClient(capture: { throw GenerationFlowAssertion.failed(#line) }, socket: { "/missing-generation-local-socket" }))
+        await controller.reload()
+        let c = association.scope
+        let identity = HomeControllerIdentity(deploymentID: c.deployment, ownerID: c.owner, authorityEpoch: Int(c.epoch),
+            revision: Int(c.creationRevision), principalID: c.principal)
+        let basis = NativePairedAuthoringBasis(association: association, scope: HomeControllerScope(identity: identity,
+            permissions: association.access.permissions, targetIDs: association.access.targets))
+        // Metadata is deliberately not a remote read or a successful signing fixture.
+        let reviewed = NativeGenerationContext(paired: NativePairedGenerationContext(options: context.options, contract: context.contract,
+            identity: identity, paired: basis), selection: selection, generation: context.generation, deadline: .now)
+        try require(reviewed.capture == nil && Mirror(reflecting: reviewed).children.isEmpty)
+        let original = try fields.original(reviewed, operation: "generation:unsigned-first-submission")
+        let decision = NativeGenerationDecision(original: original, context: reviewed, previous: nil)
+        let savedWorkspace = workspace.snapshot, savedPending = journal.snapshot
+        do { _ = try await controller.submitGenerationDelivery(decision, workspace: workspace, journal: journal); throw GenerationFlowAssertion.failed(#line) }
+        catch NativePairedSessionError.custody(.denied) {}
+        try require(workspace.snapshot == savedWorkspace && journal.snapshot == savedPending && !controller.busy)
+    }
+    @MainActor private static func render(_ model: NativeGenerationViewModel, width: Int) async throws {
+        _ = NSApplication.shared; NSApp.setActivationPolicy(.prohibited)
+        let content = ScrollView { NativeGenerationPanel(generation: model).padding(24) }.frame(width: CGFloat(width), height: 920)
+            .background(Color(nsColor: .windowBackgroundColor)).environment(\.colorScheme, .light)
+        let view = NSHostingView(rootView: content); view.frame = NSRect(x: 0, y: 0, width: width, height: 920)
+        let window = NSWindow(contentRect: view.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false; window.contentView = view; window.orderFront(nil); defer { window.close() }
+        try await Task.sleep(for: .milliseconds(100)); view.layoutSubtreeIfNeeded(); view.displayIfNeeded()
+        guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { throw GenerationFlowAssertion.failed(#line) }
+        view.cacheDisplay(in: view.bounds, to: bitmap)
+        guard let data = bitmap.representation(using: .png, properties: [:]) else { throw GenerationFlowAssertion.failed(#line) }
+        let path = URL(fileURLWithPath: "_build/native/generation-workspace-\(width).png")
+        try FileManager.default.createDirectory(at: path.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try data.write(to: path)
     }
     @MainActor private static func awaitResult(_ controller: NativeControllerSessionDriver, _ entry: NativeGenerationWorkspaceEntry) async throws -> HomeGenerationStatus {
         let until = ContinuousClock.now.advanced(by: .seconds(4))

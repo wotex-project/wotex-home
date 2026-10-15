@@ -907,15 +907,19 @@ struct NativePairedRecoverySmoke {
         let pendingBefore = try NativePendingStorage.load(directory: directory)
         guard let review = pendingBefore.document.entries.first, review.category == .authoring else { throw PairedRecoverySmokeError.failed(#line) }
         try resolve(review)
-        let contract = try await remote { try NativeAuthoringContractClient.fetch(socketPath: "", credential: key) }
-        let options = try await remote { try NativeGenerationClient.fetchOptions(socketPath: "", credential: key) }
+        let initialScope = try await remote { try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key) }
+        let initialBasis = NativePairedAuthoringBasis(association: association, scope: initialScope)
+        let configured = try await remote { try NativePairedGenerationClient.context(initialBasis, credential: key) }
+        try require(Mirror(reflecting: configured).children.isEmpty)
+        let contract = configured.contract, options = configured.options
         let policy = try (options.fields()["policies"] as! [[String: Any]])[0]
         let preparation = try NativeGenerationOriginalWire.encode(["authority_epoch": Int(options.epoch), "operation_id": "generation:paired-workspace",
             "expected_revision": Int(options.revision), "provider_sha256": policy["provider_sha256"]!, "policy_sha256": policy["policy_sha256"]!, "remote_export": false,
             "projection": ["contract_digest": contract.contractSHA, "instruction": "Draft the synthetic mapping only.", "passages": [], "examples": [], "limits": policy["limits"]!],
-            "budget": ["attempts": 1, "attempt_ms": 10000, "total_ms": 30000]], kind: .preparation)
+            "budget": ["attempts": 2, "attempt_ms": 10000, "total_ms": 30000]], kind: .preparation)
         var entry = try NativeGenerationWorkspaceEntry(context: context(association), custody: .paired(from: association), basisSHA: contract.basisSHA,
             preparation: preparation, attempts: [], cancellationPending: false).checked()
+        try await remote { try NativePairedGenerationClient.validate(configured, fresh: initialBasis, credential: key, original: preparation, previous: nil) }
         var workspace = try NativeGenerationWorkspaceStorage.retaining(entry, directory: directory, expected: .empty)
         let rootPending = try retainPending(preparation)
         do { _ = try await executeGeneration(rootPending, .retry, dropCommitted: true); throw PairedRecoverySmokeError.failed(#line) }
@@ -924,9 +928,16 @@ struct NativePairedRecoverySmoke {
         let prepared = try await read(entry)
         try require(prepared.root?.state == "prepared")
         try resolve(rootPending)
-        let identity = try await remote { try LocalHealthClient.fetchControllerIdentity(socketPath: "", credential: key) }
-        let attempt = try NativeGenerationOriginalWire.encode(["authority_epoch": identity.authorityEpoch, "operation_id": "generation:paired-attempt", "expected_revision": identity.revision,
-            "preparation_operation_id": preparation.operation, "preparation_sha256": preparation.sha, "attempt": 1, "previous_operation_id": NSNull(), "repair_export": false], kind: .attempt)
+        let attemptScope = try await remote { try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key) }
+        let attemptBasis = NativePairedAuthoringBasis(association: association, scope: attemptScope)
+        do { try await remote { try NativePairedGenerationClient.validate(configured, fresh: attemptBasis, credential: key, original: preparation, previous: nil) }; throw PairedRecoverySmokeError.failed(#line) }
+        catch LocalHealthError.nativeGuardConflict {}
+        let retainedRoot = entry
+        let preparedAttempt = try await remote { try NativePairedGenerationClient.attempt(attemptBasis, credential: key,
+            entry: retainedRoot, operation: "generation:paired-attempt", feedbackConsent: false) }
+        try require(preparedAttempt.feedbackDraft == nil && preparedAttempt.feedbackAssessment == nil)
+        let attempt = preparedAttempt.original
+        try await remote { try NativePairedGenerationClient.validate(preparedAttempt.context, fresh: attemptBasis, credential: key, original: attempt, previous: retainedRoot) }
         let appended = try entry.appending(attempt)
         workspace = try NativeGenerationWorkspaceStorage.replacing(entry, with: appended, directory: directory, expected: workspace); entry = appended
         let attemptPending = try retainPending(attempt)
@@ -947,7 +958,38 @@ struct NativePairedRecoverySmoke {
             try await Task.sleep(for: .milliseconds(50)); status = try await read(entry)
         }
         try require(status.attempt?.result?.disposition == "candidate")
-        try resolve(attemptPending)
+        if mode == "authoring-workspace-repair" {
+            try require(status.attempt?.result?.assessment?.disposition == "invalid")
+            try resolve(attemptPending)
+            let repairScope = try await remote { try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key) }
+            let repairBasis = NativePairedAuthoringBasis(association: association, scope: repairScope), invalidEntry = entry
+            do { _ = try await remote { try NativePairedGenerationClient.attempt(repairBasis, credential: key, entry: invalidEntry,
+                operation: "generation:no-feedback-consent", feedbackConsent: false) }; throw PairedRecoverySmokeError.failed(#line) }
+            catch LocalHealthError.invalidProfileRequest {}
+            let repair = try await remote { try NativePairedGenerationClient.attempt(repairBasis, credential: key, entry: invalidEntry,
+                operation: "generation:explicit-paired-repair", feedbackConsent: true) }
+            try require(repair.feedbackDraft == "{}" && repair.feedbackAssessment?.disposition == "invalid" && repair.original.operation != attempt.operation)
+            try await remote { try NativePairedGenerationClient.validate(repair.context, fresh: repairBasis, credential: key, original: repair.original, previous: invalidEntry) }
+            let repaired = try entry.appending(repair.original)
+            workspace = try NativeGenerationWorkspaceStorage.replacing(entry, with: repaired, directory: directory, expected: workspace); entry = repaired
+            let repairing = try retainPending(repair.original)
+            do { _ = try await executeGeneration(repairing, .retry, dropCommitted: true); throw PairedRecoverySmokeError.failed(#line) }
+            catch PairedRecoverySmokeError.droppedReply {}
+            _ = try await executeGeneration(repairing, .retry)
+            status = try await read(entry)
+            for _ in 0..<30 where status.attempt?.result == nil {
+                try await Task.sleep(for: .milliseconds(50)); status = try await read(entry)
+            }
+            try require(status.attempt?.result?.assessment?.disposition == "compatible")
+            try resolve(repairing)
+        } else {
+            let completedScope = try await remote { try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key) }
+            let completedBasis = NativePairedAuthoringBasis(association: association, scope: completedScope), completedEntry = entry
+            do { _ = try await remote { try NativePairedGenerationClient.attempt(completedBasis, credential: key, entry: completedEntry,
+                operation: "generation:forbidden-repair", feedbackConsent: true) }; throw PairedRecoverySmokeError.failed(#line) }
+            catch LocalHealthError.invalidProfileRequest {}
+            try resolve(attemptPending)
+        }
         let completed = entry
         let assessment = try await remote { try NativePairedGenerationWorkspaceOperations.assess(completed, association: association, credential: key,
             operation: "manual:paired-generation-assessment", instruction: "Assess this exact generated draft.") }
@@ -984,7 +1026,7 @@ struct NativePairedRecoverySmoke {
         let restoreBefore = try NativePendingStorage.load(directory: directory)
         let restoreAfter = try NativePendingStorage.retaining(restored, directory: directory, expected: restoreBefore)
         try NativePairedCaptureCorrespondence.publication(of: restored, before: restoreBefore, after: restoreAfter)
-        try require(restored.input == .generation(attempt))
+        try require(restored.input == .generation(entry.attempts.last!))
         try resolve(restored)
         try NativePairedWorkspaceCorrespondence.permitsArchive(entry, read: cancelled, acceptUncertainty: false)
         let archived = try NativeGenerationWorkspaceStorage.removing(entry, directory: directory, expected: workspace)
