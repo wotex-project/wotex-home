@@ -1,0 +1,11 @@
+{
+  "format": "home-native-mqtt-provision-v1",
+  "prepare": "[\"wotex-home.native-mqtt-provision@1\",\"prepare\",\"/private/fixture/authoring.json\",\"/private/fixture/mqtt.json\"]",
+  "publish": "[\"wotex-home.native-mqtt-provision@1\",\"publish\",\"/private/fixture/authoring.json\",\"/private/fixture/mqtt.json\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\"]",
+  "prepared": "[\"wotex-home.native-mqtt-provision@1\",\"prepared\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",1,\"keychain\"]",
+  "published": "[\"wotex-home.native-mqtt-provision@1\",\"published\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",1,\"keychain\"]",
+  "conflict": "[\"wotex-home.native-mqtt-provision@1\",\"error\",\"native_mqtt_publication_conflict\"]",
+  "frame_limit": 4096,
+  "deadline_ms": 15000,
+  "path_limit": 1024
+}

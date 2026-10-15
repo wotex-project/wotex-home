@@ -1,6 +1,6 @@
 # Native MQTT setup and Keychain bootstrap
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 native setup/lifecycle, WOH.16 private delivery, WOH.18 source custody.
 Implementation: NM-01/02/03 software implemented; NM-04 preparation/import/publication
 UI planned. Evidence: [focused software checks](../provenance/native-mqtt-bootstrap-2026-10.md);
@@ -150,6 +150,77 @@ lookup first. Never silently restart a Host or fall back to password-file/manual
 custody. Explain that starting/restarting the background controller creates a
 new source epoch and current target reselection is still required.
 
+**NM-05 — Closed foreground protocol and original publication.** The app's
+actual-self protected-bundle gate derives only
+Contents/Resources/WotexHomeRelease/bin/wotex_home. Launch arguments are exactly
+eval and WotexHome.NativeSetup.MQTTProvisioning.main(); no selected document
+chooses arguments, environment or code. Pin the actual app/bundle identity for
+preparation and recheck it before/after each later action. The fixed actual
+OS-user private Home root is the only destination. Root creation is an explicit
+setup action; neither Host nor home.sqlite is opened by the foreground entry.
+Start only locked required dependencies and route Logger to stderr.
+
+One original 15-second monotonic deadline covers launch, request, producer work
+and reply. Four-byte big-endian frames contain 1..4096 bytes of canonical compact
+UTF-8 JSON. One request and response only; no retry/replacement child after
+failure. Paths are absolute canonical UTF-8, 1..1024 bytes, no NUL, checked through
+PrivateFile's mode-0400 single-link/ancestor/descriptor witness. Paths travel
+only on the original private pipes, never in status or diagnostics. Records are:
+
+```
+["wotex-home.native-mqtt-provision@1","prepare",authoring_path,source_path]
+["wotex-home.native-mqtt-provision@1","publish",authoring_path,source_path,authoring_sha256,source_sha256,basis_sha256,root_sha256]
+["wotex-home.native-mqtt-provision@1","prepared",authoring_sha256,source_sha256,basis_sha256,root_sha256,channels,authentication]
+["wotex-home.native-mqtt-provision@1","published",authoring_sha256,source_sha256,basis_sha256,root_sha256,channels,authentication]
+["wotex-home.native-mqtt-provision@1","error",reason]
+```
+
+Digests are lower hex64. Channels is integer 1..32; authentication is exactly
+none/password/keychain. Reject nesting, unknown/extra members, Boolean/float,
+noncanonical/trailing encodings and mismatched original replies. Only selected
+file digests/channel count/authentication are presentation data; opaque basis
+and root digests remain private correspondence. Root digest is SHA-256 of
+deterministic Erlang external-term bytes of the tuple containing the binary
+tag wotex-home.native-mqtt-root@1 and PrivateFile.directory_witness(root).
+Basis digest uses the tuple of binary tag wotex-home.native-mqtt-basis@1,
+root_sha256, authoring_seal, source_seal, authoring_sha256 and source_sha256.
+These internal same-release witnesses are not public producer identities or
+authority grants and cannot be used across an app/release replacement.
+
+Preparation reconstructs both actual installed-producer contracts from the
+selected documents, rechecks every original witness and refuses a different
+existing destination before offering import. It writes no policy, acquires no
+Host gate, starts no Host and contacts no broker. Password mode requires the
+existing separately provisioned password-file custody at publication; no
+conversion to Keychain or alternate account is available.
+
+Publication first rechecks the root witness, acquires HostLock for the exact
+fixed home.sqlite path (creating only its separate owner sidecar), then checks
+installed authoring/source files before rereading caller sources. If both are
+sealed, match the original raw hashes and reconstruct the same producer summary,
+return that original published result even if caller files disappeared. This
+is confirmation, not permission to publish changed sources. Otherwise both
+destinations must be absent or identical, and source seals/hashes, root and the
+complete rebuilt summary must still match the prepared original. Recheck before
+each MI-05 immutable writer; publish authoring first, MQTT last. The two files
+are not one transaction. Failure after publication begins may leave inert
+authoring policy installed; never delete another publication or claim rollback.
+Return native_mqtt_publication_uncertain and retain the original for explicit
+identical retry. No automatic retry, overwrite or restart. Release the gate and
+perform bounded child cleanup on success/failure.
+
+Foreground errors are exactly invalid_native_mqtt_provisioning,
+native_mqtt_source_changed, native_mqtt_publication_conflict,
+native_mqtt_host_running, native_mqtt_publication_uncertain and
+native_mqtt_provisioning_unavailable. Before a possible write, a valid closed
+error is a definite refusal. Lost/late/malformed reply after publication may
+have started is uncertain. An uncertain original cannot be replaced by a new
+file/controller selection; permit only its identical local retry. Source drift
+or destination conflict during that retry retains uncertainty for explicit
+stopped-host owner reconciliation. Changing selection invalidates ordinary
+preparation; a late completion never becomes preparation for another selection.
+All actions share the process-wide busy/session guards.
+
 ## Failures and acceptance
 
 Elixir fixed additional errors: mqtt_native_credential_required,
@@ -164,8 +235,8 @@ never logged. A failed signed/protected installation cannot become development.
 | NM-T1 | 01/02 | Literal request/reply vectors, boundaries/alternate encodings/digest changes; old ordinary frame ceilings remain. Leak, widened parser or changed original fails. | Pure/pipe |
 | NM-T2 | 02/03 | Actual Core/Host/SQLite/TLS through controlled parent pipe; keychain policy without capability, changed source, consumed/expired/owner-lost capability and parent EOF fail closed; no persisted credential or reconnect. | Process/socket |
 | NM-T3 | 01 | Inert query/group policy plus actual unsigned refusal before SecItem. Real signed app/agent, locked/denied/missing/conflicting item and account isolation are separately required. | Pure/unsigned; signed pending until executed |
-| NM-T4 | 04 | Native preparation/import/publication state machine, invalidated selection/late reply/concurrent click, exact uncertain retry and active Store refusal. Render/inspect UI; actual selected private documents and producer validate. | Swift/foreground/filesystem |
-| NM-T5 | 02/04 | Protected bundle/current peer/child pipe drift, fixed executable/environment, bootstrap timeout and shutdown/reap. Unknown result never becomes installed success. | Process; installed lifecycle separate |
+| NM-T4 | 04/05 | Native preparation/import/publication state machine, invalidated selection/late reply/concurrent click, exact uncertain retry, partial authoring publication, changed seals/root and active Store refusal. Render/inspect UI; actual selected private documents and producer validate. | Swift/foreground/filesystem |
+| NM-T5 | 02/04/05 | Protected bundle/current peer/child pipe drift, fixed executable/environment, bootstrap/foreground deadlines and shutdown/reap. Unknown result never becomes installed success. | Process; installed lifecycle separate |
 
 Freeze literal bootstrap vectors before code. Full-suite/Dialyzer, assembled
 signed release, fresh-account registration, positive Keychain/profile ownership
