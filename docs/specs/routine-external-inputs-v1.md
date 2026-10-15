@@ -1,6 +1,6 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.7. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.8. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition,
 signed-review verifier, retained codecs and SQLite graph foundations. Evidence:
@@ -430,6 +430,14 @@ causes are target selection/replacement/revocation or enrollment loss for that
 target; external profile approval/revocation advancing the globally bound policy;
 revocation of the installer, selector or approver; removal of any such author's
 whole-Thing grant; or controller source retirement/destination acceptance.
+Beginning host maintenance is also a durable loss: retire installed slots in
+that same transaction using host_maintenance_started as their cause. Ending
+maintenance requires an explicit fresh input review/install to restore use.
+This retirement occurs before any later controller-retirement operation, whose
+existing receipt remains expected_revision + 1 and the final retired Store
+revision. Input withdrawal must never append revisions after that retirement
+receipt or alter its historical identity. Original maintenance receipts and
+barrier revision remain immutable; status reports the resulting global revision.
 Native target-grant revocation resolves its principal/target through its retained
 native operation rather than parsing a concatenated journal entity. An installed
 head or later explicit user change cannot skip an earlier applicable loss.
@@ -652,6 +660,9 @@ head from its latest history through that revision, including the last install
 revision in that slot. Later acceptance/withdrawal never changes this projection.
 The pre-transfer and post-acceptance retained commitments must remain identical;
 adding empty tables, later heads or a new boot never authorizes reactivation.
+Linux package declarations, current image/status gates and independent packaged
+probes follow the explicit [schema-38 host successor](linux-update-schema35-v1.md#schema-38-external-input-successor);
+historical schema-37 package verification grants no cross-schema update.
 
 ## Implementation entry and acceptance
 

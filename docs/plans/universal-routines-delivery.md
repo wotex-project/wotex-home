@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.17. Updated: 2026-10-15. Accepted build order; implementation and
+Version: 0.1.18. Updated: 2026-10-15. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -315,6 +315,8 @@ successor. Current status and remaining order:
    Exact DDL, quota and retained graph primitives pass eighteen focused SQLite
    cases (fifty-one with the prior corpus). Live schema remains 37; integrate
    migration/Integrity/backup/recovery before exposing any new Store operation.
+   Update the explicit Linux schema cohort at the same boundary; retire inputs
+   at maintenance start before the fixed controller-retirement receipt.
    Implement schema 38 operation/history/current tables, exact original-first
    install/revoke, atomic withdrawal, integrity/migration and quarantined recovery.
 3. Implement Store-owned complete requested-scope collection from actual private

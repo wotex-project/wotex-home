@@ -1,12 +1,12 @@
 # Linux same-schema update profile for Store 35
 
-Version: 0.1.5. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.6. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.16 H16-T1/T2/T4; linux-release-update-v1 compatibility boundary.
 Implementation: explicit cohort, historical verification and current update
 guards implemented. Evidence: [executed focused software cases](../provenance/current-host-ci-remediation-2026-10.md); Linux-root/installed cases remain unexecuted.
 
 The body below preserves the executed schema-35 contract. Its final annex
-explicitly supersedes the current cohort with schema 37; every reference to
+explicitly supersedes the current cohort with schema 38; every reference to
 current schema 35 in the historical body is scoped to that earlier source.
 
 ## Purpose, inherited boundary and compatibility
@@ -128,3 +128,21 @@ verifiable but ineligible for new current updates. Require source and target
 compatibility and live schema all 37; introduce no cross-schema update/rollback.
 This successor is implemented with [executed software evidence](../provenance/generation-attempts-2026-10.md);
 earlier executed cohorts retain their source scope.
+
+## Schema-38 external-input successor
+
+The [reviewed external input owner](routine-external-inputs-v1.md) allocates schema
+38 and exactly three retained input tables. Before enabling that live schema,
+new package declarations, image/status gates and the independent embedded Store
+probe select literal 38. Exact historical format-2 compatibility for 28, 35, 36
+and 37 remains verifiable against its own bytes and is ineligible for a current
+update. Both images and the actual authenticated Store must declare integer 38;
+37, 38.0, unknown, nonwritable or unfenced status refuses new progress. Do not
+derive the package/probe expectation from Schema.current_version or silently
+rewrite a historical manifest.
+
+The existing metadata shape, old original receipts and administrative journal
+formats remain unchanged. Source/target migration, cross-schema updates and
+rollback remain outside this profile. Repeat LS-T1–T4 with explicit historical
+37 verification/refusal alongside schema-38 migration/backup/quarantine checks.
+Implementation and executed evidence for this successor remain pending.

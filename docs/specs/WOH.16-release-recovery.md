@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.144. Status: accepted target.
+Version: 0.1.145. Status: accepted target.
 
 The [HTTP dependency contract](http-header-dependency-v1.md) selects the exact
 upstream Cowlib encoder fix and bounds one advisory acknowledgement to its
@@ -51,6 +51,12 @@ schema 36 immutable originals, current export/source guards and nonrenewing
 preparation/cancellation/restart behavior. It is implemented with
 [executed SQLite/archive evidence](../provenance/generation-preparations-2026-10.md).
 It makes no provider call; handoff/attempt/candidate records remain successors.
+
+The [external input successor](routine-external-inputs-v1.md) defines schema-38
+retained history, empty-domain transfer-hash compatibility and quarantined
+recovery. Its [explicit Linux cohort](linux-update-schema35-v1.md#schema-38-external-input-successor)
+requires current package/image/live schema 38 while retaining historical package
+verification. Migration and host integration remain pending implementation.
 
 ## Release identity
 
