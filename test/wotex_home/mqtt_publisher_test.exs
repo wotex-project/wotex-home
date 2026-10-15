@@ -559,6 +559,28 @@ defmodule WotexHome.MQTTPublisherTest do
     end
   end
 
+  test "verified TLS 1.2 operates with session reuse disabled", c do
+    tls =
+      WotexHome.TestSupport.ControllerTLSFixture.create(Path.join(c.root, "tls"), "mqtt.example")
+
+    c =
+      start(c,
+        tls: [
+          certfile: String.to_charlist(tls.certificates["valid"]),
+          keyfile: String.to_charlist(tls.key),
+          versions: [:"tlsv1.2"]
+        ],
+        connection: %{
+          tls: %{server_name: "mqtt.example", cacerts: [tls.ca]},
+          credentials: fn -> :none end
+        }
+      )
+      |> attach()
+
+    send_frame(c, ~s({"value":250}))
+    assert %{received: 1, refused: 1} = status(c, 1)
+  end
+
   test "actual client diagnostics and crash reports redact secrets while unrelated logging remains",
        c do
     c = start(c) |> attach()

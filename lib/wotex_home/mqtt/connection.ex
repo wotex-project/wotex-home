@@ -13,7 +13,8 @@ defmodule WotexHome.MQTT.Connection do
   installation. It returns `:none` or `{:password, username, password}`;
   password authentication requires TLS, a 1 to 128-byte UTF-8 username and a
   1 to 4,096-byte password. TLS verifies the peer chain and configured hostname
-  with the supplied CA certificates. No credential enters delivery messages.
+  with the supplied CA certificates. TLS session reuse and tickets are disabled
+  so a new publisher verifies its own policy. No credential enters delivery messages.
 
   The client uses MQTT 3.1.1 with a clean session and no reconnect. Subscription
   requests use QoS 1; each grant must be QoS 0 or 1, and a resumed session refuses.
@@ -106,6 +107,8 @@ defmodule WotexHome.MQTT.Connection do
       ssl: true,
       ssl_opts: [
         verify: :verify_peer,
+        reuse_sessions: false,
+        session_tickets: :disabled,
         log_level: :none,
         cacerts: tls.cacerts,
         server_name_indication: String.to_charlist(tls.server_name),
