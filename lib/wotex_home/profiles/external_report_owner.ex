@@ -2,15 +2,39 @@ defmodule WotexHome.Profiles.ExternalReportOwner do
   @moduledoc """
   Holds decoded reports from one publisher for consumption by one Store.
 
-  Trusted host composition binds the publisher, source owner, Store and receipt
-  clock. Only that publisher may publish or cancel a report; only the configured
-  Store may checkout and finish it. The owner validates report shape and source
-  correspondence before lending the exact decoded report for one operation.
+  Trusted host composition supplies live `:publisher` and `:source_owner` PIDs
+  and the configured `:store_owner` reference to `start_link/1`. Only that
+  publisher may `publish/5` or `cancel/2`. `receipt_clock/1` returns this owner's
+  incarnation epoch and current boot-monotonic microseconds; a report's receipt
+  coordinate must belong to that epoch, be no earlier than owner startup, and
+  remain within its original lifetime. The publisher still owns establishing
+  when the transport actually delivered the bytes.
 
-  Custody is transient and bounded. Expiry, source changes or monitored-owner
-  loss retire use, and a restart creates a new epoch rather than replaying
-  reports. Publication here is buffering, not interpretation, durable admission
-  or a claim that a physical device is qualified.
+  `publish/5` binds a report ID to the exact source selection and decoded report,
+  returning `{:ok, summary}`, `:not_found` for an absent source, or
+  `{:error, reason}`. Exact republication returns the retained summary without
+  renewing its lifetime; changed content under the same ID conflicts. A repeated
+  non-null source/epoch/channel/sequence correlation under a new ID is a duplicate.
+  `status/2` and `catalogue/1` expose retained summaries, not report payloads.
+
+  Only the Store may `checkout/2` the report and canonical document, `validate/3`
+  their caller-bound commit guard, and `finish/2` consumption. Exact consumed
+  completion returns `:ok` again. Expired, invalidated or cancelled reports
+  refuse further checkout; a missing ID is `:not_found`. Store retains ownership
+  of authentication, current target/grant checks and durable observation commit.
+
+  Each report document is bounded to 65,536 bytes. `:report_limit` defaults to
+  128 active reports and allows at most 256; `:max_bytes` defaults to its ceiling
+  of 4,194,304 active document bytes. `:ttl_ms` defaults to 60,000 and is
+  configurable from 100 to 60,000 ms.
+  At most 1,024 IDs, including retired summaries, remain in one incarnation;
+  new publication exceeding quotas returns `{:error, :external_report_capacity}`.
+
+  Expiry and source changes retire active use. Publisher or source-owner loss
+  stops this temporary child; a new owner has a fresh epoch and no restored
+  reports. Publication is buffering, not interpretation, durable admission or
+  physical qualification. The publisher receives no Store connection or operator
+  credential through this service.
   """
 
   use GenServer

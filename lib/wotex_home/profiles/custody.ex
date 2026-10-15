@@ -2,17 +2,39 @@ defmodule WotexHome.Profiles.Custody do
   @moduledoc """
   Serialized private custody for inert portable profile bytes.
 
-  The trusted host supplies an existing, absolute, symlink-free 0700 root.
-  Every path component is pinned and checked around access. Publication uses
-  an exclusively created, synchronized file and a non-replacing hard link;
-  the directory is synchronized before success. Files are read-only and are
-  verified by descriptor identity, exact digest and a fresh closed parse.
+  Trusted host composition starts `start_link/1` with an existing absolute,
+  symlink-free mode-0700 `:root`; `:store_owner` identifies the authorized export
+  and collection caller. `stage/2` parses a `WotexHome.Profiles.Artifact`;
+  `stage_object/3` frames an original payload with a supported
+  `WotexHome.Profiles.AuthoringObject` kind. Both return
+  `{:ok, digest}` after publication. Framing an authoring object does not validate
+  its document schema or approve its content.
 
-  Finite object/byte/lease quotas include crash orphans. Leases belong to a
-  monitored caller. Collection accepts a retained reference snapshot only from
-  the trusted configured Store owner and also preserves leases. No active
-  pointer, trust approval or Store connection lives here. An actor controlling the host account is
-  outside this custody boundary.
+  `read/2` and `read_object/2` return `{:ok, value}` with the checked artifact or
+  authoring object, or `{:error, reason}` when unavailable.
+  For bytes that must remain protected from collection during bounded work,
+  `lease/2` returns `{:ok, %{token: token, artifact: artifact}}` and
+  `lease_object/2` returns `{:ok, %{token: token, object: object}}`. The calling
+  process owns the token and must `release/2` it; caller death drops its leases.
+  A service restart retains files but restores no transient lease tokens.
+
+  Object, byte and lease defaults are also ceilings: 128 namespace entries,
+  4,194,304 total bytes and 32 leases. Host options may lower them. Stored profile
+  and authoring bytes share these quotas, including inert crash orphans.
+  Capacity refusals include `:profile_custody_capacity` and
+  `:profile_lease_capacity` in `{:error, reason}` tuples.
+
+  Only the configured Store may `collect/2`, `collect_objects/2`, `export_many/2`
+  or `export_objects/2` using its retained reference snapshot. Collection also
+  protects current leases; exports are exact and all-or-nothing. Other reads and
+  publication establish private byte custody, not an active selection or trust
+  approval, and the service receives no Store connection.
+
+  Every path component is pinned and checked around access. Publication uses an
+  exclusively created synchronized file and a non-replacing hard link, followed
+  by directory synchronization. Mode-0400 files are rechecked by descriptor
+  identity, digest and closed parsing. Host-account compromise is outside this
+  custody boundary.
   """
 
   use GenServer
