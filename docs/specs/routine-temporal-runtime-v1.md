@@ -1,8 +1,8 @@
 # Bound temporal producer runtime v1
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted target.
 Owner: WOH.20 H20-02/07/08, WOH.07 runtime correspondence and WOH.14 current guards.
-Implementation: RTR-01–03 and complete guard inventory implemented; ten-member Store opening/closing cases pass. Final-reader/historical acceptance remains partial.
+Implementation: RTR-01–05 implemented under the restricted single-schedule profile. Finite pure/archive and durable software cases have executed evidence; installed-host and physical qualification remain separate.
 Evidence: [pinned source, runtime mutations and bounded Store cases](../provenance/routines-runtime-2026-10.md).
 
 ## Scope and prerequisites
@@ -123,7 +123,8 @@ unscoped queue/no-send/claim/handoff guard is a current-basis policy denial:
 restore tentative work, retain any required sticky withdrawal against the
 original phase and return the typed refusal while leaving the writer usable.
 It is not database corruption. Raw SQL failures, damaged historical content
-and other unclassified errors still roll back and disable writes. No duplicate reservation, spent-root refund or retry of
+and other unclassified errors still roll back and disable writes. No duplicate
+reservation, spent-root refund or retry of
 an uncertain committed handoff is introduced. Default-disabled physical dispatch
 and the single-active ordinary Light profile stay intact.
 

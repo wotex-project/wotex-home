@@ -30,8 +30,8 @@ development source: SP.08 values, facade/domain operation, shared recurrence pos
 bounded query/cursor enumeration and independent DST/calendar/page vectors.
 Its full local gate passed 401 tests with 97.0% coverage and actual archive/
 notebook consumers on Elixir 1.20.4/OTP 29.0.4. Optional absent-tool checks were
-skipped by that repository's gate. No Home dependency or scheduler adapter has
-been selected/changed; stage 2 software evidence does not complete stage 5.
+skipped by that repository's gate. That stage 2 milestone selected no Home
+dependency or scheduler adapter; later temporal selection is recorded below.
 
 ## Normative owners
 
@@ -49,8 +49,9 @@ archive contents, dependency audit and application-free checks pass. The
 catalogue retains partial status for execution joins and independent adoption.
 Home's restricted read-only archive comparison now passes 360 finite cases
 and duplicate/blocked-root/forged-source checks; see the
-[shadow profile](../specs/routine-shadow-v1.md). Its runtime consumer remains
-planned; no kernel dependency is selected yet.
+[shadow profile](../specs/routine-shadow-v1.md). The restricted kernel runtime
+consumer remains planned. Routines is now selected for the separately bounded
+temporal calculation path recorded in the current checkpoint below.
 
 WoTEx now implements source/IR regeneration, qualified snapshots, retained
 composition and staged receipts, reported-edge qualification, complete
@@ -159,10 +160,15 @@ required the authored 1024-module bound; no module filtering is permitted.
 [Executed evidence](../provenance/routines-runtime-2026-10.md) includes independent
 calendar/source mutations, all-member runtime/guard mutations, producer absence,
 actual SQLite retention/restart, calendar activation and qualified-clock polling.
+The all-member writer campaign now covers opening/closing/final drift,
+queue/no-send/claim/handoff, poll preparation, withdrawal SQL faults and retained
+spent/unknown roots. Historical v1–v3 active rows withdraw without rewriting old
+admissions or originals; same-owner restart creates no new authorization,
+clock custody or claim token. The targeted 73-case runtime/current-guard
+milestone passed; no full application suite, Dialyzer or host build is inferred.
 
-Next, complete the actual writer phase campaign: queue/claim/handoff and poll
-preparation with producer drift at opening/closing/final checks, rollback faults
-and retained spent/unknown roots; then historical v1–v3 active-row withdrawal,
-restart and unchanged mutable current guards. These are incomplete acceptance
-obligations, not a reason to rewrite old receipts. Full mechanism and host/physical
-qualification remain separate milestones.
+Next, define and adopt the restricted generic kernel runtime seam before wider
+sensor/composition admission. The archive shadow profile remains its independent
+comparison evidence. Stage 6 still requires qualified fact continuity, complete
+sets, multi-root/step schema and a concrete admission proof. Installed host,
+minimum-window load and physical campaigns remain separate obligations.

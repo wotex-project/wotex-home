@@ -3,9 +3,10 @@
 This record owns incremental Home evidence for the
 [temporal runtime successor](../specs/routine-temporal-runtime-v1.md).
 Dependency selection, production calendar delegation and the complete v4
-runtime identity are implemented. Expanded opening/closing Store phase-fault
-checks pass; the later checkpoints retain final-reader and historical
-current-row acceptance separately.
+runtime identity are implemented. Expanded opening/closing/final Store
+phase-fault, historical retained-row and current-guard checks have bounded
+software evidence below. Wider routine admission and installed/physical
+qualification remain separate.
 The separate [civil archive record](routines-civil-2026-10.md) retains the
 producer archive identities and all prior comparison evidence.
 
@@ -252,9 +253,103 @@ restore compiler options, stop owned Stores and remove private SQLite
 directories. A post-run scan found no `.held` backup. Normal locked dependency
 and compiled caches remain for incremental work. No Docker container, image,
 volume, standalone archive, generated documentation tree or release was created.
-Historical retained-row/current-authority acceptance and the broader mechanism
-milestone remain open.
+At this final-reader checkpoint, historical retained-row/current-authority
+acceptance and the broader mechanism milestone remained open. The following
+checkpoints retain their subsequent results separately.
 
 Scoped formatting, `mix compile --warnings-as-errors`, `mix woh.spec.check`
 (22 working catalogue contracts) and `git diff --check` passed. ExecutionWriter's
 source SHA-256 is `a24c7e7f6dbd0b9c6e1155bebb6f5ee18a7e9992054bc7f1d0ef0a4df136a346`.
+
+## Historical retained-row acceptance
+
+The actual SQLite matrix covers each v1/v2/v3 profile with held, queued, claimed
+and already dispatching work, both without restart and after a same-owner
+restart. Each profile also has a dispatching case whose withdrawal insert
+aborts. These are 27 distinct cases. No production switch, receipt rewrite,
+schema migration or legacy authorization fallback was added.
+
+A controlled test-only TemporalBasis producer runs the full current finite
+proof, but emits each exact historical profile/obligation list and the older
+Home-only runtime/domain. Inspection of repository objects 6479c1b, 276d0aa and
+5f14995 independently confirmed those older inputs. Tests contain the explicit
+lists and require no historical Git object, network or archived dependency.
+The temporary module's loaded code and retained BEAM match while the real Store
+admits, activates and advances the fixture. Before switching to production v4,
+the actual current-admission reader accepts that exact retained artifact.
+
+The fixture then restores the original current TemporalBasis BEAM, or stops
+Store, restores it and restarts the same database with its existing private
+qualification keys. It supplies no replacement clock or claim owner on restart.
+This is controlled historical-content software evidence, not execution of an
+archived old release, an atomic live upgrade or installed-host qualification.
+
+Production v4 withdraws the old activation before selecting work, returns
+inactive polling status and creates no poll slot or new original. The complete
+admission rows remain byte-identical by an independently retained row hash;
+their old profile, immutable admission receipt and original occurrence remain
+readable. Held roots stay unspent; queued/claimed/handed-off roots stay spent.
+Unsent work is rejected. A live committed handoff becomes unknown under the
+generation fence, retaining its worker owner to prevent concurrent
+reconciliation. Restart first retains `crash_after_handoff` uncertainty and
+creates no replacement owner; subsequent withdrawal does not count that
+already terminal original as a newly affected or unknown outcome. Withdrawal
+SQL faults prove actual generation-update observation, restore the prior phase
+and revision, retain every old admission byte and disable writes. Every case
+validates complete snapshot integrity and stops its Store.
+
+Executed with the root pinned toolchain and locked producers:
+
+- The first v3 run, seed **534852**, selected nine cases in 41.6 seconds. Its SQL-fault case passed; eight expectations incorrectly required an error instead of the owning API's inactive result. That expectation was corrected against the actual `ScheduleOccurrences.prepare_poll/2` contract.
+- `WOTEX_HOME_GIT_DEPS=1 mix test test/wotex_home/durable_enrollment_test.exs --only temporal_historical --warnings-as-errors`: **27 cases, three failed test expectations**, seed **376220**, 67.1 seconds. Twenty-four passed. The three live handed-off cases correctly retained their worker owner; the test had incorrectly required an empty owner map. No production change followed from this finding.
+- After correcting the phase-specific owner expectation, `WOTEX_HOME_GIT_DEPS=1 mix test test/wotex_home/durable_enrollment_test.exs --only temporal_historical_phase:dispatching --warnings-as-errors`: **nine passed**, seed **101607**, 30.5 seconds, covering every profile's live handoff, restart and SQL failure. Together with the unchanged eighteen non-dispatching positives above, every historical matrix case has positive executed evidence.
+
+Temporary BEAMs and compiler options are restored in both normal and fallback
+cleanup. Store fixtures use their existing private directory cleanup. These
+tests create no archive, release/image, generated docs or Docker resource.
+
+## Bounded runtime and current-guard milestone
+
+After the final-reader classification fix and historical fixture restoration,
+this targeted mechanism command passed on root Elixir 1.19.6 / OTP 28.5.0.6:
+
+```sh
+WOTEX_HOME_GIT_DEPS=1 mix test \
+  test/wotex_home/runtime_artifacts_test.exs \
+  test/wotex_home/schedule_admission_artifact_test.exs \
+  test/wotex_home/durable_schedule_admission_test.exs:87:179 \
+  test/wotex_home/durable_schedule_lifecycle_test.exs:133:250:403:430:729 \
+  test/wotex_home/durable_schedule_occurrences_test.exs:133:176:198:244 \
+  test/wotex_home/durable_enrollment_test.exs:2580:2750:3388:3468:3918:4388 \
+  --warnings-as-errors
+```
+
+**73 passed**, seed **436221**, 95.6 seconds; 652 unrelated tests were excluded
+by explicit file/line selection. No socket-free switch was used. The full
+runtime-artifact/admission-artifact files repeat complete inventory, historical
+decoding/current refusal, source/calendar mutations and current producer
+availability. Selected actual Store cases repeat original-author/epoch/CAS and
+declaration checks, target-grant withdrawal/restoration, private clock/restart
+custody, competing polls/backward correction, installed timezone equality,
+independent temporal boundary oracle, generation/cancellation, invariant expiry,
+operator override and final queue/no-send/claim/handoff clock/qualification/SQL
+guards. No mutable fact is replaced by the v4 runtime proof.
+
+These executed finite cases supply RTR-T1–T5's stated pure/archive and durable
+software evidence alongside the separately recorded civil producer archives and
+phase matrices. They do not supply installed clock/storage qualification,
+minimum-window load reliability, physical acknowledgement, wider/composed
+admission, a full Home suite, Dialyzer, a release/image or a host campaign.
+
+Final scoped formatting, warnings-as-errors compilation, all **22 working**
+catalogue contracts, all **21 staged** catalogue contracts, 27 changed-document
+local references and Git whitespace checks passed. The staged catalogue check
+used a disposable projection of indexed spec files, removed on completion;
+unrelated research edits remain outside this commit. Historical test source
+SHA-256 is `6036a407a83b2bc3a157fdcb89b6b1d1c7ff1cb7846b746906158e473dfa948e`.
+The production TemporalBasis source remains unchanged at
+`456461bca2f5fc82e57aaeedd8fb4912187e95bfe33f50a1cf9e2a8a2adbf3a9`.
+A final scan found zero enrollment fixture directories, staged-spec projections
+or `.held` BEAM backups, and the restored compiled RuntimeArtifacts contains
+no fixture hook. No Docker resources were created or removed; shared resources
+and useful dependency/build caches were preserved.

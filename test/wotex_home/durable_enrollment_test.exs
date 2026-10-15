@@ -4899,6 +4899,206 @@ defmodule WotexHome.DurableEnrollmentTest do
     end
   end
 
+  for version <- 1..3,
+      phase <- [:held, :queued, :claimed, :dispatching],
+      mode <- [:current, :restart] ++ if(phase == :dispatching, do: [:sql_fault], else: []) do
+    @tag temporal_historical: true
+    @tag temporal_historical_version: version
+    @tag temporal_historical_phase: phase
+    test "historical temporal v#{version} #{phase} retains its original through #{mode} current-basis refusal",
+         %{path: path} do
+      with_historical_temporal_fixture(unquote(version), fn restore ->
+        {store, manager, _thing, _owner, activation} = temporal_fixture(path, 90_000)
+        {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+        operation = original.occurrence_id
+
+        if unquote(phase != :held) do
+          assert {:ok, {:ok, %{receipts: [%{disposition: :queued}]}}} =
+                   temporal_advance_fixture(store, snapshot)
+        end
+
+        final_admission_clock(store, snapshot)
+
+        token =
+          if unquote(phase in [:claimed, :dispatching]),
+            do: final_phase_token(store, :handoff, operation)
+
+        if unquote(phase == :dispatching) do
+          assert {:ok, %{disposition: :dispatching}} =
+                   final_phase_call(store, :handoff, operation, token)
+        end
+
+        {:ok, db} = Sqlite3.open(path)
+
+        [[input, artifact_document, admission_revision]] =
+          rows(db, "SELECT input_document,artifact_document,revision FROM schedule_admissions")
+
+        {:ok, artifact} = WotexHome.Schedules.AdmissionArtifact.decode(artifact_document)
+
+        assert artifact.temporal_basis["profile"] ==
+                 "single-schedule-temporal-v#{unquote(version)}"
+
+        assert WotexHome.Schedules.TemporalBasis.valid?(artifact.temporal_basis)
+        assert {:ok, admission_original} = Store.original_schedule_status(store, manager, input)
+
+        assert {:ok, ^artifact, "manager:schedule"} =
+                 temporal_sql_fixture(store, fn state ->
+                   WotexHome.Durable.Store.ScheduleWriter.current_admission(
+                     state.db,
+                     admission_revision
+                   )
+                 end)
+
+        admission_rows = rows(db, "SELECT * FROM schedule_admissions ORDER BY revision")
+        admission_hash = :crypto.hash(:sha256, :erlang.term_to_binary(admission_rows))
+
+        store =
+          if unquote(mode == :restart) do
+            {_old_store, keys, _thing} = Process.get(:temporal_fixture_details)
+            assert :ok = GenServer.stop(store)
+            assert :ok = restore.()
+            {:ok, restarted} = Store.start_link([path: path] ++ keys)
+            Process.put(:temporal_runtime_fixture_store, restarted)
+            restarted
+          else
+            assert :ok = restore.()
+            store
+          end
+
+        assert {:ok, before} = Store.revision(store)
+        [[generation_row]] = rows(db, "SELECT rowid FROM meta WHERE key='rule_generation'")
+        observer = self()
+
+        :sys.replace_state(store, fn state ->
+          :ok = Sqlite3.set_update_hook(state.db, observer)
+          state
+        end)
+
+        if unquote(mode == :sql_fault) do
+          assert :ok =
+                   Sqlite3.execute(
+                     db,
+                     "CREATE TRIGGER historical_runtime_fault BEFORE INSERT ON schedule_lifecycle_operations WHEN NEW.kind='withdraw' BEGIN SELECT RAISE(ABORT,'injected historical runtime fault'); END"
+                   )
+        end
+
+        result = Store.prepare_schedule_poll(store)
+        assert_receive {:update, "main", "meta", ^generation_row}, 1_000
+        assert :sys.get_state(store).schedule_poll == nil
+
+        if unquote(mode == :sql_fault) do
+          assert {:error, :store_unavailable} = result
+          assert {:ok, ^before} = Store.revision(store)
+
+          assert {:ok, %{disposition: :dispatching}} =
+                   Store.request_status(store, manager, 1, operation)
+
+          assert [[0]] =
+                   rows(
+                     db,
+                     "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                   )
+
+          assert {:ok, %{writable: false}} = Store.health(store)
+          assert :ok = Sqlite3.execute(db, "DROP TRIGGER historical_runtime_fault")
+        else
+          # A basis already stale at preparation is withdrawn before selecting
+          # work. The owning poll API returns inactive status, with no slot.
+          assert {:ok, %{state: :inactive}} = result
+
+          assert {:ok, %{state: :suspended, reason: "stale_schedule_admission"}} =
+                   Store.schedule_status(store, manager)
+
+          {disposition, reason, affected, unknown} =
+            unquote(
+              case {phase, mode} do
+                {:dispatching, :restart} ->
+                  {:outcome_unknown, "crash_after_handoff", 0, 0}
+
+                {:dispatching, _} ->
+                  {:outcome_unknown, "rule_generation_fenced_after_handoff", 1, 1}
+
+                _ ->
+                  {:rejected, "rule_generation_fenced", 1, 0}
+              end
+              |> Macro.escape()
+            )
+
+          assert {:ok, %{disposition: ^disposition, reason: ^reason}} =
+                   Store.request_status(store, manager, 1, operation)
+
+          assert [[1, ^affected, ^unknown]] =
+                   rows(
+                     db,
+                     "SELECT COUNT(*),SUM(affected_requests),SUM(unknown_outcomes) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                   )
+
+          assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(store)
+          assert {:ok, %{state: :inactive}} = Store.prepare_schedule_poll(store)
+          assert {:ok, %{requests: []}} = Store.pending_scheduled_power(store)
+          # A live handed-off worker retains its owner until it finishes, so
+          # reconciliation cannot race it. Unsent claims are pruned; restart
+          # never manufactures a replacement owner or retry token.
+          owners = unquote(if phase == :dispatching and mode == :current, do: 1, else: 0)
+          assert map_size(:sys.get_state(store).claim_owners) == owners
+          assert :sys.get_state(store).schedule_poll == nil
+        end
+
+        spent = unquote(if phase == :held, do: 0, else: 1)
+        handed = unquote(if phase == :dispatching, do: 1, else: 0)
+
+        assert [[^spent, ^handed, 1]] =
+                 rows(
+                   db,
+                   "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching'),(SELECT COUNT(*) FROM schedule_considerations) FROM request_causal_roots WHERE origin='schedule_occurrence'"
+                 )
+
+        retained_rows = rows(db, "SELECT * FROM schedule_admissions ORDER BY revision")
+        assert :crypto.hash(:sha256, :erlang.term_to_binary(retained_rows)) == admission_hash
+        assert {:ok, ^admission_original} = Store.original_schedule_status(store, manager, input)
+        assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+        assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+        assert :ok = Sqlite3.close(db)
+        assert :ok = GenServer.stop(store)
+      end)
+    end
+  end
+
+  # Controlled historical fixture producer: run the full current finite proof,
+  # but emit the exact older profile/obligations and old Home-only runtime
+  # domain. Actual Store admission, activation, SQL history and guards are used.
+  # Restoring the normal module then exercises v4 against those retained rows.
+  # This is not an archived release or an atomic live-upgrade qualification.
+  defp with_historical_temporal_fixture(version, callback) do
+    legacy =
+      ~w(exact_source_effect single_absolute_effect one_candidate_per_window zero_early_half_open_window whole_interval_tolerance original_boot_generation monotonic_considered_cursor bounded_missed_range no_uncertain_retry finite_guard_precedence original_author_required no_composed_activation)
+
+    source = legacy ++ ~w(actual_source_window_correspondence actual_source_cursor_correspondence)
+    calendar = source ++ ~w(independent_calendar_recurrence_correspondence)
+    obligations = %{1 => legacy, 2 => source, 3 => calendar}[version]
+    path = Path.expand("../../lib/wotex_home/schedules/temporal_basis.ex", __DIR__)
+
+    with_runtime_module_fixture(
+      WotexHome.Schedules.TemporalBasis,
+      path,
+      fn code ->
+        replacements = [
+          {~s("profile" => @profile), ~s("profile" => "single-schedule-temporal-v#{version}"), 1},
+          {~s("obligations" => @obligations), ~s("obligations" => #{inspect(obligations)}), 1},
+          {"RuntimeArtifacts.temporal_applications()", "[:wotex_home]", 2},
+          {~s(@domain "wotex-home.single-schedule-runtime.v2"),
+           ~s(@domain "wotex-home.single-schedule-runtime.v1"), 1}
+        ]
+
+        Enum.reduce(replacements, code, fn {before, replacement, count}, code ->
+          assert length(String.split(code, before)) == count + 1
+          String.replace(code, before, replacement)
+        end)
+      end,
+      callback
+    )
+  end
+
   # Test-only fault insertion into a temporary loaded/file-matching BEAM.
   # Store, SQL, admission and final guard code remain unchanged. No source or
   # production hook is added; normal tests run the restored original artifact.
