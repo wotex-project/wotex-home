@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.122. Status: accepted target.
+Version: 0.2.123. Status: accepted target.
 
 The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
 now defines fresh signed authorization after human review, unchanged first originals,
@@ -10,9 +10,11 @@ are [v8 pending custody](native-pending-paired-authoring-v8.md) and
 mixed-version correspondence. The v8 representation/private CAS and mixed-version
 paired guards now have [executed foundation evidence](../provenance/native-pending-paired-authoring-2026-10.md).
 The v2 workspace now has [executed custody/local-refusal
-evidence](../provenance/native-generation-workspace-v2-2026-10.md). Signed category
-consumers remain planned; physical guards and current local evidence retain their
-existing scope.
+evidence](../provenance/native-generation-workspace-v2-2026-10.md). The paired manual
+closed consumer and TLS upload-owner lifecycle now have [executed transport/Store
+and unsigned-refusal evidence](../provenance/native-paired-authoring-consumer-2026-10.md).
+Paired generation, selected authoring/panel composition and installed signed success
+remain planned; physical guards and current local evidence retain their scope.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)
 defines durable root/attempt workspace custody, explicit policy/consent/budget,

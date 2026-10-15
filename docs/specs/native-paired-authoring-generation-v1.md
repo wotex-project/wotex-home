@@ -1,9 +1,11 @@
 # Paired native authoring and generation composition
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18A-02/04/05 and H18-T15/T16/T17.
-Implementation: planned. Evidence: missing.
+Implementation: paired manual closed consumer and upload-owner lifecycle implemented;
+selected driver/presentation, generation consumer and installed signed success
+remain planned. Evidence: [manual consumer checks](../provenance/native-paired-authoring-consumer-2026-10.md).
 
 ## Outcome and dependency order
 
@@ -24,9 +26,10 @@ required; decoded public metadata/raw keys cannot create a production session.
 New representation prerequisites are [v8 pending](native-pending-paired-authoring-v8.md)
 and [v2 workspace](native-generation-workspace-v2.md), now implemented as private
 metadata dependencies with [workspace evidence](../provenance/native-generation-workspace-v2-2026-10.md).
-They create no signed session or dispatch. Continue with paired manual closed
-consumer, paired generation consumer, selected driver/panel composition and
-installed acceptance.
+They create no signed session or dispatch. The paired manual closed consumer
+now has transport/Store and actual unsigned-factory refusal evidence. Continue
+with paired generation consumer, selected driver/panel composition and installed
+signed acceptance; software checks do not establish successful signed publication.
 
 ## Current signed scope and human review
 

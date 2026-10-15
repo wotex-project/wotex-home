@@ -1,11 +1,12 @@
 # Native paired authoring and generation custody v8
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18A-02/04/05 and H18-T15/T16/T17.
 Implementation: representation/private publication and mixed-version paired
-correspondence implemented; category dispatch remains disabled pending its signed
-consumer. Evidence: [executed foundation checks](../provenance/native-pending-paired-authoring-2026-10.md).
+correspondence implemented. Paired manual lookup/retry now has its fixed consumer;
+paired generation remains disabled. Consumer evidence is recorded
+[separately](../provenance/native-paired-authoring-consumer-2026-10.md). Foundation evidence: [executed foundation checks](../provenance/native-pending-paired-authoring-2026-10.md).
 
 ## Result and inherited boundary
 

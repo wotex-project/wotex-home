@@ -1255,9 +1255,9 @@ Run `mix woh.native.pending.storage.smoke --paired-authoring` for independent
 v8 corpus, upgrade/no-op/CAS, process restart and competing publishers. The default
 storage task includes those cases along with older cohorts.
 `mix woh.native.paired.recovery.smoke` checks mixed-version correspondence and
-actual production new-category refusal before clock/network. Decoding v8 creates
-no signing seal or current grant; paired authoring/generation dispatch remains
-disabled until its closed signed consumers exist. The [v2 workspace](../../docs/specs/native-generation-workspace-v2.md) now
+actual production refusal before clock/network. Decoding v8 creates no signing
+seal or current grant. Paired manual lookup/retry now uses its fixed original
+consumer; paired generation remains disabled. The [v2 workspace](../../docs/specs/native-generation-workspace-v2.md) now
 retains paired custody under the same fixed file, with v1-to-v2 upgrade and
 version retention through archive/empty/local writes. v1 markers still refuse
 paired records. `mix woh.native.generation.workspace.smoke` checks both versions,
@@ -1265,4 +1265,30 @@ independent vectors, eight process races, restart and mixed-root upgrade. The
 local driver refuses paired workspace operations before credential capture;
 `mix woh.native.generation.flow.smoke` checks that boundary and existing local
 Store flows. Workspace metadata creates no signed session or model dispatch;
-closed signed consumers remain the next step.
+paired generation and selected signed composition remain next steps.
+
+
+## Paired manual authoring consumer
+
+The [composition contract](../../docs/specs/native-paired-authoring-generation-v1.md)
+now has a closed manual import/candidate/review runner. It requires current
+profile:manage around each domain exchange, reads original status before retry,
+and uses the existing actual signed original-purpose factory for production.
+Private capture/result publication checks live scope through the same seal and
+five-second lifetime. There is no raw-key production session initializer.
+
+`mix woh.native.paired.recovery.smoke` checks real pairing and pinned loopback TLS
+with a private Store/custody owner: exact draft import, compatible manual assessment,
+incomplete source review, dropped committed replies and no mutation on subsequent
+retry. New native processes/Store restart retain original review history, while
+revocation retains pending metadata. Its raw fixture credentials and explicit
+fixture clock establish transport behavior only. Actual unsigned factory checks
+refuse before clock/network; installed positive signing/Keychain publication and
+selected driver/presentation remain separate acceptance work. See the
+[executed evidence](../../docs/provenance/native-paired-authoring-consumer-2026-10.md).
+
+The TLS listener now supplies a bounded transient upload owner, or pins an explicit
+owner bound to its exact Store. Owner loss fences accepted sockets. Listener stop
+retires its owned uploads, leaves an external owner alive, and never replays durable
+originals. `mix test test/wotex_home/controller_listener_test.exs test/wotex_home/authoring_upload_test.exs`
+checks those lifetimes and the existing upload bounds.
