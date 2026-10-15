@@ -172,3 +172,29 @@ sensor/composition admission. The archive shadow profile remains its independent
 comparison evidence. Stage 6 still requires qualified fact continuity, complete
 sets, multi-root/step schema and a concrete admission proof. Installed host,
 minimum-window load and physical campaigns remain separate obligations.
+
+## Explicit kernel adoption order
+
+The [kernel successor](../specs/routine-kernel-adoption-v1.md) is the next runtime
+entry contract. Current admitted invocation builds held work directly; the
+credential-free draft Sandbox is a separate path. Adopt the actual public
+Compiler/Kernel initial proposal without changing that distinction or widening
+admission. All generic mapping data stays in Home; no household policy enters
+WoTEx or ExBooking. The selected public producer APIs already cover this join.
+
+1. Implement the bounded Home installed mapping, source/program conversion and
+   complete initial-result validation. Preserve wider supported pure ownership
+   values; actual durable admission remains its existing one-effect profile.
+2. Bind a current v4 proposal proof to the complete producer cohort and actual
+   source-specific Kernel checks. Decode v3 only as unchanged historical content.
+3. Add authenticated inert preparation, Authority calculation outside the writer
+   and current/final Store revalidation before one held original/root. Preserve
+   the existing invoke API through the same sequence; close raw-message bypasses.
+4. Execute producer/native/projection mutations, actual duplicate/race/SQL and
+   history/restart/adapter cases, then the owning mechanism milestone. Keep the
+   draft archive oracle and its result scope explicit.
+
+These steps do not complete stage 6. Qualified sensor facts, complete-set
+collection, composed run/step roots, durable completion and wider admission still
+follow their owning contracts. No host/image/full-suite gate is part of a pure
+mapping edit; milestone evidence must name the checks actually executed.

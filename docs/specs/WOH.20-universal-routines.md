@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.5. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.6. Updated: 2026-10-15. Status: accepted target.
 Implementation: partial, restricted comparison, pure timezone/calendar joins and bounded temporal runtime adoption.
 Evidence: finite software subset; full acceptance cases remain open.
 
@@ -243,3 +243,15 @@ withdrawal/restart and unchanged current guards now have bounded software
 evidence. Wider routine admission, installed hosts and physical qualification
 remain open. Both successors retain their separately stated scope. Existing
 single-active admission and physical qualification requirements remain intact.
+
+## Explicit kernel runtime successor
+
+The [kernel adoption contract](routine-kernel-adoption-v1.md) owns the initial
+generic proposal for the admitted explicit Boolean Light rule. It specifies the
+consumer-owned installed mapping, exact generic input/result, complete-runtime
+v4 proof, historical v3 decoding and Authority calculation followed by current
+and final Store repeats. Draft desired-state suppression remains separate from
+the actual held-request path. The wider pure ownership range is preserved;
+durable admission remains one millisecond and one effect. The contract is authored
+before implementation; no runtime or new admission evidence follows from it.
+Full composed execution and sensor joins remain subsequent WOH.20 obligations.
