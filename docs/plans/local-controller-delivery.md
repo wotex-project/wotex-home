@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.24. Updated: 2026-10-15. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads, paired first-power composition and last resolved power receipt lookup are implemented development entries; installed signed success, certificate-clock qualification, broader paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
+Version: 0.1.25. Updated: 2026-10-15. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads, paired first-power composition and last resolved power receipt lookup are implemented development entries; installed signed success, certificate-clock qualification, broader paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
 
 The [paired power entry](../specs/native-paired-power-v1.md) joins an actual
 authenticated view basis, fresh click scope and one busy reservation across first
@@ -45,6 +45,20 @@ quick-bar checks cover their own boundaries. Narrow/wide panels were inspected
 and temporary previews removed; no full release was built for these checks.
 Continue installed signed/issuer qualification separately, then the broader
 paired tool/history and admitted temporal successors in this plan.
+
+The next temporal join uses a separate generic civil query rather than
+re-anchoring an RRULE and changing its original ordinal. ExBooking's
+[bounded civil occurrence contract](../../../ex_booking/docs/specs/SP.09-civil-occurrences.md)
+is implemented at local commit `dd82677`; its full local quality milestone,
+extracted consumer and six notebooks passed. It returns original local/UTC
+points over at most 366 explicit dates, with policies applied before UTC filtering
+and no global ordinal. Home still consumes pinned ExBooking `25ad045` and has
+not selected this newer commit or replaced its recurrence calculator. First
+specify and build the generic WRO.03 civil adapter, then the Home immutable
+TZif/original-occurrence join. Runtime adoption also needs a complete bounded
+producer artifact cohort and current-Store proof revalidation; the existing
+Home-only temporal digest cannot certify changed producer code. Existing native
+and physical qualification gates remain independent of these pure calculations.
 
 ## Product outcome
 
@@ -185,8 +199,10 @@ five-second continuous lifetime bounds custody, clock production, exchanges
 and typed delivery; it cannot renew cached custody. Independent scope and real
 file checks plus actual unsigned factory refusal pass. These establish no
 successful installed session. Shared window/menu software is implemented by the
-driver above; the owning trusted certificate-clock producer remains next.
-Installed signed/profile/SecItem and macOS 15 TLS remain actual gates.
+driver above, and the actual certificate-clock owner is composed through
+[shared Setup and production factories](../provenance/native-certificate-clock-panel-2026-10.md).
+Installed signed/profile/SecItem, qualified issuer/host UTC and macOS 15 TLS
+remain actual gates.
 
 The [original paired recovery entry](../specs/native-paired-recovery-v1.md) now
 implements private original-purpose custody, both file snapshots, a closed
@@ -202,8 +218,9 @@ and private blocked/cancelled/late publication checks pass. The
 metadata from actual selected scope and transfers the original lease only after
 fixed-file publication. Independent candidate/private-file and unsigned
 regressions pass. Shared presentation now composes those owners through the
-driver, first-power and receipt entries above. The owning host clock remains
-software work; installed signed and physical gates remain separate.
+driver, first-power and receipt entries above, including the actual clock
+owner and source-aware production factories. Installed signing/clock qualification
+and physical gates remain separate.
 
 No speculative schema number, API operation name, Zigbee network key, private
 hardware fingerprint or source dependency is reserved in prose. Runtime code
