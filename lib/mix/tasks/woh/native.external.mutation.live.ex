@@ -17,7 +17,12 @@ defmodule Woh.Tool.NativeExternalMutationLive do
   @owner __MODULE__.Store
 
   def run(project, panel \\ false) do
-    root = Path.join("/private/tmp", "external-sdk-#{System.unique_integer([:positive])}")
+    root =
+      Path.join(
+        "/private/tmp",
+        "external-sdk-#{Base.encode16(:crypto.strong_rand_bytes(10), case: :lower)}"
+      )
+
     File.mkdir!(root)
     File.chmod!(root, 0o700)
     executable = Path.join(root, "client")
