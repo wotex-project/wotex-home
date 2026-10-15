@@ -1,10 +1,23 @@
 defmodule WotexHome.Profiles.Bindings do
   @moduledoc """
-  Host-owned portable profile bindings and their unqualified declarations.
+  Resolves portable-profile v1 data into host-owned unqualified declarations.
 
-  The first binding selects existing LIFX direct power. Exact registry support
-  is checked locally; declared buttons or relays cannot become ordinary lights.
-  New semantics require a host release. Registry metadata is never qualification.
+  `resolve/3` receives decoded metadata, its raw digest and the pinned
+  `WotexHome.Lifx.ProductRegistry`. It checks exact registry/firmware support and
+  returns `{:ok, resolved}` with the checked profile, profile reference and
+  canonical projection, or `{:error, :unsupported_profile_binding}`. The supported
+  binding is ordinary LIFX Boolean power; declared buttons or relays cannot
+  become Light capabilities merely by matching a registry record.
+
+  `declaration/2` derives a Thing from a checked profile and explicit Home ID.
+  `historical_projection/1` and `historical_declaration/3` reconstruct the fixed
+  retained format without treating old dependencies as currently installed or
+  establishing private byte custody. Historical correspondence must not replace
+  the live registry checks in `resolve/3`.
+
+  New semantics require a host release. Resolved portable profiles retain
+  pending qualification; neither registry metadata nor a valid projection grants
+  approval, selection, enrollment or physical dispatch authority.
   """
 
   alias WotexHome.Discovery.Profile

@@ -1,10 +1,19 @@
 defmodule WotexHome.Profiles.Operation do
   @moduledoc """
-  Executable canonical input encodings for the planned durable profile ledger.
+  Encodes exact originals for portable-profile v1 catalogue and selection operations.
 
-  These encodings identify requests, never approve an artifact or authorize a
-  selection. Store must derive the principal, retained metadata and review from
-  authenticated host custody, then check all current pins in its transaction.
+  `encode/1` accepts one closed approve, revoke, select or revoke-selection
+  input and returns `{:ok, document}` or `{:error, :invalid_profile_operation}`.
+  `decode/1` accepts at most 4,096 bytes, requires the exact canonical ordered
+  representation and returns `{:ok, input}` or the same refusal.
+
+  Inputs retain the authority epoch, operation ID, expected revision, artifact
+  identity and action-specific trust/target/review basis. Encoding identifies
+  an original request; it does not approve bytes, consume a review or select a
+  target. `WotexHome.Durable.Store` must authenticate the actor, resolve retained
+  metadata and host-held review, then repeat current guards in its transaction.
+  After a lost reply, recover that original operation rather than inventing a
+  new identity for the same intended change.
   """
 
   alias WotexHome.{Id, Profiles.Codec}

@@ -1,11 +1,21 @@
 defmodule WotexHome.Profiles.Artifact do
   @moduledoc """
-  Immutable validated portable data, with separate raw and semantic identities.
+  Builds a checked portable-profile v1 artifact with separate raw and semantic identities.
 
-  Raw bytes are retained unchanged. The projection's versioned ordered JSON
-  array binds exact labels, normalized fingerprint, host compiler/binding,
-  registry, declaration and selection policy. Provenance is inert attribution.
-  Parsing grants no admission, selection, enrollment or physical authority.
+  `parse/1` decodes the exact original bytes, loads the pinned LIFX product
+  registry and resolves the host-owned binding. It returns `{:ok, artifact}`
+  or a typed `{:error, reason}` from those checks. The artifact retains unchanged
+  raw bytes and their digest beside the versioned projection document and its
+  distinct digest; `digest/1` computes lowercase SHA-256 for supplied bytes.
+
+  `declaration/2` reparses the retained bytes before deriving the proposed Thing
+  for an explicit Home ID. The projection binds exact labels, normalized
+  fingerprint, compiler/binding, registry, declaration and selection policy.
+  Provenance remains inert attribution.
+
+  A checked artifact or declaration is not catalogue approval, target selection,
+  enrollment or physical qualification. Those current decisions remain owned
+  by `WotexHome.Authority` and `WotexHome.Durable.Store`.
   """
 
   alias WotexHome.Profiles.{Bindings, Codec}

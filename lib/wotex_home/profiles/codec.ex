@@ -1,11 +1,19 @@
 defmodule WotexHome.Profiles.Codec do
   @moduledoc """
-  Closed, allocation-bounded parser for portable profile v1 data.
+  Decodes bounded portable-profile v1 metadata without resolving a binding.
 
-  Container depth and member counts are checked as the JSON decoder enters
-  and fills each container. Numeric conversion, duplicate keys and oversized
-  strings fail before a profile can be constructed. No author value becomes
-  an atom, module, path, expression or executable dependency.
+  `decode/1` accepts nonempty UTF-8 JSON up to `max_bytes/0` (32,768 bytes),
+  returning `{:ok, data}` or `{:error, :invalid_profile_data}`. It checks the
+  closed format, field sets and string representations while rejecting duplicate
+  object keys, numeric tokens and oversized containers before construction.
+  Depth is at most eight, objects have at most eight members, arrays at most
+  32 elements and strings at most 256 bytes. `digest?/1` checks only the
+  lowercase 64-character SHA-256 representation and returns a Boolean.
+
+  Decoded metadata is inert. No author value becomes an atom, module, path or
+  executable dependency. `WotexHome.Profiles.Bindings` owns semantic binding
+  and pinned-registry checks; `WotexHome.Profiles.Artifact` joins those checks
+  with the exact original bytes. Decoding grants no trust or target authority.
   """
 
   @max_bytes 32_768
