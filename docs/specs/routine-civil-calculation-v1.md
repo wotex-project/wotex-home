@@ -2,8 +2,9 @@
 
 Version: 0.1.0. Updated: 2026-10-15. Status: accepted target.
 Owner: WOH.20 H20-02/07/08 and H20-T7; WOH.04 owns temporal admission.
-Implementation: planned. Evidence: producer/archive evidence exists separately;
-the Home cases below have not run.
+Implementation: RCC-01–03 provider implemented; RCC-04–05/public archive join planned.
+Evidence: direct Home provider checks pass; actual Home civil archive and runtime
+adoption cases remain open.
 
 ## Purpose and dependencies
 
@@ -77,8 +78,9 @@ value/precision and the UTC instant. Local fields may reach 1969 at the lower
 UTC boundary; civil labels themselves still require years 1970–9999.
 
 Invalid native/context values return invalid_timezone_projection; valid native
-nominals outside the supported year/precision profile return
-unsupported_timezone_coordinate; mismatched names return timezone_basis_mismatch.
+nominals outside the supported year/precision profile, UTC instants outside
+Home's floor-millisecond range, or local projections outside ISO years 0000–9999
+return unsupported_timezone_coordinate; mismatched names return timezone_basis_mismatch.
 Invalid source Tzif values return invalid_timezone_data. Existing undefined-data
 errors remain explicit. No error includes raw bytes, paths or private identities.
 The operation owns no state, timeout, cancellation or retry resource.
@@ -182,3 +184,18 @@ contracts are [SP.09](../../../ex_booking/docs/specs/SP.09-civil-occurrences.md)
 and [WRO.03](../../../wotex/docs/packages/wotex-routines/specs/WRO.03-temporal-host.md).
 Their [renewed archive cohort](../../../wotex/docs/packages/wotex-routines/provenance/civil-time-cohort-2026-10.md#complete-ambiguity-renewal)
 establishes producer software evidence, not this consumer's acceptance.
+
+## Executed provider subset
+
+On 2026-10-15, `mix test test/wotex_home/civil_timezone_test.exs
+ test/wotex_home/routine_timezone_test.exs test/wotex_home/schedule_timezone_test.exs
+ --warnings-as-errors` passed 17 tests (seed 282764), using Elixir 1.19.6/OTP
+28.5.0.6 and unchanged locked dependencies. The six new direct-provider cases
+exercise all 230 frozen labels, independent raw-phase resolution, literal
+threefold coordinates, 256 simultaneous alternatives, a 258-offset input set,
+both extreme signed offsets, exact 32-byte metadata, fractional/final headroom,
+gap versus undefined phases, malformed native/context values and producer
+absence. The old RRULE provider's threefold refusal remains unchanged.
+These are direct callback checks. The current locked producer lacks the new
+public civil capability; actual public-provider construction and WRO.03/Home
+archive consumption remain separate acceptance work.

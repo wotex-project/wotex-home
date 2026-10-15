@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.28. Updated: 2026-10-15. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads, paired first-power composition and last resolved power receipt lookup are implemented development entries; installed signed success, certificate-clock qualification, broader paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
+Version: 0.1.29. Updated: 2026-10-15. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads, paired first-power composition and last resolved power receipt lookup are implemented development entries; installed signed success, certificate-clock qualification, broader paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
 
 The [paired power entry](../specs/native-paired-power-v1.md) joins an actual
 authenticated view basis, fresh click scope and one busy reservation across first
@@ -80,8 +80,10 @@ The [civil calculation contract](../specs/routine-civil-calculation-v1.md) and
 [complete runtime contract](../specs/routine-temporal-runtime-v1.md) now freeze
 those requirements before code: a separate provider, one-label public queries,
 unchanged original identities, the ten-application temporal cohort and v4
-correspondence, plus the eleven-application Store guard union. Build the provider
-first, then the public pure join and exact archive parity, then select coherent
+correspondence, plus the eleven-application Store guard union. The separate provider now passes all 230 local-label vectors,
+threefold/maximum ambiguity and wide-offset checks through direct callbacks,
+alongside legacy regressions. Build the public pure join and exact archive
+parity next, then select coherent
 runtime pins/current proof and exercise actual SQLite boundaries. The existing
 Home-only temporal digest cannot certify changed producer code. Existing native and physical
 qualification gates remain independent of these pure calculations.

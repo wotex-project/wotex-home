@@ -233,6 +233,7 @@ runtime adoption.
 The [temporal runtime contract](routine-temporal-runtime-v1.md) freezes the
 complete ten-application producer/dependency cohort, eleven-application Store
 guard union, v4 correspondence, historical-proof refusal and current writer
-boundaries. Both successors are accepted targets with Home implementation and
-acceptance evidence pending. Existing single-active admission and physical
+boundaries. The distinct RCC provider has direct callback/independent-vector evidence; its
+public calculation/archive join and complete current-runtime acceptance remain
+pending. Both successors retain their separately stated implementation scope. Existing single-active admission and physical
 qualification requirements remain intact.
