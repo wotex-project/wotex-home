@@ -1,7 +1,7 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.19. Updated: 2026-10-15. Status: accepted target.
-Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, and inert external reader-to-Fact projection.
+Version: 0.1.20. Updated: 2026-10-15. Status: accepted target.
+Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection and pure reviewed external-input foundations.
 Evidence: finite software subset; full acceptance cases remain open.
 
 ## Purpose, ownership and current subset
@@ -320,7 +320,12 @@ EI-T1–T9 implementation and physical obligations remain open. Requested-scope
 collection does not establish complete active program membership, composed run
 persistence, admission or permission to send.
 
-The fresh runtime foundation now passes eight focused entry/runtime cases,
+The fresh runtime foundation passes its eight focused entry/runtime cases,
 including closing checks for all twenty app members under byte/version/module
-inventory drift and absent metadata. This is a bounded EI-T7 foundation;
-Definition qualification, durable installation and current collection remain open.
+inventory drift and absent metadata. Pure Definition construction and the signed
+review verifier now pass twenty focused Definition/review/entry cases, including
+independent original bytes/signatures, actual integer/Boolean/enum readers,
+producer-free history and validly re-signed adverse claims. These establish
+bounded EI-T1/T2/T7 foundations. Durable package/operation codecs, actual Store
+installation/recovery and current collection remain open; physical qualification
+and complete composed execution retain their separate obligations.

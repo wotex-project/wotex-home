@@ -166,7 +166,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.20"
-    version: "0.1.19"
+    version: "0.1.20"
     file: "WOH.20-universal-routines.md"
     owns: "consumer-hosted reusable routines and Home integration"
     requires: ["WOH.00", "WOH.01", "WOH.03", "WOH.04", "WOH.05", "WOH.07", "WOH.11", "WOH.14", "WOH.15", "WOH.16", "WOH.18", "wotex:WRO.05", "wotex:WRO.03", "ex_booking:SP.09"]

@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.13. Updated: 2026-10-15. Accepted build order; implementation and
+Version: 0.1.14. Updated: 2026-10-15. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -299,25 +299,26 @@ ordinary profile approval or fabricate an owner deadline from current defaults.
 ## Reviewed external input delivery
 
 The [accepted input contract](../specs/routine-external-inputs-v1.md) and
-[entry evidence](../provenance/routine-external-inputs-2026-10.md) close the next
-requirements before production code. Deliver in this order:
+[executed evidence](../provenance/routine-external-inputs-2026-10.md) govern this
+successor. Current status and remaining order:
 
-1. Fresh four-group runtime inventory, pure Definition/native reconstruction and
-   historical decoding, fixed programme and separate signed-review verifier.
-2. Schema 38 operation/history/current tables, exact original-first install and
-   revoke, atomic invalidation, integrity/migration and quarantined recovery.
-3. Store-owned complete requested-scope collection from actual private custody,
-   committed original pointer and live consumed lifetime; independent receipt,
-   unit, continuity and final-basis fault traces.
-4. Extracted producer consumer and existing read/unconditional-effect regressions,
-   then the owning durable/recovery milestone. Continue complete active-set
-   composition, run/step/root persistence and wider admission under their owners.
+1. Fresh four-group runtime capture is implemented, including all twenty-app
+   closing/absence probes. Pure Definition/native reconstruction, historical
+   decoding, the fixed programme and separate signed-review verifier are also
+   implemented; twenty focused Definition/review/entry cases pass. These are
+   software foundations and create no current Store installation or Fact.
+2. Implement bounded retained package/input/outcome/receipt codecs, then schema 38
+   operation/history/current tables, exact original-first install/revoke, atomic
+   withdrawal, integrity/migration and quarantined recovery.
+3. Implement Store-owned complete requested-scope collection from actual private
+   custody, committed original pointer and live consumed lifetime. Exercise
+   independent receipt, unit, continuity and final-basis fault traces.
+4. Run the extracted producer consumer and existing read/unconditional-effect
+   regressions, then the owning durable/recovery milestone. Continue complete
+   active-set composition, run/step/root persistence and wider admission under
+   their owners.
 
-The entry is software grammar/correspondence evidence only. Physical review,
-installed hosts and later execution authority remain unestablished. Use focused
-checks between logical commits; remove each owned temporary workspace on exit.
-
-The first runtime substep now passes the independent hash and all twenty-app
-fresh closing/absence probes. Continue the pure Definition and separate review
-verifier, then actual durable install/withdrawal/recovery and current collection.
-The runtime helper alone creates no installation, Fact or execution authority.
+Preserve original registry order and immutable wire bytes. Historical decoding
+provides no current authority. Physical review, installed hosts and later effect
+execution remain unestablished. Use focused checks between logical commits and
+remove each owned temporary workspace on exit.

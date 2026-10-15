@@ -3057,6 +3057,17 @@
                       "const": "block"
                     }
                   }
+                },
+                "affordance": {
+                  "properties": {
+                    "operation": {
+                      "enum": [
+                        "readproperty",
+                        "observeproperty",
+                        "subscribeevent"
+                      ]
+                    }
+                  }
                 }
               }
             }

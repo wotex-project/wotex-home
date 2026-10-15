@@ -132,6 +132,7 @@ defmodule WotexHome.ExternalRoutineInputSchemaTest do
           put_in(d, ["context", "source_trust"], "synthetic_lab"),
           put_in(d, ["mapping", "basis", "output"], d["mapping"]["basis"]["value"]),
           put_in(d, ["mapping", "basis", "effects", "repeat"], "bounded"),
+          put_in(d, ["mapping", "basis", "affordance", "operation"], "writeproperty"),
           put_in(d, ["limits", "max_depth"], 32),
           Map.put(c.v["snapshot"], "scope", "admitted_effects"),
           put_in(

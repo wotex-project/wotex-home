@@ -1,11 +1,12 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
-WOH.11 H11-01/05. Implementation: partial, fresh runtime helper only.
-Evidence: entry checks and bounded native runtime/inventory drift checks pass;
-Definition, qualification, Store collection, EI-T1–T9 integration and physical
-obligations remain open.
+WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition and
+signed-review verifier foundations. Evidence: entry, native correspondence,
+historical parsing and software trust-mechanics checks pass. Durable packages,
+installation, current collection, EI-T1–T9 integration and physical obligations
+remain open.
 
 ## Result and ownership
 
@@ -200,7 +201,7 @@ declaration has ordered signed-64 constraints and the reader unit's exact quanti
 kind/dimension, while retaining its separate Home scale/offset. A Boolean
 declaration has a Boolean reader schema, null unit and null constraints; external
 declarations retain the reader's exact unit and null constraints. Mapping projection
-integer requires reader schema type integer or number; Boolean requires boolean;
+exact_integer requires reader schema type integer or number; boolean requires boolean;
 enum requires string and its table's unique source codes to cover the reader's
 explicit nonempty enum exactly. Unsupported reader schemas refuse qualification
 rather than relying on a later observation to discover a type mismatch.
@@ -292,6 +293,8 @@ reviewer decision, never an automatic requalification by hash replacement.
 
 ExternalInputDecision.programme/0 returns {:ok, cases, programme_sha256} from
 the exact shipped programme bytes or {:error, :qualification_unavailable}.
+Read at most 16385 bytes and refuse any programme over 16384 bytes or with a
+different pinned SHA-256, even when its parsed case meanings look equivalent.
 signing_payload(decision) returns {:ok, payload} after closed-shape validation.
 verify(signed, definition, cohort, attestations, case_keys, decision_keys)
 reconstructs the native Definition, validates the exact case set and returns
@@ -564,3 +567,13 @@ inventory guard, and actual missing application metadata. This establishes only
 the bounded runtime foundation of EI-T7, not a Store installation/collection
 guard or completion of EI-T1–T9. [Executed evidence](../provenance/routine-external-inputs-2026-10.md)
 records the isolated scope, cleanup and remaining work.
+
+Pure Definition construction/reconstruction, producer-independent historical
+decoding and the signed-review verifier now pass twenty focused cases including
+five entry cases. Actual native integer, Boolean and enum readers supply their
+read-only correspondence; the independent frozen Definition/wire/hash and nine
+signature payloads stay unchanged. Validly re-signed missing/extra/failed/duplicate,
+cohort/environment drift and same-key reviewer aliases refuse. Historical parsing
+still refuses write operations and cannot manufacture a native current token.
+These are EI-T1/T2/T7 foundations, not current Store qualification or completed
+integration cases. Package/operation codecs, SQLite and collection follow next.

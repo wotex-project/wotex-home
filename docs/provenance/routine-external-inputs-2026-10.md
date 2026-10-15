@@ -118,3 +118,66 @@ Historical decoding checks Home identity and runtime claims while preserving
 producer digests as opaque claims until native reconstruction. These rules are
 committed before implementing the Definition. No schema, frozen entry identity,
 accepted physical evidence or effective Store behavior changes in this review.
+
+## Pure Definition and signed-review foundations
+
+The correspondence review was committed as d159fd96 before implementation.
+Rules.ExternalInput now constructs and reconstructs the exact three-field native
+Definition, checking the complete supplied registry, public WRO Mapping/binding,
+read-only Basis, actual declared reader type/unit and own runtime/clock joins.
+The supplied registry's order remains part of the reviewed document identity;
+public Registry construction validates it without silently sorting those original
+bytes. Store still owns independently measuring current context. The compiled
+offline schema and strict historical parser call no WoTEx producer. Historical
+decoding preserves inner bytes and checks Home identity/correspondence; opaque
+producer digest algebra is revalidated only for native reuse.
+
+Qualification.ExternalInputDecision reads the pinned eight-case programme through
+a bounded automatically closed file callback, reconstructs the native Definition,
+checks every case signature/cohort/environment and the independent decision
+signature, and rejects shared case/decision IDs or public-key bytes. No raw
+artifact hashing, current Store query, installation, new grant or effect is
+performed. Fixture claims remain explicitly synthetic and are not physical
+qualification.
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/external_input_decision_test.exs test/wotex_home/external_input_test.exs test/wotex_home/external_routine_input_schema_test.exs --warnings-as-errors`
+passes **twenty tests**, seed **247662**, **1.8 seconds**, on the pinned Elixir
+1.19.6 / OTP 28.5.0.6 cohort. Nine native Definition cases cover the independent
+complete bytes/hash, exact native reconstruction, type/read-only/scope/runtime/
+clock/refusals, full signed-64 Home constraints, distinct converted units, actual
+integer/Boolean/enum reader declarations, complete registry/digest drift,
+duplicate-free canonical history, UTF-8/string/collection/node/depth limits and
+actual producer path removal in a fresh VM. The six review cases cover frozen
+payloads/programme, valid signatures, changed identities/cohort/keys, genuinely
+re-signed adverse claims and distinct reviewer ID/key bytes. A private application
+directory proves missing, changed and oversized programme refusals and removes
+itself from child and parent cleanup. Five existing entry cases continue to pass.
+
+Initial checks exposed a test syntax typo, a root-field test whose helper omitted
+the mutated field, and a producer-absence probe using an alias path; these were
+corrected. A canonical outer-wire mismatch also exposed an intermediate success
+tuple escaping a failed match. Explicit error-only else clauses and map-only
+guard results now close it, and the adverse wire case passes. Review additionally
+closed the offline schema's read-operation enum so producer-free history cannot
+accept writeproperty. All frozen entry bytes, keys, signatures and own hashes
+remain unchanged. Earlier failed runs are not passing evidence.
+
+This establishes pure EI-T1/T2/T7 foundations only. Durable package/operation
+codecs, schema 38, original-first actual Store install/revoke/withdrawal, integrity/
+recovery and current collection remain open. The earlier runtime drift milestone
+retains its recorded scope; no new archive, installed-host or physical claim is
+inferred from these twenty cases.
+
+The documentation agent reviewed all three new moduledocs, with exact non-doc
+byte/AST equivalence, local API/module references, formatting and the required
+blank line below each header. Test modules use moduledoc false. Final formatting,
+warnings-as-errors compilation and both Git whitespace checks pass. The working
+catalogue validates 22 contracts; the separate indexed projection validates 21
+contracts and all 41 changed indexed Markdown links. The owning delivery section
+now states current completion and remaining work directly rather than retaining
+a stale instruction to implement the completed pure Definition.
+
+Cleanup finds zero owned temporary paths in either temporary root; approximately
+54 GiB remains free. This slice created no Docker resource, native build,
+unrelated dependency update or persistent test artifact. No full suite, Dialyzer
+or host packaging was needed. Commits remain local on main.
