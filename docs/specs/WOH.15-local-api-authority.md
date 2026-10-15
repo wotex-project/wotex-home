@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.157. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.158. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
 now defines fresh signed authorization after human review, unchanged first originals,
@@ -28,10 +28,10 @@ The [native external-profile read prerequisite](native-external-profile-reads-v1
 now has [framed and real Store evidence](../provenance/native-external-profile-reads-2026-10.md).
 [Complete native v2 originals](native-external-profile-originals-v1.md) now have
 [executed independent/owning parity evidence](../provenance/native-external-profile-originals-2026-10.md).
-The [v9 external-profile journal](native-pending-external-profiles-v9.md) defines
-complete original custody, monotone compatibility and pre-consumer refusal.
-Implementation and evidence are pending; fixed mutation/recovery and selected
-confirmations follow its independent vectors and private publication checks.
+The [v9 external-profile journal](native-pending-external-profiles-v9.md) now has
+[executed independent, native and private-process evidence](../provenance/native-pending-external-profiles-2026-10.md)
+for complete originals, monotone compatibility and pre-consumer refusal. Fixed
+mutation/recovery and selected confirmations remain successors.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)
 defines durable root/attempt workspace custody, explicit policy/consent/budget,

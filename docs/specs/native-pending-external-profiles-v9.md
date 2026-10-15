@@ -1,9 +1,10 @@
 # Native external-profile pending custody v9
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09 and H08-T1/T5/T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08 and H18-T6/T8/T11/T12.
-Implementation: planned. Evidence: missing.
+Implementation: representation, private publication and pre-consumer refusal implemented.
+Evidence: [independent/native/private-process checks](../provenance/native-pending-external-profiles-2026-10.md).
 
 ## Result and ownership
 

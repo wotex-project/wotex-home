@@ -1424,8 +1424,9 @@ against actual private SQLite/socket history. Live cases cover approval, target 
 trust revocation, absent publishers, author withdrawal, missing originals and exact
 permission/scoping refusal. Credential bytes travel only on stdin/private custody.
 The [evidence record](../../docs/provenance/native-external-profile-reads-2026-10.md)
-separates this SDK prerequisite from future complete-original/pending/confirmation
-and native panel delivery. No installed signing or physical qualification is claimed.
+separates typed reads from the complete originals and pending custody below.
+Mutation/recovery, confirmation and native panel delivery remain successors.
+No installed signing or physical qualification is claimed.
 
 
 ## Complete external-profile originals
@@ -1442,3 +1443,18 @@ bytes/SHA and 579 pinned owner URI comparisons. The codec preflights bounds befo
 complete Foundation materialization and follows Home's URI metadata predicate
 without using it as a transport endpoint. [Executed evidence](../../docs/provenance/native-external-profile-originals-2026-10.md)
 records owner parity, control-byte refusal and remaining publication/installed gates.
+
+## External-profile pending custody
+
+The [v9 journal](../../docs/specs/native-pending-external-profiles-v9.md) retains
+complete inspection/trust/target originals with manual, native operator or paired
+historical custody. It preserves older wire grammars and retains v9 after resolution,
+empty roots and later writes. Loading supplies no credential or current grant;
+first capture and recovery actions refuse until their fixed consumer is implemented.
+
+Run `mix woh.native.pending.external.smoke` for 182 accepted and 276 refused
+independent roots, actual private publication/CAS, every older-root upgrade,
+process restart, competing writers and instrumented pre-consumer refusal.
+The [evidence record](../../docs/provenance/native-pending-external-profiles-2026-10.md)
+also records the focused older codec/storage and paired-panel regression checks.
+These fixtures do not establish installed signing or physical qualification.
