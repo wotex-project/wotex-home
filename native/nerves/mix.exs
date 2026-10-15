@@ -13,6 +13,9 @@ defmodule WotexHome.Firmware.MixProject do
       author: "WoTEx Home",
       description: "Unqualified Raspberry Pi 4 development firmware",
       elixir: "~> 1.19",
+      # Root selects patched Cowlib; Gun's default header guard is tested.
+      # See ../../docs/specs/http-header-dependency-v1.md for this acknowledgement.
+      hex: [ignore_advisories: ["GHSA-w4f7-4cxr-rv3c"]],
       archives: [nerves_bootstrap: "~> 1.17"],
       start_permanent: Mix.env() == :prod,
       deps: deps(),

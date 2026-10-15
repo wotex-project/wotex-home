@@ -8,6 +8,7 @@ defmodule WotexHome.MixProject do
   @profiles_ref "687a5cd70267fa47dbfb36e28eccad6ef2964fdf"
   @routines_ref "f3e77a431a917b639f7b0d52a93b78c27def4344"
   @booking_ref "3fa614cd3cf106aba7161e17015969634afc3730"
+  @cowlib_ref "4401b858f2229abb3ea115c60924f6c77e5f8aa3"
 
   def project do
     [
@@ -15,6 +16,9 @@ defmodule WotexHome.MixProject do
       name: "WoTEx Home",
       version: "0.1.0",
       elixir: "~> 1.18",
+      # Gun 2.7 rejects invalid headers; Cowlib's encoder is fixed below.
+      # The narrow acknowledgement is owned by http-header-dependency-v1.md.
+      hex: [ignore_advisories: ["GHSA-w4f7-4cxr-rv3c"]],
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       docs: [
@@ -54,7 +58,8 @@ defmodule WotexHome.MixProject do
       wotex_binding_mqtt: @profiles_ref,
       wotex_continuum: @profiles_ref,
       wotex_routines: @routines_ref,
-      ex_booking: @booking_ref
+      ex_booking: @booking_ref,
+      cowlib: @cowlib_ref
     }
 
   def producer_package_paths,
@@ -75,6 +80,7 @@ defmodule WotexHome.MixProject do
       {:exla, "~> 1.0", only: :dev, runtime: false},
       {:yaml_elixir, "~> 2.12", runtime: false},
       {:emqtt, "== 1.16.1", system_env: [{"BUILD_WITHOUT_QUIC", "1"}]},
+      {:cowlib, git: "https://github.com/ninenines/cowlib.git", ref: @cowlib_ref, override: true},
       {:quicer, "== 0.2.15", compile: false, app: false, runtime: false, override: true},
       local_or_hex(:ex_maude, "../ex_maude", @ex_maude_version, env: :prod),
       producer_dep(:wotex, "wotex"),

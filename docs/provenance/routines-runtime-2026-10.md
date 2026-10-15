@@ -51,7 +51,8 @@ Home used Elixir 1.19.6 / OTP 28.5.0.6 from `.tool-versions`, with
   regressions, sparse legal input fixtures and isolated committed-source staging.
 - In native/nerves, `WOTEX_HOME_GIT_DEPS=1 MIX_TARGET=host EX_MAUDE_BUILD_CNODE=0 mise exec -- mix deps.get --check-locked`:
   passed. Its Nerves bootstrap compiled the host dependency closure and Home;
-  upstream OTP deprecation warnings were printed. This was no firmware build.
+  upstream OTP deprecation warnings were printed. Native used its own pinned
+  OTP 29.0.4, with Elixir 1.19.6-otp-28. This was no firmware build.
 - `git diff --check`: passed.
 
 An initial strict selected-API case exposed an old ExBooking test BEAM cache
@@ -68,9 +69,10 @@ Lock SHA-256s at this selection milestone:
 Dependency resolution reported Cowlib/Gun advisory CVE-2026-43966. The
 [CNA record](https://cna.erlef.org/cves/CVE-2026-43966.html), updated October 14,
 names an unreleased Cowlib fix and Gun's existing request-header mitigation.
-This milestone does not claim a green advisory audit; remediation is a separate
-logical change before the next quality milestone. Earlier dated no-advisory
-records are historical observations.
+This selection milestone did not claim a green advisory audit. The following
+[remediation record](http-header-dependency-2026-10.md) retains the actual fix,
+single explicit acknowledgement and subsequent lock identities. Earlier dated
+no-advisory records are historical observations.
 
 No full Home suite, Dialyzer, release/image build or physical test ran for this
 slice. Tests clean their private staging/release fixtures. No standalone

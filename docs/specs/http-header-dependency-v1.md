@@ -2,7 +2,8 @@
 
 Version: 0.1.0. Updated: 2026-10-15. Status: accepted target.
 Owner: WOH.16 release dependencies and dependency audit.
-Implementation: planned. Evidence: upstream source inspection only.
+Implementation: implemented bounded source selection and public API regressions.
+Evidence: [executed software and audit record](../provenance/http-header-dependency-2026-10.md).
 
 ## Scope and source evidence
 

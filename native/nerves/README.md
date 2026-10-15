@@ -19,6 +19,12 @@ ExBooking and UDP on their exact locked source cohort. The firmware lock now
 includes that complete root production closure; host-side locked resolution,
 compilation, audit and four pure probes have [focused evidence](../../docs/provenance/current-host-ci-remediation-2026-10.md).
 Fresh firmware/image and board qualification remain separate.
+The selected civil cohort now also includes exact Routines/Continuum sources;
+see the [selection evidence](../../docs/provenance/routines-runtime-2026-10.md).
+The [HTTP dependency remediation](../../docs/specs/http-header-dependency-v1.md)
+pins patched upstream Cowlib and records the single acknowledged Gun advisory;
+[executed checks](../../docs/provenance/http-header-dependency-2026-10.md) do not
+qualify a new firmware image.
 The `.tool-versions` file matches the target's OTP 28 major version. The resulting `.fw`
 is a development image. Do not burn or upload it to an unidentified board.
 

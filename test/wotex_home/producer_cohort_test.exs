@@ -23,6 +23,7 @@ defmodule WotexHome.ProducerCohortTest do
                  :wotex_routines -> Wotex.Routines.Civil
                  :ex_booking -> ExBooking.RRule
                  :wotex_udp -> Wotex.UDP
+                 :cowlib -> :cow_http_struct_hd
                end
              )
     end

@@ -1,6 +1,12 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.143. Status: accepted target.
+Version: 0.1.144. Status: accepted target.
+
+The [HTTP dependency contract](http-header-dependency-v1.md) selects the exact
+upstream Cowlib encoder fix and bounds one advisory acknowledgement to its
+tested Gun mitigation. [Executed software evidence](../provenance/http-header-dependency-2026-10.md)
+retains the paired locks, rejected byte/header cases and actual audit results;
+release, firmware and installed qualification remain separate.
 
 The [native MQTT bootstrap](native-mqtt-setup-v1.md) now carries a source-scoped
 single-use capability outside Store/profile archives, with
