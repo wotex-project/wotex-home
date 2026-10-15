@@ -190,7 +190,7 @@ defmodule WotexHome.ExternalInputHistoryTest do
       event(c.db, 22, event, entity)
       assert {:error, :corrupt_external_inputs} = ExternalInputs.validate(c.db)
       event(c.db, 23, "principal_revoked", "operator:entry")
-      withdraw(c, 24, 21, 2, 22)
+      assert :ok = ExternalInputs.withdraw_invalidated(c.db)
       assert :ok = ExternalInputs.validate(c.db)
 
       corrupt_after(
@@ -214,6 +214,8 @@ defmodule WotexHome.ExternalInputHistoryTest do
         do: event(c.db, rev, event, entity)
 
     assert :ok = ExternalInputs.validate(c.db)
+    assert :ok = ExternalInputs.withdraw_invalidated(c.db)
+    assert {:ok, [[25]]} = SQL.query(c.db, "SELECT value FROM meta WHERE key='revision'")
     assert :ok = Sqlite3.execute(c.db, "SAVEPOINT no_cause")
     withdraw(c, 26, 21, 2, 22)
     assert {:error, :corrupt_external_inputs} = ExternalInputs.validate(c.db)
@@ -233,7 +235,7 @@ defmodule WotexHome.ExternalInputHistoryTest do
 
     event(c.db, 23, "target_grant_added", "operator:entry/sensor:independent")
     assert {:error, :corrupt_external_inputs} = ExternalInputs.validate(c.db)
-    withdraw(c, 24, 21, 2, 22)
+    assert :ok = ExternalInputs.withdraw_invalidated(c.db)
     assert :ok = ExternalInputs.validate(c.db)
 
     assert {:ok, []} =
@@ -273,7 +275,7 @@ defmodule WotexHome.ExternalInputHistoryTest do
         assert :ok = Sqlite3.execute(c.db, "SAVEPOINT author")
         event(c.db, 22, kind, entity)
         assert {:error, :corrupt_external_inputs} = ExternalInputs.validate(c.db)
-        withdraw(c, 23, 21, 2, 22)
+        assert :ok = ExternalInputs.withdraw_invalidated(c.db)
         assert :ok = ExternalInputs.validate(c.db)
         assert :ok = Sqlite3.execute(c.db, "ROLLBACK TO author; RELEASE author")
       end
@@ -380,7 +382,7 @@ defmodule WotexHome.ExternalInputHistoryTest do
     assert :ok = ExternalInputs.validate(c.db)
     native_loss(c, 23, "sensor:independent")
     assert {:error, :corrupt_external_inputs} = ExternalInputs.validate(c.db)
-    withdraw(c, 24, 21, 2, 23)
+    assert :ok = ExternalInputs.withdraw_invalidated(c.db)
     assert :ok = ExternalInputs.validate(c.db)
 
     corrupt_after(
@@ -525,6 +527,25 @@ defmodule WotexHome.ExternalInputHistoryTest do
     assert :ok = Sqlite3.execute(c.db, "ROLLBACK")
     assert snapshot(c.db) == original
     assert :ok = ExternalInputs.validate(c.db)
+  end
+
+  test "retirement helpers refuse malformed heads, propagate SQL errors and preserve older schemas",
+       c do
+    seed(c)
+    assert {:ok, %{history_rows: 1}} = ExternalInputs.retirement_reserve(c.db)
+    assert :ok = Sqlite3.execute(c.db, "SAVEPOINT bad_head")
+    assert {:ok, []} = SQL.query(c.db, "UPDATE routine_external_input_current SET generation=2")
+    assert {:error, :corrupt_external_inputs} = ExternalInputs.retirement_reserve(c.db)
+    assert {:error, :corrupt_external_inputs} = ExternalInputs.withdraw_invalidated(c.db)
+    assert :ok = Sqlite3.execute(c.db, "ROLLBACK TO bad_head; RELEASE bad_head")
+    assert :ok = Sqlite3.execute(c.db, "DROP TABLE routine_external_input_current")
+    assert {:error, reason} = ExternalInputs.retirement_reserve(c.db)
+    refute reason in [:external_input_capacity, :corrupt_external_inputs]
+    assert {:error, ^reason} = ExternalInputs.withdraw_invalidated(c.db)
+    assert :ok = Sqlite3.execute(c.db, "PRAGMA user_version=37")
+    assert :ok = ExternalInputs.withdraw_invalidated(c.db)
+    assert :ok = Sqlite3.execute(c.db, "PRAGMA user_version=39")
+    assert {:error, :corrupt_external_inputs} = ExternalInputs.withdraw_invalidated(c.db)
   end
 
   test "actual SQLite history remains readable without producers or the current programme", c do

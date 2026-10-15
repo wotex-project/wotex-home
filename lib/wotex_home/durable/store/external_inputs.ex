@@ -1,6 +1,6 @@
 defmodule WotexHome.Durable.Store.ExternalInputs do
   @moduledoc """
-  Defines and checks retained external-input operations, slot history and heads.
+  Defines, checks and retires retained external-input history and heads.
 
   `schema/0` returns the three tables' DDL as a string; it executes no SQL.
   `tables/0` returns a map from each table name to its ordered column names.
@@ -30,16 +30,39 @@ defmodule WotexHome.Durable.Store.ExternalInputs do
   `{:error, :external_input_capacity}`; SQL query errors propagate. This check
   reserves nothing and evicts nothing.
 
-  Store retains connection ownership and must provide a consistent transaction
-  or snapshot for these reads. No helper opens or closes the borrowed connection.
+  `retirement_reserve/2` returns `{:ok, %{history_rows: count, bytes: count}}`
+  for withdrawing the currently installed heads. Its optional excluded slot
+  defaults to `nil`; a valid `{target_id, capability_key}` tuple omits the slot
+  a replacement change will handle. Each included head contributes one history
+  row and the exact encoded withdrawal outcome's byte size. This read retains
+  no reservation, operation, receipt or lease. Invalid exclusions return
+  `{:error, :invalid_external_input}`; malformed heads return
+  `{:error, :corrupt_external_inputs}` and SQL errors propagate.
+
+  `withdraw_invalidated/1` borrows the owning Store transaction after durable
+  mutations and schedule invalidation, before final history validation and COMMIT.
+  On schema 38 it processes the complete affected batch in lexical target/key
+  order, citing each head's first applicable durable loss. Each withdrawal appends
+  a journal/history row, advances generation and marks the head revoked while
+  retaining its installation revision, exact package and prior original receipts.
+  No user operation is created. With no applicable loss it writes nothing;
+  schemas 4 through 37 return `:ok` without changing this domain. Success returns
+  `:ok`; refusal returns `{:error, reason}`, including capacity or revision
+  exhaustion. Store must roll back the cause and complete batch on failure.
+
+  Store retains connection ownership and supplies a consistent snapshot for
+  reads and the enclosing transaction for withdrawals. No helper opens or closes
+  the borrowed connection, begins its own transaction or commits independently.
   Historical validation uses retained package correspondence without a current
-  producer, reviewer keys, programme file, live source or private artifact.
+  producer, reviewer keys, programme file, live source or private artifact; reserve
+  calculation and withdrawal use the same producer-independent retained data.
   A retained `"installed"` head is historical database state, not proof of current
-  source authority. Store still owns authentication, current admission and all
-  writes; these helpers establish no current qualification or dispatch permission.
+  source authority. Store still owns authentication, current admission and commit
+  decisions; these helpers establish no current qualification or dispatch permission.
   """
 
   alias WotexHome.{Id, Rules.ExternalInput}
+  alias WotexHome.Durable.Store.Journal
   alias WotexHome.NativeSetup.TargetCodec
   alias WotexHome.Rules.{ExternalInputOperation, ExternalInputPackage}
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
@@ -169,6 +192,203 @@ defmodule WotexHome.Durable.Store.ExternalInputs do
            _ -> {:error, :external_input_capacity}
          )
   end
+
+  @doc "Computes exact withdrawal history/byte capacity, optionally excluding one replaced slot."
+  def retirement_reserve(db, excluded_slot \\ nil) do
+    with true <- valid_exclusion?(excluded_slot),
+         {:ok, heads} <- installed_heads(db) do
+      Enum.reduce_while(heads, {:ok, %{history_rows: 0, bytes: 0}}, fn head, {:ok, total} ->
+        if {head.target_id, head.capability_key} == excluded_slot do
+          {:cont, {:ok, total}}
+        else
+          case withdrawal_document(head) do
+            {:ok, document} ->
+              {:cont,
+               {:ok,
+                %{history_rows: total.history_rows + 1, bytes: total.bytes + byte_size(document)}}}
+
+            error ->
+              {:halt, error}
+          end
+        end
+      end)
+    else
+      false -> {:error, :invalid_external_input}
+      error -> error
+    end
+  end
+
+  @doc "Retires every durably invalidated input inside the cause's existing Store transaction."
+  def withdraw_invalidated(db) do
+    case query(db, "PRAGMA user_version") do
+      {:ok, [[38]]} -> withdraw_current(db)
+      {:ok, [[version]]} when version in 4..37 -> :ok
+      _ -> corrupt()
+    end
+  end
+
+  defp withdraw_current(db) do
+    with {:ok, [[revision, _epoch]]} <- meta(db),
+         true <- integer?(revision, 0),
+         {:ok, heads} <- installed_heads(db),
+         {:ok, pending} <- pending_withdrawals(db, heads, revision),
+         :ok <- withdrawal_counters(pending, revision),
+         :ok <-
+           capacity(
+             db,
+             0,
+             length(pending),
+             0,
+             Enum.sum(Enum.map(pending, &byte_size(&1.document)))
+           ) do
+      Enum.reduce_while(pending, :ok, fn head, :ok ->
+        case retain_withdrawal(db, head) do
+          :ok -> {:cont, :ok}
+          error -> {:halt, error}
+        end
+      end)
+    else
+      false -> corrupt()
+      error -> error
+    end
+  end
+
+  defp installed_heads(db) do
+    with {:ok, rows} <-
+           query(db, """
+           SELECT c.target_id,c.capability_key,c.history_revision,c.install_revision,c.generation,
+                  h.generation,h.action,h.outcome_document,o.principal_id
+           FROM routine_external_input_current c
+           LEFT JOIN routine_external_input_history h ON
+             h.target_id=c.target_id AND h.capability_key=c.capability_key AND h.revision=c.history_revision
+           LEFT JOIN routine_external_input_operations o ON o.revision=c.install_revision
+           WHERE c.state='installed' ORDER BY c.target_id,c.capability_key LIMIT 1025
+           """),
+         true <- length(rows) <= 1024 do
+      Enum.reduce_while(rows, {:ok, []}, fn
+        [target, key, revision, revision, generation, generation, "install", document, installer],
+        {:ok, heads} ->
+          with true <-
+                 Id.valid?(target) and Id.valid?(key) and Id.valid?(installer) and
+                   integer?(revision, 1) and integer?(generation, 1),
+               {:ok, outcome} <- ExternalInputOperation.decode_outcome(document),
+               true <-
+                 outcome["target_id"] == target and outcome["capability_key"] == key and
+                   outcome["action"] == "install",
+               {:ok, context} <- context(outcome) do
+            {:cont,
+             {:ok,
+              [
+                %{
+                  target_id: target,
+                  capability_key: key,
+                  revision: revision,
+                  install_revision: revision,
+                  generation: generation,
+                  installer: installer,
+                  outcome: outcome,
+                  context: context
+                }
+                | heads
+              ]}}
+          else
+            _ -> {:halt, corrupt()}
+          end
+
+        _, _ ->
+          {:halt, corrupt()}
+      end)
+      |> case do
+        {:ok, heads} -> {:ok, Enum.reverse(heads)}
+        error -> error
+      end
+    else
+      false -> corrupt()
+      error -> error
+    end
+  end
+
+  defp pending_withdrawals(db, heads, revision) do
+    Enum.reduce_while(heads, {:ok, []}, fn head, {:ok, pending} ->
+      with {:ok, cause} <- loss_after(db, head, revision) do
+        if cause == nil do
+          {:cont, {:ok, pending}}
+        else
+          case withdrawal_document(head) do
+            {:ok, document} ->
+              {:cont, {:ok, [Map.merge(head, %{cause: cause, document: document}) | pending]}}
+
+            error ->
+              {:halt, error}
+          end
+        end
+      else
+        error -> {:halt, error}
+      end
+    end)
+    |> case do
+      {:ok, pending} -> {:ok, Enum.reverse(pending)}
+      error -> error
+    end
+  end
+
+  defp withdrawal_document(head) do
+    case ExternalInputOperation.encode_outcome(Map.put(head.outcome, "action", "withdraw")) do
+      {:ok, _} = result -> result
+      _ -> corrupt()
+    end
+  end
+
+  defp withdrawal_counters(pending, revision) do
+    if revision <= @maximum - length(pending) and Enum.all?(pending, &(&1.generation < @maximum)),
+      do: :ok,
+      else: {:error, :revision_exhausted}
+  end
+
+  defp retain_withdrawal(db, head) do
+    with {:ok, revision} <- Journal.next_revision(db),
+         :ok <- Journal.authority_event(db, revision, "external_input_withdrawn", head.target_id),
+         {:ok, []} <-
+           query(
+             db,
+             "INSERT INTO routine_external_input_history VALUES (?,?,?,?,'withdraw',?,?)",
+             [
+               head.target_id,
+               head.capability_key,
+               revision,
+               head.generation + 1,
+               head.cause,
+               head.document
+             ]
+           ),
+         {:ok, []} <-
+           query(
+             db,
+             """
+             UPDATE routine_external_input_current SET history_revision=?,generation=?,state='revoked'
+             WHERE target_id=? AND capability_key=? AND history_revision=? AND install_revision=? AND generation=? AND state='installed'
+             """,
+             [
+               revision,
+               head.generation + 1,
+               head.target_id,
+               head.capability_key,
+               head.revision,
+               head.install_revision,
+               head.generation
+             ]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         do: :ok,
+         else: (
+           {:error, _} = error -> error
+           _ -> corrupt()
+         )
+  end
+
+  defp valid_exclusion?(nil), do: true
+  defp valid_exclusion?({target, key}), do: Id.valid?(target) and Id.valid?(key)
+  defp valid_exclusion?(_), do: false
 
   defp schema_matches(db) do
     Enum.reduce_while(@ddl, :ok, fn {table, ddl}, :ok ->
@@ -324,6 +544,14 @@ defmodule WotexHome.Durable.Store.ExternalInputs do
   defp losses(_, %{state: "revoked"}, _, _, _), do: :ok
 
   defp losses(db, previous, action, cause, upper) do
+    with {:ok, loss} <- loss_after(db, previous, upper),
+         true <-
+           if(action == "withdraw", do: loss != nil and loss == cause, else: loss == nil),
+         do: :ok,
+         else: (_ -> corrupt())
+  end
+
+  defp loss_after(db, previous, upper) do
     c = previous.context
     people = Enum.uniq([previous.installer, c["selection_author"], c["trust_author"]])
     target = c["target_id"]
@@ -346,11 +574,7 @@ defmodule WotexHome.Durable.Store.ExternalInputs do
              """,
              [previous.revision, upper]
            ),
-         {:ok, loss} <- first_loss(rows, people, target),
-         true <-
-           if(action == "withdraw", do: loss != nil and loss == cause, else: loss == nil),
-         do: :ok,
-         else: (_ -> corrupt())
+         do: first_loss(rows, people, target)
   end
 
   defp first_loss(rows, people, target) do

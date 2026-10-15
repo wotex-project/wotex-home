@@ -458,3 +458,73 @@ scratch directory. Both temporary roots contain zero matching owned scratch
 paths. About 53 GiB remains free; Docker still has zero containers and unchanged
 existing images/volumes/build caches. No unrelated Docker volume or reusable
 dependency/native cache was deleted.
+
+## Atomic durable-loss retirement
+
+ExternalInputs now computes the exact prospective withdrawal footprint and
+retires every durably invalidated installed head in lexical target/key order.
+Store invokes it after owning mutations and schedule invalidation, before final
+history validation and COMMIT. The first applicable journal cause owns each
+withdrawal; package bytes, installation revision and previous original receipts
+remain immutable. No operation or receipt is created for withdrawal. Historical
+capacity/codec validation is unchanged; live installation must subsequently use
+the computed reserve for admission.
+
+The actual Store transaction normalizes retirement quota/counter exhaustion to
+policy refusals, preserving writability and rolling back the cause. Actual SQL
+failure rolls back the cause and every withdrawal, then fences writes. Source or
+runtime absence creates no invented durable loss; current use still needs its
+independent guards. No native install/revoke API is exposed by this slice.
+
+On Elixir 1.19.6 / OTP 28.5.0.6:
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/external_input_history_test.exs test/wotex_home/external_input_withdrawal_test.exs test/wotex_home/durable_maintenance_test.exs test/wotex_home/controller_retirement_test.exs --warnings-as-errors`
+
+passes **65 tests**, seed **444060**, **31.6 seconds**. The history cases now
+execute the actual writer for thirteen durable loss kinds, all installer/selector/
+approver principal and grant losses, exact retained native-grant loss and a later
+regrant; unrelated losses append nothing. The reserve is computed from exact
+UTF-8 withdrawal wire bytes and excludes only the requested replacement slot.
+Malformed heads refuse, SQL failures propagate, absent older-schema tables are
+skipped and unsupported versions refuse.
+
+The new real-Store tests exercise two-slot maintenance retirement with immutable
+original/replay, subsequent source retirement at exactly expected_revision + 1
+and final Store revision, principal revocation and grant removal/regrant. An
+authority-journal trigger aborts the second withdrawal after the first has been
+written; the maintenance fence/cause, input rows, head generations and every
+revision all roll back, and Store becomes unwritable. This instrumentation is
+outside the protected domain; no domain schema check was relaxed. At the global
+signed-64 boundary a real grant removal refuses revision_exhausted, preserves
+the complete prior state and leaves Store writable.
+
+A separate 160-slot fixture fits the existing actual retained-byte quota while
+its unreserved prospective withdrawal batch does not. The helper returns
+external_input_capacity and the caller transaction rolls back its journal cause
+and every row, rather than retaining a partially fitting batch. This represents
+readable legacy structural history, not an admissible new installation; new
+install admission must charge the reserve before committing.
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/external_input_withdrawal_test.exs:262 --warnings-as-errors`
+
+also passes **one additional case**, seed **795180**, **1.1 seconds**, with eight
+other cases excluded. Ending maintenance, actually restarting Store and replaying
+the original begin receipt preserve the exact retained state and revoked heads.
+
+The fixture retains synthetic packages under an unqualified legacy Thing. It
+never verifies their signatures for current use and has no actual selected
+external source/reader or live report. These results establish durable software
+retirement mechanics, not native Mapping installation, current collection or
+physical qualification. Original-first install/revoke with prospective reserve
+admission, full native loss integration, collection and composed execution remain
+successors. The documentation agent changed only ExternalInputs' module doc;
+test/support modules retain moduledoc=false. Temporary SQLite roots are removed
+on exit; no Docker, dependency update, native/release build or Dialyzer is used.
+
+Final formatting, warnings-as-errors compilation, the 22-contract working
+catalogue and both Git whitespace checks pass. The disposable staged projection
+checks 21 contracts and 42 relative Markdown references, then removes its scratch
+tree. Both temporary roots contain zero matching owned scratch paths, including
+the 160-slot quota database and the maintenance/retirement test roots. About
+53 GiB is free. Both dependency locks and unrelated research/client files are
+preserved; no shared Docker or native/dependency cache is pruned.

@@ -1,10 +1,11 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.13. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.14. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition,
 signed-review verifier, retained codecs, schema-38 history/migration/recovery and
-measured native review context. Evidence:
+measured native review context, computed retirement reserve and atomic durable
+withdrawal. Evidence:
 entry, native correspondence, historical package/original/graph checks and software trust-mechanics
 checks pass. SQLite installation, current collection, EI-T1–T9 integration and
 physical obligations remain open.
@@ -802,6 +803,13 @@ and corruption fencing have focused software coverage. Isolated Store probes
 change complete artifact bytes in one member of each runtime group during private
 preparation; all refuse, including profile drift discovered before final inventory.
 The shared preamble clears prior byte checks without reading unrelated portable
-custody before context authentication, even with an active schedule. Installation,
-revoke, proactive maintenance/author/target withdrawal and current collection
-remain next. These fixtures establish no signed physical qualification.
+custody before context authentication, even with an active schedule. Computed
+retirement reserve and Store's atomic first-loss withdrawal batch are implemented.
+Sixty-five focused history/withdrawal/maintenance/controller cases pass, plus an
+additional actual end-maintenance/restart/original-replay probe. Two-slot ordering,
+all durable loss classes, three separate authors, exact native grant receipts,
+second-withdrawal SQL rollback, counter exhaustion and a 160-slot actual-byte
+quota refusal are covered. These use structurally retained, unqualified legacy
+history and do not establish actual native Mapping installation. Original-first
+install/revoke with reserve admission, complete current collection and their
+actual-native integration remain next. No fixture establishes physical qualification.

@@ -5388,6 +5388,8 @@ defmodule WotexHome.Durable.Store do
               case with {:ok, guard} <- prepare_commit_guard(borrowed, commit_guard, commit),
                         :ok <-
                           WotexHome.Durable.Store.ScheduleLifecycle.withdraw_invalidated(borrowed),
+                        :ok <-
+                          WotexHome.Durable.Store.ExternalInputs.withdraw_invalidated(borrowed),
                         :ok <- authority_history_guard(borrowed),
                         do: {:ok, guard} do
                 {:ok, guard} ->
@@ -5395,6 +5397,9 @@ defmodule WotexHome.Durable.Store do
                     :ok -> final_commit_decision(borrowed, guard, commit)
                     {:error, _reason} -> commit
                   end
+
+                {:error, reason} when reason in [:external_input_capacity, :revision_exhausted] ->
+                  {:rollback, {:policy, reason}}
 
                 {:error, reason} ->
                   {:rollback, reason}
