@@ -156,9 +156,9 @@ Complete inspection/trust/target original codecs now have
 [independent and owning parity evidence](../provenance/native-external-profile-originals-2026-10.md).
 The [v9 external-profile journal](../specs/native-pending-external-profiles-v9.md) now
 has [executed independent/private-process evidence](../provenance/native-pending-external-profiles-2026-10.md).
-Implement the [fixed external-profile SDK](../specs/native-external-profile-sdk-v1.md)
-from independent receipt correspondence and actual status-first recovery, then
-selected confirmations and panel composition;
+The [fixed external-profile SDK](../specs/native-external-profile-sdk-v1.md) now has
+[executed complete-receipt, framed and Store/restart evidence](../provenance/native-external-profile-sdk-2026-10.md).
+Build selected first confirmations and panel composition, then signed paired consumption;
 no read receipt or structurally encoded input grants current trust, selection or
 source qualification.
 

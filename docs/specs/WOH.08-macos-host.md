@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.133. Status: accepted target.
+Version: 0.2.134. Status: accepted target.
 
 The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
 now defines fresh signed authorization after human review, unchanged first originals,
@@ -30,10 +30,11 @@ now has [framed and real Store evidence](../provenance/native-external-profile-r
 [executed independent/owning parity evidence](../provenance/native-external-profile-originals-2026-10.md).
 The [v9 external-profile journal](native-pending-external-profiles-v9.md) now has
 [executed independent, native and private-process evidence](../provenance/native-pending-external-profiles-2026-10.md)
-for complete originals, monotone compatibility and pre-consumer refusal. Fixed
-mutation/recovery is specified by the [fixed SDK](native-external-profile-sdk-v1.md),
-including status-first retry, complete receipt correspondence and local pending
-recovery. Implementation/evidence are pending; selected confirmations follow.
+for complete originals, monotone compatibility and conditional consumer guards.
+The [fixed SDK and local recovery](native-external-profile-sdk-v1.md) now have
+[executed independent, framed and Store/process evidence](../provenance/native-external-profile-sdk-2026-10.md),
+including status-first retry, complete receipt correspondence and explicit absent
+acknowledgement. Selected first confirmations and signed paired consumers follow.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)
 defines durable root/attempt workspace custody, explicit policy/consent/budget,

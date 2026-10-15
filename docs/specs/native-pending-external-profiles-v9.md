@@ -1,10 +1,12 @@
 # Native external-profile pending custody v9
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09 and H08-T1/T5/T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08 and H18-T6/T8/T11/T12.
-Implementation: representation, private publication and pre-consumer refusal implemented.
+Implementation: representation, private publication and conditional consumer guards implemented.
 Evidence: [independent/native/private-process checks](../provenance/native-pending-external-profiles-2026-10.md).
+The [fixed SDK](native-external-profile-sdk-v1.md) now enables ordinary local actions;
+paired actions remain disabled pending their signed consumer.
 
 ## Result and ownership
 
@@ -88,14 +90,15 @@ cannot authorize dispatch or remove it. Never allocate another operation ID to
 recover an uncertain original. Downgrade readers fail closed on v9; no rollback
 rewrites its marker or strips its entries.
 
-**NP9-03.** Until the closed fixed external mutation/recovery consumer is
-implemented, external first capture and every recovery action refuse before
+**NP9-03.** Until the corresponding closed fixed external mutation/recovery
+consumer is implemented, external first capture and every recovery action refuse before
 credential capture, signing, clock, private publication or transport. Metadata
 access and disposable private-file representation fixtures remain available.
 Ordinary local recovery continues to refuse all paired custody. No automatic
 retry, cancellation or acknowledgement follows loading or displaying a record.
-Future lookup/retry/explicit absent acknowledgement must be separately specified
-and verify the complete original against typed history and current authorization.
+Enabling lookup/retry/explicit absent acknowledgement requires its separately
+specified consumer to verify the complete original against typed history and
+current authorization. The fixed SDK owns the implemented ordinary local consumer.
 Target history additionally needs enroll:review; profile:manage alone cannot
 authorize it. This representation does not expand paired permission allowlists.
 

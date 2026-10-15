@@ -1449,8 +1449,9 @@ records owner parity, control-byte refusal and remaining publication/installed g
 The [v9 journal](../../docs/specs/native-pending-external-profiles-v9.md) retains
 complete inspection/trust/target originals with manual, native operator or paired
 historical custody. It preserves older wire grammars and retains v9 after resolution,
-empty roots and later writes. Loading supplies no credential or current grant;
-first capture and recovery actions refuse until their fixed consumer is implemented.
+empty roots and later writes. Loading supplies no credential or current grant.
+Ordinary local actions use the fixed SDK below; paired capture/recovery still
+refuses before custody or transport until its signed consumer is implemented.
 
 Run `mix woh.native.pending.external.smoke` for 182 accepted and 276 refused
 independent roots, actual private publication/CAS, every older-root upgrade,
@@ -1458,3 +1459,20 @@ process restart, competing writers and instrumented pre-consumer refusal.
 The [evidence record](../../docs/provenance/native-pending-external-profiles-2026-10.md)
 also records the focused older codec/storage and paired-panel regression checks.
 These fixtures do not establish installed signing or physical qualification.
+
+## External-profile mutation and recovery
+
+The [fixed SDK](../../docs/specs/native-external-profile-sdk-v1.md) consumes complete
+inspection/trust/target originals and an authenticated expected controller identity.
+It checks status before retry, verifies full original/receipt correspondence and
+retains uncertainty after possible mutation or final identity failure. Local v9
+recovery enables lookup/retry and separately confirmed missing acknowledgement.
+Paired metadata remains unavailable to the ordinary runner; selected first
+confirmations and signed paired delivery are separate successors.
+
+Run `mix woh.native.external.mutation.smoke` for 176 independent receipt cases and
+172 framed delivery cases. Add `--live` for both quantity families against actual
+SQLite/private sockets: lost commit replies, separate-process pending recovery,
+source shutdown, revocation, absence, stale CAS and failed publication. Credentials
+travel only on stdin/private custody. [Executed evidence](../../docs/provenance/native-external-profile-sdk-2026-10.md)
+records the exact boundary and remaining installed/source/physical obligations.
