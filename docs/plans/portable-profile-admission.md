@@ -160,9 +160,10 @@ The [fixed external-profile SDK](../specs/native-external-profile-sdk-v1.md) now
 [executed complete-receipt, framed and Store/restart evidence](../provenance/native-external-profile-sdk-2026-10.md).
 The [selected external decision panel](../specs/native-external-profile-panel-v1.md) now has
 [executed driver/Store/retirement and mounted layout evidence](../provenance/native-external-profile-panel-2026-10.md).
-Implement [read-only guided preparation](../specs/external-profile-guidance-v1.md)
-for current reader/source/target counters and exact owned inspection artifacts,
-then native guided construction and signed paired consumption;
+[Read-only guided preparation](../specs/external-profile-guidance-v1.md) now has
+[executed Store/socket/CLI evidence](../provenance/external-profile-guidance-2026-10.md)
+for current reader/source/target counters and exact owned inspection artifacts.
+Implement native guided construction next, then signed paired consumption;
 no read receipt or structurally encoded input grants current trust, selection or
 source qualification.
 

@@ -1,9 +1,11 @@
 # Read-only external-profile guidance
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18-03/04/07/08 and H18-T2/T3/T6/T8/T11/T12;
 WOH.08 H08-03/09/H08-T9; WOH.15 H15-03/07 and H15-T2/T8.
-Implementation: planned. Evidence: missing.
+Implementation: Store/Authority and closed local socket/CLI reads implemented.
+Evidence: [executed focused software checks](../provenance/external-profile-guidance-2026-10.md).
+Native guided and signed consumers remain separate successors.
 
 ## Result and ownership
 
