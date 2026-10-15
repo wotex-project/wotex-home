@@ -71,7 +71,28 @@ macOS27, Swift6 language mode targeting arm64 macOS15.
 
 Logs: /tmp/home-native-generation-absent-{flow,root-race,sdk,coordinator,storage}.log.
 NGS-T5 and NGU-T3–T5 have focused software evidence. Remaining selected-panel
-withdrawal/expiry/unknown scenarios, signed paired generation and installed
+withdrawal/retired/unknown scenarios, signed paired generation and installed
 interaction/accessibility retain their acceptance obligations. No installed app,
 signed host, external model/account, storage power-loss or physical qualification
 was produced. No push or repository visibility change occurred.
+
+
+## Compatible repair and expired root supplement
+
+Test source: 90d9831afed7f9a6e2d5d9f03e8416937912d0de. Runtime remains the
+first-decision and reconciliation implementation recorded above.
+`mise exec -- mix woh.native.generation.flow.smoke` passed both families with
+three explicitly selected attempts and only two used. The actual repair result
+was mechanically compatible; another explicitly consented repair refused with
+invalidProfileRequest despite remaining budget. Workspace stayed unchanged and
+no pending original or provider call followed.
+
+A separate root explicitly selected one attempt, attempt_ms1 and total_ms1000.
+After preparation and a 1100ms wait, matching actual Store status was expired.
+The generation model loaded/refreshed that original, refused attempt preparation,
+kept its workspace and produced no pending mutation/decision. Explicit archival
+of the known expired root succeeded. The initial total_ms1 probe failed; the
+passing case gives preparation time to complete before testing expiry. No
+production deadline or Store clock changed. Provider calls remained two per
+family, and physical dispatch stayed disabled. Log:
+/tmp/home-native-generation-compatible-expired.log.

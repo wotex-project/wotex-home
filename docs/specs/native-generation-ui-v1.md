@@ -1,6 +1,6 @@
 # Native generation workspace and first decisions
 
-Version: 0.1.5. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.6. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18A-02/04/05 and H18-T15/T16/T17;
 WOH.15 H15-03/07 and H15-T8.
 Implementation: workspace, guarded local first decisions, panel, repair/cancellation
@@ -220,6 +220,8 @@ The local first-decision flow and separately confirmed missing-status pending
 reconciliation now have focused native/Store evidence. Ordinary lookup retains an
 absent original; explicit acknowledgement can clear its exact pending entry, then
 a separate confirmed archive accepts uncertainty while removing only workspace
-metadata. Unreconciled cancellation intent still refuses archive.
+metadata. Unreconciled cancellation intent still refuses archive. Compatible repair
+with unused attempt budget and selected-panel expired-root refusal now have
+focused actual-Store evidence; withdrawal/retired/unknown panel cases remain.
 Signed paired generation and installed interaction/qualification retain separate
 gates; focused checks alone do not complete NGU-T3–T5.

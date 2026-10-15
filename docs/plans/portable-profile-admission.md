@@ -125,7 +125,8 @@ local first decisions, explicit repair/cancellation and fresh manual candidate
 composition now have [executed native/Store evidence](../provenance/native-generation-flow-2026-10.md).
 Separately confirmed missing-original acknowledgement and uncertain archival now
 have [executed reconciliation evidence](../provenance/native-generation-reconciliation-2026-10.md).
-Continue with the remaining selected-panel withdrawal/expired/unknown cases,
+Compatible repair with unused budget and expired-root panel refusal are checked.
+Continue with selected-panel withdrawal/retired/unknown cases,
 signed paired delivery and installed interaction/qualification. Live account/model, local OS
 confinement, native/signed paired delivery and aggregate pool boundaries remain.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
