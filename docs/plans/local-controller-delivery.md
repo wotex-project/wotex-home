@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.26. Updated: 2026-10-15. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads, paired first-power composition and last resolved power receipt lookup are implemented development entries; installed signed success, certificate-clock qualification, broader paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
+Version: 0.1.27. Updated: 2026-10-15. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads, paired first-power composition and last resolved power receipt lookup are implemented development entries; installed signed success, certificate-clock qualification, broader paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
 
 The [paired power entry](../specs/native-paired-power-v1.md) joins an actual
 authenticated view basis, fresh click scope and one busy reservation across first
@@ -49,23 +49,38 @@ paired tool/history and admitted temporal successors in this plan.
 The next temporal join uses a separate generic civil query rather than
 re-anchoring an RRULE and changing its original ordinal. ExBooking's
 [bounded civil occurrence contract](../../../ex_booking/docs/specs/SP.09-civil-occurrences.md)
-is implemented at local commit `dd82677`; its full local quality milestone,
-extracted consumer and six notebooks passed. It returns original local/UTC
-points over at most 366 explicit dates, with policies applied before UTC filtering
-and no global ordinal. Home still consumes pinned ExBooking `25ad045` and has
-not selected this newer commit or replaced its recurrence calculator. The
-generic WRO.03 civil adapter is now implemented at WoTEx `c6d5b2f9`, with
-[an exact archive cohort](../../../wotex/docs/packages/wotex-routines/provenance/civil-time-cohort-2026-10.md)
-passing eight civil cases alongside all nine original calendar cases. It keeps
-query-independent original/database identities, complete output limits and
-checked event binding, and runs without application startup. Its package
-quality components pass after the documented delivery-check corrections.
-Next specify and build the Home immutable TZif/original-occurrence join,
-including lossless fold/offset representability and unchanged durable originals.
+and complete-ambiguity extension are implemented at local commit `16a9d0d`.
+Its full local quality milestone passed 429 checks with 97.1% coverage,
+the extracted consumer and all six notebooks. The optional civil callback
+preserves complete ambiguities of 2–732 alternatives, including stable local
+positions after filtering. Each query retains the 366-resolution/732-localization
+ceilings and refuses before localizing an over-budget label, without partial
+results. The legacy recurrence/provider interfaces retain their original bounds.
+
+The generic WRO.03 civil adapter at WoTEx `f3e77a43` projects later positions as
+`["fold", index]` and the exact producer work refusal as civil_work_bound.
+Its [renewed exact archive cohort](../../../wotex/docs/packages/wotex-routines/provenance/civil-time-cohort-2026-10.md#complete-ambiguity-renewal)
+passes ten civil cases alongside all nine original calendar cases, including
+threefold/maximal ambiguities, every policy, stable originals and actual work
+counts. Its owning full milestone passes 160 tests with 95.3% coverage.
+Query-independent original/database identities, complete output limits,
+checked event binding and no-application-start calculation remain intact.
+
+Home still consumes pinned ExBooking `25ad045`, has no selected Routines runtime
+dependency and has not replaced its recurrence calculator. Its current TZif
+calculator supports more than two instants and offsets wider than the existing
+routine provider's ±86400-second compatibility profile. Next specify and build
+a separately identified immutable civil provider and original-occurrence join
+that preserve all supported candidates, current local-date selection order,
+first-fold policy, UTC headroom and unchanged durable originals. The generic
+successors now represent those cases; using the narrower legacy provider would
+still lose supported behavior.
+
 Runtime adoption also needs a complete bounded producer artifact cohort and
 current-Store proof revalidation; the existing Home-only temporal digest cannot
-certify changed producer code. Existing native and physical qualification gates
-remain independent of these pure calculations.
+certify changed producer code. Freeze those ownership, compatibility and evidence
+contracts before changing runtime pins or admission. Existing native and physical
+qualification gates remain independent of these pure calculations.
 
 ## Product outcome
 
