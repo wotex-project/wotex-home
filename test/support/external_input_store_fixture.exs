@@ -85,6 +85,8 @@ defmodule WotexHome.ExternalInputStoreFixture do
          external_reader: reader,
          external_source_owner: c.sources,
          external_report_owner: reports,
+         qualification_case_keys: Keyword.get(options, :case_keys, %{}),
+         qualification_decision_keys: Keyword.get(options, :decision_keys, %{}),
          name: @owner}
       )
 
@@ -234,7 +236,9 @@ defmodule WotexHome.ExternalInputStoreFixture do
       trust: approved,
       authority: Authority.new(store: store, profile_custody: c.custody),
       reports: reports,
-      family: family
+      family: family,
+      case_keys: Keyword.get(options, :case_keys, %{}),
+      decision_keys: Keyword.get(options, :decision_keys, %{})
     })
   end
 
@@ -249,6 +253,8 @@ defmodule WotexHome.ExternalInputStoreFixture do
          external_reader: c.reader,
          external_source_owner: c.sources,
          external_report_owner: c.reports,
+         qualification_case_keys: c.case_keys,
+         qualification_decision_keys: c.decision_keys,
          name: @owner}
       )
 

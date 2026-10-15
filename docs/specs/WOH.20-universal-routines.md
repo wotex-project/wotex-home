@@ -1,7 +1,7 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.31. Updated: 2026-10-16. Status: accepted target.
-Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context and durable input withdrawal.
+Version: 0.1.32. Updated: 2026-10-16. Status: accepted target.
+Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context, original-first input install/revoke/status and durable input withdrawal.
 Evidence: finite software subset; full acceptance cases remain open.
 
 ## Purpose, ownership and current subset
@@ -306,7 +306,8 @@ the original Store receipt coordinate but no report-owner deadline; source revie
 the prior native owner discarded it after consumption. The bounded Store-only
 witness now preserves it without processing-time renewal or a new durable format.
 Its native owner, exclusive-clock, quota and failure checks pass.
-Reviewed Mapping installation and complete current collection follow separately.
+The reviewed successor below supplies Mapping installation; complete current
+collection remains a separate successor.
 
 ## Reviewed current external input successor
 
@@ -339,18 +340,22 @@ private reader, source, receipt clock and complete runtime twice, with independe
 caller/author permissions and target grants before private reads. Restart,
 original replay, owner timeout, source drift and corruption have focused software
 coverage; four isolated Store probes reject closing byte drift across all runtime
-groups. Installation/revoke, proactive withdrawal and current collection remain
-open. Linux-only execution, physical qualification and complete composed execution
+groups. Current collection remains open. Linux-only execution, physical
+qualification and complete composed execution
 retain their separate obligations.
 
 Computed retirement footprint and atomic durable-loss withdrawal are implemented:
 affected slots retire in lexical order inside the cause's Store transaction;
 failures roll back the cause and whole batch. Sixty-five focused durable cases
 and an additional end-maintenance/restart/original-replay probe pass. The fixtures
-retain unqualified history and do not establish native installation. Live
-install/revoke must charge one exact withdrawal row and its bytes per prospective
-installed head. Historical quotas and original receipts keep their existing meanings.
-The native mutation contract now fixes original-first scope authentication,
-producer-free retired/history recovery, one shared preparation/commit budget and
-fresh signed decisions for new installs; copying a previously used decision
-cannot restore authority under a new operation ID.
+retain unqualified history; the subsequent native admission tests use actual
+selected private readers and ephemeral synthetic signed review claims. Native
+install/revoke/status now implement original-first scope authentication,
+producer-free retired/history recovery, one shared preparation/commit budget,
+exact prospective retirement charging and fresh signed decisions for new
+installs. Copying a previously used decision cannot restore authority under a new
+operation ID. Actual context and signatures are repeated after tentative SQL rows;
+source drift rolls everything back and retained corruption fences writes. Native
+maintenance and principal/grant losses retire admitted heads. Original receipt
+recovery, restart and quota checks remain software evidence under the owning
+record, without physical qualification or current Fact collection.

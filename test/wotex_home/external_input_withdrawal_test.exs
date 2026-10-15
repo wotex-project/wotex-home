@@ -290,6 +290,44 @@ defmodule WotexHome.ExternalInputWithdrawalTest do
     assert :ok = Integrity.validate_snapshot(db)
   end
 
+  @tag input_quota: true, timeout: 60_000
+  test "new native admission charges every retained retirement reserve before live producers",
+       c do
+    credential = :crypto.strong_rand_bytes(32)
+
+    {:ok, {:ok, nil, _}} =
+      SQL.transaction(c.db, fn db ->
+        WotexHome.Durable.Store.PrincipalWriter.provision_principal_tx(
+          db,
+          "reviewer:quota",
+          :crypto.hash(:sha256, credential),
+          JSON.encode!(~w(qualify:profile rule:review read)),
+          ["sensor:independent"],
+          nil
+        )
+      end)
+
+    assert :ok = Integrity.validate_snapshot(c.db)
+    c = start_store(c)
+
+    # These readable legacy heads fit actual retained bytes but not their
+    # prospective retirements. No live source, custody or reviewer is supplied.
+    assert :ok = ExternalInputs.capacity(c.db, 0, 0, 0, 0)
+    assert {:ok, %{history_rows: 160}} = ExternalInputs.retirement_reserve(c.db)
+    before = retained(c.db)
+
+    assert {:error, :external_input_capacity} =
+             WotexHome.Authority.change_external_routine_input(
+               WotexHome.Authority.new(store: c.store),
+               credential,
+               %{c.v["change"] | "operation_id" => "new:quota"}
+             )
+
+    assert retained(c.db) == before
+    assert :sys.get_state(c.store).writable
+    assert :ok = Integrity.validate_snapshot(c.db)
+  end
+
   defp start_store(c) do
     :ok = Sqlite3.close(c.db)
     store = start_supervised!({Store, path: c.path})

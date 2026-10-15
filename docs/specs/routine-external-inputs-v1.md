@@ -1,13 +1,13 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.16. Updated: 2026-10-16. Status: accepted successor target.
+Version: 0.1.17. Updated: 2026-10-16. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition,
 signed-review verifier, retained codecs, schema-38 history/migration/recovery and
-measured native review context, computed retirement reserve and atomic durable
-withdrawal. Evidence:
+measured native review context, computed retirement reserve, atomic durable
+withdrawal and original-first native install/revoke/status. Evidence:
 entry, native correspondence, historical package/original/graph checks and software trust-mechanics
-checks pass. SQLite installation, current collection, EI-T1–T9 integration and
+checks pass. Complete current collection, EI-T1–T9 integration and
 physical obligations remain open.
 
 ## Result and ownership
@@ -853,6 +853,12 @@ additional actual end-maintenance/restart/original-replay probe. Two-slot orderi
 all durable loss classes, three separate authors, exact native grant receipts,
 second-withdrawal SQL rollback, counter exhaustion and a 160-slot actual-byte
 quota refusal are covered. These use structurally retained, unqualified legacy
-history and do not establish actual native Mapping installation. Original-first
-install/revoke with reserve admission, complete current collection and their
-actual-native integration remain next. No fixture establishes physical qualification.
+history and do not establish actual native Mapping installation. The subsequent
+native Authority/Store install/revoke/status implementation uses actual selected
+private readers and in-memory signed synthetic review claims. It checks original
+scope before new work, reserves retirement capacity, refuses consumed decisions
+for new installs and repeats actual context and signatures after tentative rows.
+Native maintenance, principal/grant loss, restart, source drift, corruption and
+SQL rollback have focused software coverage under the owning evidence record.
+Current requested collection, composed execution and complete integration remain
+next. No fixture establishes physical qualification.

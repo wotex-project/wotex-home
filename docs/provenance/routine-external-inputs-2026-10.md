@@ -1,6 +1,6 @@
 # Reviewed external routine input evidence
 
-Reviewed: 2026-10-15. Scope: the
+Reviewed: 2026-10-16. Scope: the
 [reviewed input successor](../specs/routine-external-inputs-v1.md).
 
 ## Source review and implementation entry
@@ -528,3 +528,99 @@ tree. Both temporary roots contain zero matching owned scratch paths, including
 the 160-slot quota database and the maintenance/retirement test roots. About
 53 GiB is free. Both dependency locks and unrelated research/client files are
 preserved; no shared Docker or native/dependency cache is pruned.
+
+## Original-scoped native installation and recovery
+
+Authority/Store now expose native change_external_routine_input/3 and
+external_routine_input_status/4. The closed input/receipt codecs and schema 38
+are unchanged. Submitted and retained target grants protect original recovery;
+status is principal/epoch/operation private and authenticates the actor first.
+Exact originals are returned before writable/retired-controller, epoch,
+maintenance, slot, producer, reviewer and prospective-capacity admission.
+Recovery never reactivates an installed head. Missing originals remain new work.
+
+New installs charge actual operation/history bytes and all prospective exact
+withdrawal footprints, including their own replacement reserve. New decoded
+signed decisions must differ from every previously installed decision for that
+slot. Changed signature text cannot refresh a consumed decision; a newly signed
+evidence set can retain an otherwise unchanged Definition. Canonical codec
+refusals remain distinct from Store CAS: zero-counter revoke is invalid wire,
+a missing slot refuses positive revoke CAS and matching revoked-slot counters
+refuse external_input_not_installed. New revoke and historical recovery do not
+consult live input producers, sources, private input bytes or reviewer keys.
+Active-schedule byte preparation for a new write retains its separate existing
+obligations and follows authenticated original classification.
+
+Store prepares the exact immutable outcome before SQL, then repeats admission
+inside its owning transaction. Actual selected private context, current native
+Definition, complete runtime, current programme and all trusted signatures are
+rebuilt/verified before and after tentative rows under the same 10000 ms budget.
+Each five-second owner call reserves 5000 ms before starting. Final mutable
+revoke guards remain producer-free. SQL or retained corruption fences writes;
+ordinary admission/source/timeout refusals roll back while preserving writability.
+
+On Elixir 1.19.6 / OTP 28.5.0.6:
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/external_input_installation_test.exs test/wotex_home/external_input_withdrawal_test.exs:294 --warnings-as-errors`
+
+passes **17 tests**, seed **108935**, **83.8 seconds**, with nine unrelated
+withdrawal cases excluded by the explicit line selection. Sixteen installation
+cases use actual private profile import, inspection, digest approval, target
+selection and grants. Separate ephemeral Ed25519 case/decision keys sign synthetic
+claims only in memory. No signing key or generated review package is written to
+disk. The fixture's authenticated_device and hardware-labelled receipt fields
+are explicit synthetic assertions, not measured authentication or bench evidence.
+
+Cases cover immutable original bytes/receipt/revision, principal-private status,
+all caller permissions and both submitted/retained target grants before private
+reads, stale epoch/revision/generation order, producer-free replay/revoke,
+unhealthy/maintenance/retired recovery, replacement and post-revoke fresh decisions,
+actual restart with a new Store boot, invalid signatures, missing reviewer keys,
+source replacement and native maintenance/installer/selection-author/grant losses.
+Revoking the selector/approver also revokes target dependencies and grants;
+original recovery correctly refuses permission_denied in that case. Each
+withdrawal retains the earliest actual cause and original installation revision.
+
+A traced final-context helper pauses real custody only after all three tentative
+operation/history/head rows exist. Replacing the source then rolls back those
+rows, journal and global revision. Corrupting the tentative head instead produces
+corrupt_external_inputs, rolls back and fences the writer. Keeping the real
+private read suspended reaches its timeout under the shared budget, leaves no
+original, rolls back all tentative state and keeps Store writable. A separate
+real authority-journal SQL abort rolls back the attempted install and fences
+writes. No protected domain trigger or schema check is relaxed.
+
+The quota case supplies 160 structurally valid legacy installed heads whose
+actual retained bytes fit while their full future withdrawal reserve does not.
+It calls the public native change API without live custody/source/reviewer
+configuration and receives external_input_capacity before producer access,
+retaining the exact prior rows/revision and writer health. These legacy heads
+are never admitted as native qualified inputs.
+
+The five affected ProfileByteContext cases also pass in the earlier focused run.
+They include an active schedule with suspended custody: context, native mutation
+preamble and original status clear stale TEMP checks without private reads; the
+subsequent authenticated new-change preparation still verifies schedule bytes.
+That 30-case development run had two fixture failures: the quota reviewer setup
+used an unrelated five-second public principal operation, and the selector
+revocation assertion overlooked its cascaded target/grant loss. The fixture now
+adds its valid reviewer before Store startup; runtime timeouts are unchanged.
+The final 17-case run above includes both corrected cases. Earlier malformed
+wire and journal-count expectations were also corrected without weakening the
+frozen codec or production guard.
+
+The documentation-only agent supplied the four affected module docs. Test and
+support modules retain moduledoc=false with a following blank line. No framed or
+Swift API is added by this native slice. Complete requested collection,
+independent extracted producer consumption, composed execution, installed hosts
+and physical acceptance remain open. Physical dispatch stays default-disabled.
+
+
+Final formatting, warnings-as-errors compilation, the 22-contract working
+catalogue and both Git whitespace checks pass. The disposable staged projection
+checks 21 contracts and 42 indexed relative Markdown references, then removes
+its scratch tree. Both temporary roots contain zero owned scratch paths and
+about 53 GiB remains free. The Home and firmware locks retain their recorded
+SHA-256 values. No Docker resources, native/release artifacts, dependency update,
+full application suite or Dialyzer run was used. Existing dependency/native and
+Docker caches/volumes and unrelated research/client files remain untouched.

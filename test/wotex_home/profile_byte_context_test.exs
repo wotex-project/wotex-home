@@ -126,7 +126,7 @@ defmodule WotexHome.ProfileByteContextTest do
     assert {:error, :profile_artifact_unavailable} = available(c, runtime)
   end
 
-  test "native input context clears prior checks without private I/O even with an active schedule",
+  test "native input preparation and original reads clear checks without private I/O with an active schedule",
        c do
     {:ok, runtime} = ProfileBasis.runtime_digest()
     assert :ok = ProfileByteContext.prepare(c.db, c.custody, {:record, nil})
@@ -141,17 +141,20 @@ defmodule WotexHome.ProfileByteContextTest do
     :ok = :sys.suspend(c.custody)
 
     try do
-      assert :ok =
-               ProfileByteContext.prepare(
-                 c.db,
-                 c.custody,
-                 {:external_routine_input_context, :untrusted, "sensor:1", "sample"}
-               )
-
-      assert {:error, :profile_artifact_unavailable} = available(c, runtime)
+      for request <- [
+            {:external_routine_input_context, :untrusted, "sensor:1", "sample"},
+            {:change_external_routine_input, :untrusted, %{}},
+            {:external_routine_input_status, :untrusted, 1, "operation:1"}
+          ] do
+        assert :ok = ProfileByteContext.prepare(c.db, c.custody, request)
+        assert {:error, :profile_artifact_unavailable} = available(c, runtime)
+      end
     after
       :ok = :sys.resume(c.custody)
     end
+
+    assert :ok = ProfileByteContext.prepare(c.db, c.custody, :external_input_new_change)
+    assert :ok = available(c, runtime)
   end
 
   defp available(c, runtime),

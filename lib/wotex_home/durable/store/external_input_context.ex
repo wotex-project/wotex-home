@@ -20,10 +20,13 @@ defmodule WotexHome.Durable.Store.ExternalInputContext do
   checks after private reads and freshly checks the closing runtime inventory.
   Synthetic-lab sources refuse `:unsupported_external_input`.
 
-  One 10-second monotonic budget covers preparation; each five-second owner call
-  requires at least five seconds remaining before it starts. Exhaustion or an
-  unavailable owner returns `{:error, :external_input_unavailable}`; differing
-  opening/closing captures return `{:error, :external_input_basis_changed}`.
+  `current/5` starts a 10-second monotonic preparation budget. Store's internal
+  six-argument entry point accepts its existing deadline, so repeated measurements
+  during installation share the change's preparation/commit budget rather than
+  renewing it. Each five-second owner call requires at least five seconds remaining
+  before it starts. Exhaustion or an unavailable owner returns
+  `{:error, :external_input_unavailable}`. Differing opening/closing captures
+  return `{:error, :external_input_basis_changed}`.
   Authentication, limit, maintenance and corruption refusals retain their named
   codes. There is no partial context or background continuation.
 
@@ -68,8 +71,11 @@ defmodule WotexHome.Durable.Store.ExternalInputContext do
 
   @doc "Rebuilds a bounded review context without retaining an operation or lease."
   def current(db, configuration, credential, target, key) do
-    deadline = now() + 10_000
+    current(db, configuration, credential, target, key, now() + 10_000)
+  end
 
+  @doc false
+  def current(db, configuration, credential, target, key, deadline) do
     with :ok <- identity(target, key),
          {:ok, opening} <- capture(db, configuration, credential, target, key, deadline),
          {:ok, closing} <- capture(db, configuration, credential, target, key, deadline),

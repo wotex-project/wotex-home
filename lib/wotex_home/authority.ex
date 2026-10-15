@@ -27,6 +27,14 @@ defmodule WotexHome.Authority do
   review. This bounded read creates no operation or lease and installs no input;
   its metadata grants no continuing authorization or physical qualification.
 
+  `change_external_routine_input/3` takes a closed install/revoke input and returns
+  `{:ok, receipt}` or `{:error, reason}`. `external_routine_input_status/4` recovers
+  that actor's receipt by authority epoch and operation ID, or returns `:not_found`
+  or an error. Both require current permissions and target grants. Exact original
+  replay precedes fresh admission; replay, status and revocation need no live input
+  producer or reviewer. Each new install requires a fresh signed decision and
+  Store's repeated actual current-context checks, without granting effect authority.
+
   After a lost reply, recover the same original operation and immutable receipt
   before deciding whether further work is needed. Staging, admission, durable
   handoff, protocol acknowledgement and observed state are distinct outcomes;
@@ -663,6 +671,14 @@ defmodule WotexHome.Authority do
   @doc "Measures the current native reader, private source and clock basis for input review."
   def external_routine_input_context(%__MODULE__{store: store}, credential, target, key),
     do: Store.external_routine_input_context(store, credential, target, key)
+
+  @doc "Installs or revokes one reviewed external input under an immutable original operation."
+  def change_external_routine_input(%__MODULE__{store: store}, credential, input),
+    do: Store.change_external_routine_input(store, credential, input)
+
+  @doc "Recovers this actor's exact input receipt without requiring a current reader or reviewer."
+  def external_routine_input_status(%__MODULE__{store: store}, credential, epoch, operation),
+    do: Store.external_routine_input_status(store, credential, epoch, operation)
 
   @doc "Native host receipt admission; no socket/model report body or credential enters this boundary."
   def accept_external_report(%__MODULE__{store: store}, input),

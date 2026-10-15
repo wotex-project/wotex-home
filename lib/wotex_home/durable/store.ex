@@ -21,6 +21,17 @@ defmodule WotexHome.Durable.Store do
   This read allocates no lease or durable operation and grants no continuing
   authority; subsequent installation must repeat its own current guards.
 
+  `change_external_routine_input/3` authenticates current actor/scope before
+  recovering an immutable original or admitting new work. It returns
+  `{:ok, receipt}` or `{:error, reason}`. `external_routine_input_status/4` returns
+  that actor's receipt, `:not_found` or an error without fresh input producers,
+  sources or reviewers. Input revocation also avoids those live dependencies.
+  New installs require a signed decision not previously installed for that slot
+  and exact prospective retirement capacity. Store owns the transaction and shares
+  one preparation/commit deadline. It repeats actual current context and signature
+  checks after tentative rows before final validation and COMMIT. A receipt alone
+  grants no effect authority.
+
   Held requests and pre-handoff claims carry no send authority. Store retains
   separate admission, handoff, acknowledgement and observation state and repeats
   current guards before transitions. Generator preparation likewise records an
@@ -700,6 +711,17 @@ defmodule WotexHome.Durable.Store do
 
   def external_routine_input_context(server, credential, target, key),
     do: GenServer.call(server, {:external_routine_input_context, credential, target, key}, 15_000)
+
+  def change_external_routine_input(server, credential, input),
+    do: GenServer.call(server, {:change_external_routine_input, credential, input}, 15_000)
+
+  def external_routine_input_status(server, credential, epoch, operation),
+    do:
+      GenServer.call(
+        server,
+        {:external_routine_input_status, credential, epoch, operation},
+        15_000
+      )
 
   def accept_external_report(server, input),
     do: GenServer.call(server, {:accept_external_report, input}, 30_000)
@@ -1809,6 +1831,8 @@ defmodule WotexHome.Durable.Store do
         :authoring_generation_status,
         :authoring_generation_attempt_status,
         :external_target_status,
+        :change_external_routine_input,
+        :external_routine_input_status,
         :profile_target,
         :profile_catalogue,
         :enrollment_review_status,
@@ -3213,6 +3237,43 @@ defmodule WotexHome.Durable.Store do
       )
 
     {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:change_external_routine_input, credential, input}, _from, state) do
+    alias WotexHome.Rules.ExternalInputOperation
+    alias WotexHome.Durable.Store.ExternalInputWriter
+    deadline = System.monotonic_time(:millisecond) + 10_000
+
+    with {:ok, document} <- ExternalInputOperation.encode(input) do
+      case ExternalInputWriter.prepare(state.db, credential, document) do
+        {:ok, :existing, receipt} ->
+          {:reply, {:ok, receipt}, state}
+
+        {:ok, :new, principal, data} ->
+          external_input_change_reply(state, credential, principal, data, document, deadline)
+
+        error ->
+          external_input_error(state, error)
+      end
+    else
+      error -> external_input_error(state, error)
+    end
+  end
+
+  defp handle_current_call(
+         {:external_routine_input_status, credential, epoch, operation},
+         _from,
+         state
+       ) do
+    case WotexHome.Durable.Store.ExternalInputWriter.status(
+           state.db,
+           credential,
+           epoch,
+           operation
+         ) do
+      {:error, _} = error -> external_input_error(state, error)
+      result -> {:reply, result, state}
+    end
   end
 
   defp handle_current_call({:inspect_external_profile, _, _}, _from, %{writable: false} = state),
@@ -5831,6 +5892,21 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  defp final_commit_decision(_db, {:external_input, guard}, commit) do
+    case guard.() do
+      :ok ->
+        commit
+
+      {:error, reason} ->
+        if WotexHome.Durable.Store.ExternalInputWriter.policy?(reason),
+          do: {:rollback, {:policy, reason}},
+          else: {:rollback, reason}
+
+      _ ->
+        {:rollback, :corrupt_external_inputs}
+    end
+  end
+
   defp final_commit_decision(_db, {:external_source, guard}, commit) do
     case guard.() do
       :ok -> commit
@@ -6079,6 +6155,87 @@ defmodule WotexHome.Durable.Store do
        %{state | external_target_boot: Map.delete(state.external_target_boot, input["target_id"])}}
 
   defp external_selection_boot(reply, _), do: reply
+
+  defp external_input_change_reply(%{retired: true} = state, _, _, _, _, _),
+    do: {:reply, {:error, :source_retired}, state}
+
+  defp external_input_change_reply(%{writable: false} = state, _, _, _, _, _),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp external_input_change_reply(state, credential, principal, input, document, deadline) do
+    alias WotexHome.Durable.Store.ExternalInputWriter
+
+    with {:ok, outcome} <- ExternalInputWriter.prepare_new(state.db, principal, input, document),
+         :ok <- external_input_live_guard(state, credential, input, deadline),
+         :ok <- external_input_budget(deadline, 5000),
+         :ok <-
+           ProfileByteContext.prepare(state.db, state.profile_custody, :external_input_new_change),
+         :ok <- external_input_budget(deadline, 0) do
+      guard = fn -> external_input_live_guard(state, credential, input, deadline) end
+
+      write_reply(
+        state,
+        &ExternalInputWriter.retain_tx(&1, credential, document, outcome, state.clock_epoch),
+        {:external_input, guard}
+      )
+    else
+      error -> external_input_error(state, error)
+    end
+  end
+
+  defp external_input_live_guard(state, credential, %{"action" => "revoke"} = input, deadline) do
+    with :ok <-
+           WotexHome.Durable.Store.ExternalInputWriter.final_revoke(state.db, credential, input),
+         do: external_input_budget(deadline, 0)
+  end
+
+  defp external_input_live_guard(state, credential, input, deadline) do
+    configuration =
+      Map.take(state, [
+        :profile_custody,
+        :external_source_owner,
+        :external_report_owner,
+        :external_target_boot,
+        :clock_epoch,
+        :clock_origin
+      ])
+
+    with {:ok, context} <-
+           WotexHome.Durable.Store.ExternalInputContext.current(
+             state.db,
+             configuration,
+             credential,
+             input["target_id"],
+             input["capability_key"],
+             deadline
+           ),
+         {:ok, _} <-
+           WotexHome.Rules.ExternalInputPackage.verify(
+             input["package_document"],
+             context,
+             state.qualification_case_keys,
+             state.qualification_decision_keys
+           ),
+         do: external_input_budget(deadline, 0)
+  end
+
+  defp external_input_budget(deadline, reserve) do
+    if deadline - System.monotonic_time(:millisecond) >= reserve,
+      do: :ok,
+      else: {:error, :external_input_unavailable}
+  end
+
+  defp external_input_error(state, {:error, reason} = error) do
+    if WotexHome.Durable.Store.ExternalInputWriter.policy?(reason) do
+      {:reply, error, state}
+    else
+      error = if is_atom(reason), do: error, else: {:error, :store_unavailable}
+      {:reply, error, %{state | writable: false}}
+    end
+  end
+
+  defp external_input_error(state, _),
+    do: {:reply, {:error, :corrupt_external_inputs}, %{state | writable: false}}
 
   defp external_report_read_guard(state, scope) do
     alias WotexHome.Profiles.{
