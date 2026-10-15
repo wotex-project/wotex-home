@@ -118,3 +118,18 @@ Two current-target/TLS cases passed again after making the test's private
 temporary path portable (27 other cases excluded in that focused rerun).
 Full suite, Dialyzer, assembled releases, native installed UI, firmware boot and
 physical qualification were not run at this component milestone.
+
+## Fresh TLS handshake follow-up
+
+The spec-first follow-up in
+`b0b4762f5a9fed99dd7b5634d36f8141d97c5356` explicitly disables TLS 1.2 session
+reuse and TLS 1.3 session tickets for each new publisher. Its own supplied
+CA/hostname policy therefore applies to a fresh certificate handshake, rather
+than inheriting an earlier publisher's resumable session. Options were checked
+against the consumed OTP 28 SSL source and the
+[official SSL options](https://www.erlang.org/doc/apps/ssl/ssl.html#client_option_pre_tls13/0).
+Thirty publisher tests passed after the change, including an actual TLS 1.2
+broker in addition to the default verified TLS path. Root format,
+warnings-as-errors compilation and Git whitespace checks passed; Nerves host
+warnings-as-errors compilation passed again. These checks do not add installed,
+firmware or physical evidence.
