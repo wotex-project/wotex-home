@@ -63,3 +63,47 @@ validates 22 contracts; a disposable index projection validates the 21 indexed
 contracts and 182 changed indexed Markdown references. An initial formatter
 failure was corrected. The first disposable check used the wrong directory;
 the corrected check passes and both disposable directories were removed.
+
+## Fresh runtime foundation
+
+The contract/schema/vector entry was committed as f402317d before production
+code. Rules.ExternalInputRuntime now implements the specified fresh four-group
+capture, pure closed native assertion digest and exact current comparison.
+The routine/transport/storage domains inventory every application module;
+ProducerIdentity.current/0 is additionally compared with freshly read inventories
+of each profile application. Thus even core bytes cannot reuse an enclosing
+Store's opening memo. Malformed claims and unavailable/drifting inventories use
+one payload-free runtime_artifact_unavailable refusal. The existing eleven-app
+ceiling and other runtime domains are unchanged.
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/external_input_runtime_test.exs test/wotex_home/external_routine_input_schema_test.exs --warnings-as-errors`
+passes **eight tests**, seed **136392**, **18.2 seconds**, on the same pinned
+Elixir/OTP toolchain. The pure hash matches the independent frozen Python vector.
+Actual complete app versions/module lists independently reconstruct every group
+digest and the native profile assertion. An isolated VM copies compiled artifacts
+for all twenty distinct applications, changes bytes while preserving BEAM code
+checksums, changes valid application versions and module lists within warmed
+Store inventory guards, and verifies the external-input closing check refuses
+before the outer guard closes. Every app's absent metadata also refuses a new
+capture. Original bytes/metadata are restored between probes; source artifacts
+are never mutated. Private fixture directories are removed by both child and
+parent cleanup, including failure paths.
+
+The first isolated run failed because the private Exqlite BEAM location lacked
+its NIF. The corrected fixture links existing immutable priv resources into its
+private workspace; it does not build or change a native library. The earlier
+failed workspace was also removed. Only the passing corrected run is evidence.
+The documentation agent improved only the helper's moduledoc and verified
+unchanged non-doc bytes/AST, references, formatting and blank-line spacing;
+it created no artifacts or commits.
+
+This completes a bounded runtime foundation of EI-T7. Definition construction,
+qualification verification, SQLite migration/history/install/withdrawal/recovery,
+current collection and the full EI-T1–T9 cases remain open. No new Authority
+route, current Fact, effective installation or physical permission is available.
+
+Final formatting, warnings-as-errors compilation, both Git whitespace checks,
+the 22-contract working catalogue and the 21-contract indexed catalogue pass.
+All 41 changed indexed Markdown references resolve. The final scan finds zero
+owned temporary paths; roughly 54 GiB remains free. No Docker resource, native
+build, full application suite or Dialyzer was used for this runtime slice.

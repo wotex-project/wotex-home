@@ -1,9 +1,11 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
-WOH.11 H11-01/05. Implementation: planned. Evidence: independent entry
-schema/wire/signature checks passed; EI-T1–T9 and physical obligations remain open.
+WOH.11 H11-01/05. Implementation: partial, fresh runtime helper only.
+Evidence: entry checks and bounded native runtime/inventory drift checks pass;
+Definition, qualification, Store collection, EI-T1–T9 integration and physical
+obligations remain open.
 
 ## Result and ownership
 
@@ -542,3 +544,11 @@ host validation, physical safety checks or the complete WOH.20 acceptance suite.
 The later composed execution contract must consume this exact current basis,
 collect all eligible active programs and repeat relevant guards at commit, claim
 and final physical handoff; this snapshot is not a substitute for that work.
+
+The runtime helper now implements current/0, digest/1 and check_current/2.
+Eight focused entry/runtime cases pass, including every one of twenty complete
+application members under byte/version/module-list drift inside a warmed Store
+inventory guard, and actual missing application metadata. This establishes only
+the bounded runtime foundation of EI-T7, not a Store installation/collection
+guard or completion of EI-T1–T9. [Executed evidence](../provenance/routine-external-inputs-2026-10.md)
+records the isolated scope, cleanup and remaining work.

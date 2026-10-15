@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.12. Updated: 2026-10-15. Accepted build order; implementation and
+Version: 0.1.13. Updated: 2026-10-15. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -316,3 +316,8 @@ requirements before production code. Deliver in this order:
 The entry is software grammar/correspondence evidence only. Physical review,
 installed hosts and later execution authority remain unestablished. Use focused
 checks between logical commits; remove each owned temporary workspace on exit.
+
+The first runtime substep now passes the independent hash and all twenty-app
+fresh closing/absence probes. Continue the pure Definition and separate review
+verifier, then actual durable install/withdrawal/recovery and current collection.
+The runtime helper alone creates no installation, Fact or execution authority.
