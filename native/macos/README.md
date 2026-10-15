@@ -1407,3 +1407,22 @@ The TLS cohorts check two passages joined to one source handle, a real owned
 fixture and separately corrupted kind/first-revision replies. The independent
 metadata corpus runs through `mix woh.native.paired.workspace.smoke`. These checks
 create no successful signing fixture, source authenticity or physical qualification.
+
+
+## External-profile catalogue and original reads
+
+The [native v2 read contract](../../docs/specs/native-external-profile-reads-v1.md)
+now has a fixed typed reader for external catalogue and inspection/trust/target
+history. Catalogue/inspection/trust reads require profile:manage; target history
+also requires enroll:review. Current catalogue state and actor-scoped immutable
+originals stay distinct. Each call brackets its read with checked identity and
+never captures a credential or sends a mutation.
+
+Run `mix woh.native.external.profiles.smoke` for the 725 independent framed cases,
+and `mix woh.native.external.profiles.smoke --live` for both quantity families
+against actual private SQLite/socket history. Live cases cover approval, target and
+trust revocation, absent publishers, author withdrawal, missing originals and exact
+permission/scoping refusal. Credential bytes travel only on stdin/private custody.
+The [evidence record](../../docs/provenance/native-external-profile-reads-2026-10.md)
+separates this SDK prerequisite from future complete-original/pending/confirmation
+and native panel delivery. No installed signing or physical qualification is claimed.

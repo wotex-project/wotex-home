@@ -315,7 +315,9 @@ defmodule Mix.Tasks.Woh.Native.External.Profiles.Smoke do
   Run `mix woh.native.external.profiles.smoke` on the supported macOS toolchain.
   Independent owning receipts for two quantities and framed peer faults check
   exact shapes, counters, catalogue ordering, identity drift, missing originals,
-  malformed responses and read-only request correspondence. No custody or mutation
+  malformed responses and read-only request correspondence. Pass `--live` for
+  both-family SQLite/private socket history, approval/revocation, absent publishers,
+  author withdrawal and current permission checks. No custody or mutation
   is added; installed signing and physical qualification require separate evidence.
   """
 

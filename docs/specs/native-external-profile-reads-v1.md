@@ -1,9 +1,11 @@
 # Native external-profile catalogue and original reads
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09 and H08-T1/T5/T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08 and H18-T6/T8/T11/T12.
-Implementation: planned. Evidence: missing.
+Implementation: typed catalogue and original reads implemented.
+Evidence: [725 framed cases and both-family real Store reads](../provenance/native-external-profile-reads-2026-10.md).
+Installed selected composition and native v2 first decisions remain separate.
 
 ## Result and delivery order
 
@@ -34,8 +36,11 @@ request. Absence of a supplied input hash is a history read, not input verificat
 Only external_profiles, external_inspection_status, external_trust_status and
 external_target_status may pass the new closed read adapter. Requests retain
 api_version=1, credential and, for status, authority_epoch/operation_id. Reuse the
-existing 65536-byte request/1048576-byte response framing, strict duplicate/depth
-checks and finite transport owner. No new transport retry, fallback, clock, signing
+existing 65536-byte request/1048576-byte response framing, strict duplicate/depth 16
+checks and finite transport owner. Each local exchange keeps its five-second
+network deadline: three exchanges have at most 15 seconds network budget, plus
+bounded decoding. A supplied paired owner's shorter original lifetime covers all
+three exchanges and is never renewed by the SDK. No new transport retry, fallback, clock, signing
 or Keychain acquisition is added. Error reasons are 1–128 lowercase ASCII identifier
 bytes (first a–z, remaining a–z/0–9/underscore); malformed reasons refuse
 invalidResponse. Propagate valid server refusal and transport/delivery failure.
@@ -56,12 +61,12 @@ typed metadata with redacted reflection and contain no bearer or reusable sessio
 ## Catalogue
 
 **NXR-02.** Successful response is exactly api_version/outcome/external_profile_catalogue,
-with version1 and outcome ok. Catalogue is exactly authority_epoch/store_revision/
+with version 1 and outcome ok. Catalogue is exactly authority_epoch/store_revision/
 policy_generation/items. Epoch is positive S64, revision nonnegative S64 and policy
 generation 0–1024, at most current revision. Items has 0–64 closed records:
 artifact_digest, id, version, trust_revision, trust_generation, trust_author, state,
 reader_basis_sha256. Digest is lower hex64; id/trust_author use Home ID grammar;
-version is canonical x.y.z, at most17 ASCII bytes, each component0–65535 with no
+version is canonical x.y.z, at most 17 ASCII bytes, each component 0–65535 with no
 leading zeros. Preserve strict binary id/version lexical order, unique id/version
 pairs and artifact digests. Do not apply numeric semantic-version ordering.
 
@@ -74,7 +79,7 @@ These are current catalogue facts, not profile approval credentials or qualifica
 
 ## Immutable originals
 
-**NXR-03.** Status is exactly api_version/outcome/member, with version1, outcome ok
+**NXR-03.** Status is exactly api_version/outcome/member, with version 1, outcome ok
 and the owning external_inspection_receipt, external_trust_receipt or
 external_target_receipt. Only exactly api_version/outcome with outcome not_found
 returns missing, after the final identity check. Unknown/member-mismatched fields,
@@ -93,7 +98,7 @@ artifact_first_approval_revision are positive, previous_trust_revision nonnegati
 and less than revision. First approval revision is at most revision and trust
 generation at most policy generation. Input/artifact/outcome SHA are lower hex64.
 Approve requires a reader-basis SHA, revoke null. Generation1 requires approve,
-previous revision0 and first approval equal revision. Later generations require
+previous revision 0 and first approval equal revision. Later generations require
 positive previous revision and first approval strictly before revision.
 
 Target has exactly the sixteen fields in ExternalTarget's owning receipt. Action
@@ -103,7 +108,7 @@ withdrawn_grants nonnegative. Target ID uses Home ID grammar; input/artifact/sou
 selection/outcome SHA are lower hex64. Withdrawn grants is at most4096, previous
 selection revision less than revision, binding revision at most revision and trust
 revision strictly before revision. First generation requires select, previous and
-resource revisions0, binding equal revision and withdrawn grants0. Later generations
+resource revisions 0, binding equal revision and withdrawn grants 0. Later generations
 require positive previous revision and resource revision=selection generation−1;
 select binds at this revision, revoke keeps binding at most previous selection
 revision. A historical select is not evidence that the target is currently selected.

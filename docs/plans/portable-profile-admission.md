@@ -150,6 +150,12 @@ Nonempty paired workspace selectors now have
 Continue with installed signed interaction/qualification. Human confirmation obtains fresh actual signed scope;
 it cannot renew a read session or edit the frozen original. Live account/model, local OS
 confinement, native/signed paired delivery and aggregate pool boundaries remain.
+The native v2 [catalogue/original read prerequisite](../specs/native-external-profile-reads-v1.md)
+now has [executed framed and both-family Store evidence](../provenance/native-external-profile-reads-2026-10.md).
+Build complete inspection/trust/target original codecs, durable pending/recovery,
+then selected confirmations and panel composition; no read receipt grants current
+trust, selection or source qualification.
+
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with
 [actual Store/fault/recovery evidence](../provenance/native-authoring-review-preparation-2026-10.md).
