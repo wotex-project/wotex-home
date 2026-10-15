@@ -1,6 +1,6 @@
 # Shared native controller driver v1
 
-Version: 0.1.4. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted composition target; development implementation and evidence are recorded separately below.
+Version: 0.1.5. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted composition target; development implementation and evidence are recorded separately below.
 
 Compose the [public association document](native-controller-associations-v1.md),
 [actual selected session](native-paired-session-v1.md),
@@ -61,8 +61,10 @@ The shared application's producer binding follows
 construction and metadata-only availability. Before selected or original-purpose
 acquisition, unavailable clock metadata refuses without local fallback; a true
 availability bit cannot replace current actual source/signing validation. Setup
-actions use shared busy/pending guards and invalidate scoped presentation when
-confidence changes, without replacing selection or pending originals. The nil
+actions use shared busy/loaded-journal guards and invalidate scoped presentation when
+confidence changes, without replacing selection or pending originals. A
+producer is allowed to become current while an original is retained, so clock
+expiry cannot deadlock that original's recovery. The nil
 producer remains the smaller driver's default. This binding is planned until
 its own action/model and application-closure evidence is recorded.
 

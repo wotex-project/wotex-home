@@ -1,6 +1,6 @@
 # Native certificate clock source
 
-Version: 0.1.5. Updated: 2026-10-15. Status: accepted implementation contract.
+Version: 0.1.6. Updated: 2026-10-15. Status: accepted implementation contract.
 Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8.
 Implementation: inert codec/lease, fixed-file production owner, volatile generation
 and source-aware TLS clock primitive implemented; shared Setup/driver remains planned.
@@ -170,8 +170,8 @@ source work stays off the socket/deadline executor, so the existing owner return
 on its original deadline and drops late results. Missing/invalid source never
 uses local credentials, manual clock fields, saved permissions or OS UTC.
 
-Setup's explicit Begin/Import/Withdraw actions share the application's busy and
-session-change guards. They send no controller/device request. Display current
+Setup's explicit Begin/Import actions share the application's busy and loaded
+journal guards defined in NC-06. They send no controller/device request. Display current
 source/procedure identity, finite remaining age, bounded confidence or a closed
 refusal; never claim a fixture proves time accuracy. Input/selection/wake changes
 invalidate late UI completion. The actual application installs this production
@@ -215,8 +215,12 @@ controller metadata reload perform no signing, clock-file, credential or network
 work. Status is presentation only; actual TLS acquisition repeats NC-05.
 
 Begin is enabled only in unavailable/withdrawn state, with no current or retiring
-clock operation, no other shared busy work and permission to change the session
-(including the pending-original guards). Import has the same shared guards and
+clock operation, no other shared busy work and loaded safe pending-journal
+metadata (a snapshot exists and reload is not required). A retained original
+does not block clock renewal: otherwise expiry would prevent the very paired
+recovery required to resolve that original. Clock setup changes no controller,
+credential or original; ordinary session changes retain their pending-original
+guards. Import has the same shared guards and
 requires requesting/qualified state plus its exact original request digest.
 Its only editable input is an absolute local response-file path: 1–4096 UTF-8
 bytes, leading `/`, no NUL. Spaces are allowed; text is not silently trimmed or
@@ -256,7 +260,7 @@ panel sources; compilation alone is not installed signing or host evidence.
 | NC-T1 | Independent Python/OpenSSL Ed25519 canonical records and literal integer interval vectors; mutated key/domain/scope/bounds, malformed/expanded JSON/base64/native values, underflow/overflow and strict response/age boundaries refuse. Pure results cannot construct installed custody. |
 | NC-T2 | Actual private file owner: fixed policy/request/response publication, exact retry, one-source capacity, response consumption, original expiry, identical-byte inode/root replacement and changed runtime; restart requires new challenge. Unsigned production entry refuses before account files or issuer work. |
 | NC-T3 | Held signing/file work and concurrent withdrawal/cancellation/expiry return boundedly, never publish late confidence. Cumulative tiny corrections, rollback, wall change and explicit wake permanently withdraw; old returned TLS clocks refuse after withdrawal. |
-| NC-T4 | Actual shared Setup panel/model and driver wiring, no startup I/O, explicit actions, narrow/wide layouts, busy/input/generation drift and no local/UDS fallback. Controlled held UI-action completions test invalidation and retirement without minting an installed source. Production default starts unavailable and actual unsigned Begin refuses. Selection changes preserve an idle accepted app source but cancel active work; wake/withdraw revoke it even while busy. Existing TLS, paired capture/recovery/receipt and local workflows retain their guards. |
+| NC-T4 | Actual shared Setup panel/model and driver wiring, no startup I/O, explicit actions, narrow/wide layouts, busy/input/generation drift and no local/UDS fallback. Controlled held UI-action completions test invalidation and retirement without minting an installed source. Production default starts unavailable and actual unsigned Begin refuses. An unloaded/unsafe journal blocks setup, while a retained original permits clock renewal without changing that original or ordinary session guards. Selection changes preserve an idle accepted app source but cancel active work; wake/withdraw revoke it even while busy. Existing TLS, paired capture/recovery/receipt and local workflows retain their guards. |
 | NC-T5 | Actual installed signed app, configured issuer/key custody and UTC/elapsed accuracy across offline age, correction, sleep and reboot; macOS 15 chain/pin/expiry and current paired success. Synthetic source/signature/files and a deployment target do not discharge these obligations. |
 
 Implement the closed inert codec and independently checked lease/withdrawal
