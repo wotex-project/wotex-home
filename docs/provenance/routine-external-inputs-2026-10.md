@@ -192,3 +192,51 @@ the current programme file. Explicit revoke may retire a package from a previous
 Store boot/authority epoch; it cannot be forced to requalify old authority merely
 to remove it. Actual principal/journal/SQLite links remain the Store's owner.
 No production codec or schema migration is included in this review commit.
+
+## Retained package and original codecs
+
+The codec boundaries were committed as 9b6d3e44 before implementation.
+Rules.ExternalInputPackage now separates canonical package construction,
+producer/key/current-programme-independent historical decoding and explicit live
+native/signature verification. The immutable v1 case policy is compiled only
+after its source bytes match the existing pinned SHA; the live programme still
+checks the actual current shipped file. Rules.ExternalInputOperation supplies
+closed change/outcome/receipt codecs and the pure exact-original join. It checks
+scope, own hashes, generation, installation revision and original boot/order
+witnesses without performing an actor lookup or SQLite operation. Explicit revoke
+can retire an old package after a new Store boot/authority epoch.
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/external_input_retention_test.exs test/wotex_home/external_input_decision_test.exs test/wotex_home/external_input_test.exs test/wotex_home/external_routine_input_schema_test.exs --warnings-as-errors`
+passes **thirty-three tests**, seed **473903**, **1.7 seconds**, on Elixir 1.19.6 /
+OTP 28.5.0.6. Thirteen new retention cases cover all four independently frozen
+encodings and original hashes; exact sorted passed-case/cohort/Definition scope;
+canonical signature representations versus actual key trust; duplicate inner
+members, chunk boundaries, wire/inner/whole byte ceilings; malformed scope/CAS
+counter/receipt links; successful explicit later-boot/epoch revoke and generation
+advancement; and withdrawal's outcome-only representation. A fresh VM removes
+actual Core/Runtime/Profiles/Routines code paths and substitutes an application
+directory without the current programme file, then still decodes the exact
+package/original and re-encodes historical outcomes. Live verification/construction
+refuses absent producers. Its tiny private app descriptor workspace is removed
+in both child and parent cleanup.
+
+Review added a whole-package canonical byte comparison to live verification.
+An inner JSON whitespace variant remains exact historical data with its own hash,
+but cannot be accepted as a current canonical package. Historical operation codecs
+remain independent of that live check. No frozen entry bytes, signatures, public
+keys, programme identity or existing durable format changed. The documentation
+agent improved only the two new moduledocs and the decision header's historical/
+current distinction, preserving non-doc bytes/AST and checking seventeen
+references, formatting and required blank lines. It produced no artifacts.
+
+This implements representation foundations of EI-T3/T8, not the actual SQLite
+cases. Schema 38, atomic installation/withdrawal, actor/journal links, Store
+integrity/recovery and current collection remain open. Installed-host, physical,
+complete-set composition and wider admission evidence remain separate.
+
+Final formatting, warnings-as-errors compilation, both Git whitespace checks and
+the 22-contract working catalogue pass. A disposable index projection validates
+21 contracts and all 41 changed indexed Markdown references, then is removed.
+The final scan finds zero owned temporary paths in either root; about 53 GiB is
+free. No Docker resource, native build, full application suite, Dialyzer or
+dependency update was needed. All work remains on main with local commits only.

@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.20. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.21. Updated: 2026-10-15. Status: accepted target.
 Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection and pure reviewed external-input foundations.
 Evidence: finite software subset; full acceptance cases remain open.
 
@@ -326,6 +326,9 @@ inventory drift and absent metadata. Pure Definition construction and the signed
 review verifier now pass twenty focused Definition/review/entry cases, including
 independent original bytes/signatures, actual integer/Boolean/enum readers,
 producer-free history and validly re-signed adverse claims. These establish
-bounded EI-T1/T2/T7 foundations. Durable package/operation codecs, actual Store
-installation/recovery and current collection remain open; physical qualification
-and complete composed execution retain their separate obligations.
+bounded EI-T1/T2/T7 foundations. Retained package/operation codecs and the exact
+original join now pass thirty-three focused retention/Definition/review/entry
+cases, including producer/programme-independent history and later-boot revoke.
+Actual SQLite installation/invalidation/recovery and current collection remain
+open; physical qualification and complete composed execution retain their separate
+obligations.

@@ -1,12 +1,12 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.4. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.5. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition and
-signed-review verifier foundations. Evidence: entry, native correspondence,
-historical parsing and software trust-mechanics checks pass. Durable packages,
-installation, current collection, EI-T1–T9 integration and physical obligations
-remain open.
+signed-review verifier and retained codec foundations. Evidence: entry, native
+correspondence, historical package/original parsing and software trust-mechanics
+checks pass. SQLite installation, current collection, EI-T1–T9 integration and
+physical obligations remain open.
 
 ## Result and ownership
 
@@ -323,8 +323,9 @@ host-pinned keys or reinterpret producer data. Live verification revalidates the
 complete native Definition and all signatures against those actual keys.
 
 Rules.ExternalInputPackage.encode(package) validates historical correspondence
-and generates the four canonical inner documents through the public JSON
-producer, returning {:ok, package_document}. It checks representations, not current
+and preserves the exact Definition wire while generating the other three inner
+documents through the public JSON producer, returning {:ok, package_document}.
+It checks representations, not current
 keys or source authority. decode(package_document) calls no producer, current
 programme file or reviewer key and returns {:ok, historical} with exactly plain
 string keys data, document and sha256. The immutable v1 case definitions and
@@ -336,7 +337,8 @@ IDs. Signature trust and distinct public-key bytes require live verification.
 
 verify(package_document, current_context, case_keys, decision_keys) decodes the
 whole historical package, compares its full claimed context, reconstructs the
-native Definition and requires its exact original document, then calls the
+native Definition and requires its exact original document and a byte-identical
+current canonical package encoding, then calls the
 separate decision verifier. Success returns the same historical metadata; Store
 still owns measuring current_context and installing any result. Named refusals
 are the existing closed external-input errors plus invalid_external_input_decision
@@ -621,4 +623,11 @@ signature payloads stay unchanged. Validly re-signed missing/extra/failed/duplic
 cohort/environment drift and same-key reviewer aliases refuse. Historical parsing
 still refuses write operations and cannot manufacture a native current token.
 These are EI-T1/T2/T7 foundations, not current Store qualification or completed
-integration cases. Package/operation codecs, SQLite and collection follow next.
+integration cases. Retained package/input/outcome/receipt codecs and the exact
+original join now pass thirty-three focused codec/Definition/review/entry cases.
+All four encodings match the independently frozen bytes. Historical package and
+original recovery work with actual producer paths and the current programme file
+removed. Revoke can retain old installation history under a new boot/epoch;
+current verification requires exact canonical package bytes and signatures.
+These are EI-T3/T8 representation foundations. SQLite installation/invalidation,
+integrity/recovery and current collection follow next.

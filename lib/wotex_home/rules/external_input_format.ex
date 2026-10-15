@@ -42,7 +42,7 @@ defmodule WotexHome.Rules.ExternalInputFormat do
     "max_integer" => 9_223_372_036_854_775_807
   }
   @order ~w(max_bytes max_depth max_nodes max_string_bytes max_collection_size max_integer)
-  @own_errors ~w(invalid_external_input external_input_limit external_input_unavailable unsupported_external_input external_input_basis_changed)a
+  @own_errors ~w(invalid_external_input external_input_limit external_input_unavailable unsupported_external_input external_input_basis_changed invalid_external_input_decision qualification_unavailable)a
   @limit_errors ~w(input_limit numeric_limit output_limit byte_limit_exceeded depth_limit_exceeded node_limit_exceeded string_limit_exceeded collection_limit_exceeded authoring_limit external_profile_limit request_too_large too_deep integer_overflow)a
   @unavailable_errors ~w(missing_producer profiles_producer_unavailable profile_runtime_source_unavailable runtime_artifact_unavailable)a
 
@@ -99,10 +99,10 @@ defmodule WotexHome.Rules.ExternalInputFormat do
     do: :crypto.hash(:sha256, format <> "\n" <> bytes) |> Base.encode16(case: :lower)
 
   @doc false
-  def guard(callback) do
+  def guard(callback, kind \\ :map) do
     case callback.() do
-      {:ok, result} when is_map(result) -> {:ok, result}
-      :ok -> :ok
+      {:ok, result} when is_map(result) and kind == :map -> {:ok, result}
+      {:ok, result} when is_binary(result) and kind == :document -> {:ok, result}
       error -> refusal(error)
     end
   rescue

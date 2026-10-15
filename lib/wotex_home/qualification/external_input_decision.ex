@@ -7,6 +7,9 @@ defmodule WotexHome.Qualification.ExternalInputDecision do
   at most 16,385 bytes, rejecting content above 16,384 bytes or with a different
   SHA-256 digest. Missing or invalid programme data returns
   `{:error, :qualification_unavailable}`; callers cannot supply replacement policy.
+  Historical package parsing uses compiled immutable v1 case definitions and
+  their pinned digest instead. Live verification still calls `programme/0` to
+  reread the actual current file; compiled data cannot replace that check.
 
   `signing_payload/1` checks the compiled closed decision shape and size bounds,
   returning `{:ok, payload}` with deterministic, domain-separated signing bytes
@@ -41,7 +44,19 @@ defmodule WotexHome.Qualification.ExternalInputDecision do
   alias WotexHome.Rules.{ExternalInput, ExternalInputFormat}
 
   @programme_digest "8106ed31e44f2e33517c65581a43bc64ae33117d1e3fbcfab780a8bfc3df876f"
+  @external_resource Path.expand(
+                       "../../../priv/qualification/external-routine-input-v1.json",
+                       __DIR__
+                     )
+  @programme_bytes File.read!(@external_resource)
+  if Base.encode16(:crypto.hash(:sha256, @programme_bytes), case: :lower) != @programme_digest,
+    do: raise(ArgumentError, "invalid external input programme")
+
+  @historical_cases JSON.decode!(@programme_bytes)["cases"]
   @case_ids ~w(ERI-clock ERI-continuity ERI-conversion ERI-identity ERI-invalid ERI-offline ERI-reconnect ERI-revocation)
+
+  @doc false
+  def historical_programme, do: {@historical_cases, @programme_digest}
 
   @doc "Returns the exact shipped case definitions and digest, without accepting replacement policy."
   @spec programme() :: {:ok, [map()], String.t()} | {:error, :qualification_unavailable}

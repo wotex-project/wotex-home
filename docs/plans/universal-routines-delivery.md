@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.14. Updated: 2026-10-15. Accepted build order; implementation and
+Version: 0.1.15. Updated: 2026-10-15. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -290,10 +290,11 @@ Mapping installation and the original consumed report lifetime. The
 implemented after its committed schema and independent signed/exclusive-deadline
 vectors. Its 29 focused cases and 16 existing custody cases pass; original
 publication/consumption receipts and quotas are preserved. Consumed custody
-does not prove an observation committed. Next specify reviewed current Mapping
-installation and atomic complete current collection, including actor/grant/
-semantic/source qualification, Store boot,
-rebuild/revision/current-final guards and baseline continuity. Do not promote
+does not prove an observation committed. The reviewed input contract below now
+specifies Mapping installation and complete requested collection, including
+actor/grant/semantic/source qualification, Store boot, rebuild/revision/current-final
+guards and baseline continuity. Its remaining durable/current work follows the
+explicit delivery order. Do not promote
 ordinary profile approval or fabricate an owner deadline from current defaults.
 
 ## Reviewed external input delivery
@@ -307,9 +308,10 @@ successor. Current status and remaining order:
    decoding, the fixed programme and separate signed-review verifier are also
    implemented; twenty focused Definition/review/entry cases pass. These are
    software foundations and create no current Store installation or Fact.
-2. Implement bounded retained package/input/outcome/receipt codecs, then schema 38
-   operation/history/current tables, exact original-first install/revoke, atomic
-   withdrawal, integrity/migration and quarantined recovery.
+2. Retained package/input/outcome/receipt codecs and the exact original join are
+   implemented; thirty-three focused retention/Definition/review/entry cases pass.
+   Implement schema 38 operation/history/current tables, exact original-first
+   install/revoke, atomic withdrawal, integrity/migration and quarantined recovery.
 3. Implement Store-owned complete requested-scope collection from actual private
    custody, committed original pointer and live consumed lifetime. Exercise
    independent receipt, unit, continuity and final-basis fault traces.
