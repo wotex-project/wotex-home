@@ -131,9 +131,10 @@ Local withdrawal/retired/unknown and private-content retirement now have
 The [paired composition](../specs/native-paired-authoring-generation-v1.md) now
 owns that successor, with explicit [v8 pending](../specs/native-pending-paired-authoring-v8.md)
 and [v2 workspace](../specs/native-generation-workspace-v2.md) prerequisites.
-Implement their independent representation/private CAS first, then paired manual
-consumer, paired generation consumer, selected driver/presentation and installed
-interaction/qualification. Human confirmation obtains fresh actual signed scope;
+The v8 representation/private CAS and mixed-version paired guards now have
+[executed foundation evidence](../provenance/native-pending-paired-authoring-2026-10.md).
+Continue with v2 workspace, paired manual consumer, paired generation consumer,
+selected driver/presentation and installed interaction/qualification. Human confirmation obtains fresh actual signed scope;
 it cannot renew a read session or edit the frozen original. Live account/model, local OS
 confinement, native/signed paired delivery and aggregate pool boundaries remain.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)

@@ -1240,3 +1240,22 @@ workspace/pending originals stay intact. Pure input refusal and a missing archiv
 confirmation preserve the authenticated input/original view but retire prepared
 decisions. These are focused local software checks; installed signed delivery and
 interaction/accessibility remain separate.
+
+
+## Paired authoring journal foundation
+
+The [v8 pending contract](../../docs/specs/native-pending-paired-authoring-v8.md)
+now retains paired manual-authoring and generation originals with unchanged
+complete input/payload bounds and exact private-file CAS. Older markers still
+refuse those new combinations; first paired publication chooses v8 and retains
+it through empty/local writes. Paired ordinary capture/review/cancellation/removal
+also preserves existing v5/v6/v7/v8 roots rather than requiring v5.
+
+Run `mix woh.native.pending.storage.smoke --paired-authoring` for independent
+v8 corpus, upgrade/no-op/CAS, process restart and competing publishers. The default
+storage task includes those cases along with older cohorts.
+`mix woh.native.paired.recovery.smoke` checks mixed-version correspondence and
+actual production new-category refusal before clock/network. Decoding v8 creates
+no signing seal or current grant; paired authoring/generation dispatch remains
+disabled until its closed signed consumers exist. The v1 generation workspace
+still refuses paired custody; its separately specified v2 is the next dependency.
