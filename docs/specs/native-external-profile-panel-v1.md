@@ -1,6 +1,6 @@
 # Native external-profile decision review
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09 and H08-T1/T5/T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08 and H18-T6/T8/T11/T12.
 Implementation: planned. Evidence: missing.
@@ -94,7 +94,9 @@ same frozen decision. Reacquire existing custody and compare its complete bytes/
 reference to preparation. Repeat the current read-only basis and compare identity,
 Store revision, policy/trust and original. Preserve selected metadata/generation;
 no automatic reprepare. Check the decision lifetime before/after each asynchronous
-hop and before credentials, publication and SDK delivery.
+hop and before credentials, publication and SDK delivery. Parent-task cancellation
+also retires it immediately, including while a detached request worker is waiting;
+that worker cannot regain permission when a reply eventually arrives.
 
 A scoped additional local request check composes with the existing selected-local
 fence. It may only refuse: check before opening each request, immediately before
@@ -129,7 +131,7 @@ expected request sequences. No fixture may create a successful signing backend.
 | Case | Requirements | Stimulus and falsifier | Level |
 | --- | --- | --- | --- |
 | NXP-T1 | 01/02 | All kinds/actions/families, strict private files, catalogue/history, current policy/trust, malformed IDs/integers, wrong owner/epoch/CAS, paired selection. Unsafe read, stale review, fallback or preparation write fails. | Native/framed/Store |
-| NXP-T2 | 02/03 | Delayed prepare, changed file/input/custody/selection/wake, fresh confirmation, retirement between status and mutation, nested request guards and duplicate clicks. Re-enabled lifetime, stale send or bypassed original/peer guards fails. | Native/actual socket |
+| NXP-T2 | 02/03 | Delayed prepare, changed file/input/custody/selection/wake, fresh confirmation, retirement/cancellation between status and mutation, nested request guards and duplicate clicks. Re-enabled lifetime, stale send or bypassed original/peer guards fails. | Native/actual socket |
 | NXP-T3 | 03 | Real two-family first inspection/approve/select/revokes, actual failed publication/resolution, lost reply and Activity restart recovery. Mutation before publication, missing original or premature success/removal fails. | Store/private file/process |
 | NXP-T4 | 01–03 | Mounted idle/prepared/confirmed/success/missing/uncertain/error at480/599/600/839/840/1320 widths and normal/enlarged text. Clipped facts, implicit requests, private payload display or false active-state claim fails. | Native visible software |
 
