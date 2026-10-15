@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.71. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.72. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
 now defines fresh signed authorization after human review, unchanged first originals,
@@ -17,7 +17,9 @@ The [existing paired workspace purpose](native-paired-generation-workspace-sessi
 now has [executed transitions, raw TLS/Store and unsigned-refusal evidence](../provenance/native-paired-workspace-session-2026-10.md).
 Paired generation original capture/recovery now has [executed native, private-file
 and raw TLS/Store evidence](../provenance/native-paired-generation-original-session-2026-10.md).
-Selected authoring/generation presentation and installed signed success remain
+The [selected manual authoring driver/panel](native-paired-authoring-ui-v1.md)
+now has [raw TLS/Store, actual unsigned refusal and local mounted evidence](../provenance/native-paired-authoring-ui-2026-10.md).
+Selected generation composition and positive installed signed interaction remain
 planned; physical guards retain their scope.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)

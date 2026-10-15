@@ -1284,7 +1284,8 @@ retry. New native processes/Store restart retain original review history, while
 revocation retains pending metadata. Its raw fixture credentials and explicit
 fixture clock establish transport behavior only. Actual unsigned factory checks
 refuse before clock/network; installed positive signing/Keychain publication and
-selected driver/presentation remain separate acceptance work. See the
+positive selected signed interaction remains separate acceptance work; the selected
+driver/panel implementation is described below. See the
 [executed evidence](../../docs/provenance/native-paired-authoring-consumer-2026-10.md).
 
 The TLS listener now supplies a bounded transient upload owner, or pins an explicit
@@ -1343,3 +1344,26 @@ originals with zero local capture/clock/resolution calls. Run
 `mix woh.native.paired.workspace.smoke` for stale/latest/input/intent witnesses and
 `mix woh.native.pending.storage.smoke --paired-authoring` for v8 bytes/private-file
 regressions. See [evidence and remaining installed/selected acceptance](../../docs/provenance/native-paired-generation-original-session-2026-10.md).
+
+
+## Selected paired manual authoring
+
+The [selected authoring contract](../../docs/specs/native-paired-authoring-ui-v1.md)
+now composes data/manual/complete-original/mapping/assessment/review preparation
+through the actual selected factory and current profile:manage. Private files are
+read only after current remote scope. Human review retains metadata and frozen
+inputs; confirmation acquires fresh signed custody and requires the exact reviewed
+revision/basis/grants. Pending publication, unchanged send, typed receipt read and
+UI delivery share that original confirmation lease. No successful raw fixture can
+construct its sealed publication or authorize production custody.
+
+`mix woh.native.controller.session.smoke` checks actual unsigned refusal before
+local capture/private file/clock access. `mix woh.native.paired.recovery.smoke`
+checks the fixed adapters over paired TLS/Store, including data and complete import,
+owned draft/manual assessment/review, stale revision, lost replies and revocation.
+The shared pending panel offers separately confirmed authoring absence: lookup
+retains missing; confirmed absence may clear only client metadata after existing-only
+reads. It neither retries nor cancels authoring. The local mounted panel, storage
+and inventory checks and remaining installed requirements are recorded in the
+[executed evidence](../../docs/provenance/native-paired-authoring-ui-2026-10.md).
+Selected generation/workspace composition remains subsequent work.

@@ -141,8 +141,10 @@ The [existing-only paired workspace purpose](../specs/native-paired-generation-w
 now has [executed transitions, raw TLS/Store and unsigned-refusal evidence](../provenance/native-paired-workspace-session-2026-10.md).
 Paired generation original capture/recovery now has [executed native, private-file
 and raw TLS/Store evidence](../provenance/native-paired-generation-original-session-2026-10.md).
-Continue with selected driver/presentation, nonempty workspace assessment selectors
-and installed signed interaction/qualification. Human confirmation obtains fresh actual signed scope;
+Selected manual authoring driver/presentation now has
+[raw TLS/Store, actual unsigned refusal and local mounted evidence](../provenance/native-paired-authoring-ui-2026-10.md).
+Continue with selected generation driver/presentation, nonempty workspace assessment
+selectors and installed signed interaction/qualification. Human confirmation obtains fresh actual signed scope;
 it cannot renew a read session or edit the frozen original. Live account/model, local OS
 confinement, native/signed paired delivery and aggregate pool boundaries remain.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)

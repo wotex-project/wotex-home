@@ -1,9 +1,12 @@
 # Selected paired authoring decisions and presentation
 
-Version:0.1.1. Updated:2026-10-15. Status:accepted successor target.
+Version:0.1.2. Updated:2026-10-15. Status:accepted successor target.
 Owner:WOH.08 H08-09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18A-02/04/05,H18-T15/T17 and composition NPA-01/02/04.
-Implementation:planned. Evidence:missing.
+Implementation:selected manual/data/complete-original/mapping/review driver and
+panel composition implemented, including fresh confirmation and typed receipt delivery.
+Evidence:[raw TLS/Store, actual unsigned refusal and local mounted checks](../provenance/native-paired-authoring-ui-2026-10.md).
+Positive installed signing/Keychain and paired interaction/accessibility remain missing.
 
 ## Outcome and inherited boundaries
 
