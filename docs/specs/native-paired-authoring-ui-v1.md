@@ -1,6 +1,6 @@
 # Selected paired authoring decisions and presentation
 
-Version:0.1.0. Updated:2026-10-15. Status:accepted successor target.
+Version:0.1.1. Updated:2026-10-15. Status:accepted successor target.
 Owner:WOH.08 H08-09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18A-02/04/05,H18-T15/T17 and composition NPA-01/02/04.
 Implementation:planned. Evidence:missing.
@@ -71,8 +71,13 @@ Once confirmation acquisition begins, pending publication, fixed original runner
 typed receipt read, outcome publication and delivery share that one five-second
 lifetime/seal. Remember and publish the exact v8 original before send. No session
 reacquisition follows failure or possible send. A known initial server refusal
-retains the paired original for explicit existing-only recovery/absence handling;
-no caller supplies a successful result or clears memory on an unverified error.
+retains the paired original for explicit recovery. A separate confirmed
+acknowledgeAbsent action is also available for authoring originals, local or paired:
+it performs only original status/identity reads and may clear not_found after the
+operator accepts that a request/result may arrive later. A present checked receipt
+resolves its actual outcome. Lookup alone retains missing; no initial error or
+unconfirmed absence clears an original. This does not resend, cancel or roll back
+authoring, and no caller supplies a successful result.
 
 A resolved manual authoring outcome includes its verified typed receipt in the
 actual sealed publication. The fixed original-purpose session performs an
