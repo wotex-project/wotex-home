@@ -409,7 +409,40 @@ defmodule Woh.RoutineArchiveShadow do
     end
 
     command(["test", "--warnings-as-errors"], consumer, environment)
-    if external_fact, do: external_fact_mutations(consumer, environment)
+
+    if external_fact do
+      external_fact_mutations(consumer, environment)
+
+      ebins =
+        consumer
+        |> Path.join("_build/test/lib/*/ebin")
+        |> Path.wildcard()
+        |> Enum.filter(
+          &(Path.basename(Path.dirname(&1)) in ~w(wotex wotex_continuum wotex_runtime wotex_profiles wotex_routines))
+        )
+
+      native_test = Path.join(temporary, "external_input_store_consumer_test.exs")
+      relative = "test/support/external_input_store_consumer.exs"
+      copy(Path.join(root, relative), native_test, relative)
+
+      command(
+        [
+          "test",
+          "--warnings-as-errors",
+          native_test
+        ],
+        root,
+        [
+          {"HOME_EXTERNAL_INPUT_ARCHIVE_EBINS", JSON.encode!(ebins)},
+          {"HOME_EXTERNAL_INPUT_TEST_PATH",
+           Path.join(root, "test/wotex_home/external_input_integration_test.exs")},
+          {"WOTEX_HOME_GIT_DEPS", "1"} | environment
+        ]
+      )
+
+      external_review_mutations(temporary, root, ebins, environment)
+    end
+
     IO.puts("consumer lock sha256: #{sha(File.read!(Path.join(consumer, "mix.lock")))}")
 
     if profile_store do
@@ -460,18 +493,24 @@ defmodule Woh.RoutineArchiveShadow do
 
     IO.puts("external fact mutation baseline: five tests passed, seed 0")
 
-    source = File.read!(Path.join(consumer, "lib/wotex_home/rules/external_fact.ex"))
+    fact_source = Path.join(consumer, "lib/wotex_home/rules/external_fact.ex")
+
+    input_source =
+      Path.join([Path.dirname(consumer), "wotex_routines", "lib/wotex/routines/input.ex"])
 
     mutations = [
-      {"profile_identity", ~S|"fact" => fact,|,
+      {"profile_identity", fact_source, ~S|"fact" => fact,|,
        ~S|"fact" => Map.put(fact, "profile_digest", mapping["basis"]["semantic_digest"]),|},
-      {"original_coordinate",
+      {"original_coordinate", fact_source,
        ~S|{:ok, proposal} <- Wotex.Profiles.Proposal.to_map(proposal, context["reader_limits"]),|,
        ~S|{:ok, proposal} <- Wotex.Profiles.Proposal.to_map(proposal, context["reader_limits"]),| <>
-         "\n           proposal = Map.put(proposal, \"normalized_value\", value.data[\"normalized_value\"]),"}
+         "\n           proposal = Map.put(proposal, \"normalized_value\", value.data[\"normalized_value\"]),"},
+      {"signed_floor", input_source, "Integer.floor_div(delta, 1000)", "div(delta, 1000)"}
     ]
 
-    for {name, from, to} <- mutations do
+    for {name, source_path, from, to} <- mutations do
+      source = File.read!(source_path)
+
       unless length(String.split(source, from)) == 2,
         do: raise("external fact mutation site changed: " <> name)
 
@@ -488,6 +527,69 @@ defmodule Woh.RoutineArchiveShadow do
         "external fact #{name}: #{result.result["failures"]} assertion failures, zero harness errors"
       )
     end
+  end
+
+  defp external_review_mutations(temporary, root, ebins, environment) do
+    environment = [
+      {"HOME_EXTERNAL_INPUT_ARCHIVE_EBINS", JSON.encode!(ebins)},
+      {"WOTEX_HOME_GIT_DEPS", "1"} | environment
+    ]
+
+    baseline = external_review_mutation_run(root, environment, "baseline")
+
+    unless baseline.status == 0 and baseline.result["total"] == 6 and
+             baseline.result["failures"] == 0 and baseline.assertions["errors"] == 0,
+           do: raise("external review mutation baseline failed")
+
+    IO.puts("external review mutation baseline: six tests passed, seed 0")
+
+    source =
+      File.read!(Path.join(root, "lib/wotex_home/qualification/external_input_decision.ex"))
+
+    from = ":crypto.verify(:eddsa, :none, payload, signature, [public_key, :ed25519])"
+
+    unless length(String.split(source, from)) == 2,
+      do: raise("external review mutation site changed")
+
+    replacement = Path.join(temporary, "mutant-decision-signature.ex")
+
+    File.write!(
+      replacement,
+      String.replace(source, from, "(is_binary(payload) and is_binary(signature))", global: false)
+    )
+
+    result = external_review_mutation_run(root, environment, replacement)
+
+    unless result.status == 1 and result.result["total"] == 6 and result.result["failures"] > 0 and
+             result.assertions["assertions"] > 0 and result.assertions["errors"] == 0,
+           do: raise("external review mutant survived or harness failed")
+
+    IO.puts(
+      "external review decision_signature: #{result.result["failures"]} assertion failures, zero harness errors"
+    )
+  end
+
+  defp external_review_mutation_run(root, environment, replacement) do
+    {output, status} =
+      System.cmd(
+        "mix",
+        [
+          "run",
+          "--no-start",
+          "--no-compile",
+          "test/support/external_input_review_mutations.exs",
+          replacement
+        ],
+        cd: root,
+        env: environment,
+        stderr_to_stdout: true
+      )
+
+    %{
+      status: status,
+      result: external_fact_marker(output, "EXTERNAL_REVIEW_RESULT="),
+      assertions: external_fact_marker(output, "EXTERNAL_REVIEW_ASSERTIONS=")
+    }
   end
 
   defp external_fact_mutation_run(consumer, environment, replacement) do

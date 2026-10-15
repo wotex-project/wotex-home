@@ -49,7 +49,14 @@ defmodule WotexHome.ExternalInputStoreFixture do
     family = Keyword.get(options, :family, "temperature")
     source_changes = Keyword.get(options, :source, %{"trust" => "authenticated_device"})
     policy_changes = Keyword.get(options, :policy, %{})
-    source = fixture("external-source-selections")[family]["inputs"]
+
+    source =
+      Keyword.get(
+        options,
+        :source_inputs,
+        fixture("external-source-selections")[family]["inputs"]
+      )
+
     r = source["reader"]
     {:ok, producer} = ProducerIdentity.current()
 
@@ -102,9 +109,11 @@ defmodule WotexHome.ExternalInputStoreFixture do
       )
 
     v =
-      if family == "multi",
-        do: fixture("generic-read-semantics")["multi"]["fixture"],
-        else: fixture(family)
+      Keyword.get_lazy(options, :fixture, fn ->
+        if family == "multi",
+          do: fixture("generic-read-semantics")["multi"]["fixture"],
+          else: fixture(family)
+      end)
 
     docs =
       [{"envelope", v["envelope"]}, {"profile", v["profile"]}] ++
@@ -156,10 +165,17 @@ defmodule WotexHome.ExternalInputStoreFixture do
         "inspection" => Map.put(objects, "reader_basis_sha256", reader.data["basis_sha256"])
       })
 
+    {:ok, manifest} =
+      Store.external_inspection_artifact(
+        store,
+        credential,
+        Map.take(inspected, ~w(authority_epoch operation_id revision input_sha256 result_sha256))
+      )
+
     {:ok, barrier} =
       Store.begin_maintenance(store, credential, 1, "maintenance:1", inspected["revision"])
 
-    artifact = fixture("external-target-selections")[family]["select"]["input"]["artifact_digest"]
+    artifact = manifest["artifact_digest"]
 
     {:ok, approved} =
       Store.change_external_trust(store, credential, %{

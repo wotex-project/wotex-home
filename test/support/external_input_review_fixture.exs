@@ -26,14 +26,16 @@ defmodule WotexHome.ExternalInputReviewFixture do
   # evidence; no test private key or resulting package is written to disk.
   def review(c, nonce \\ "first", key \\ "sample", options \\ []) do
     v = R.read("routine-external-inputs")
+    prototype = Keyword.get(options, :mapping, v["definition"]["mapping"])
 
     {:ok, context} =
       Authority.external_routine_input_context(c.authority, c.credential, "sensor:external", key)
 
     basis =
-      v["definition"]["mapping"]["basis"]
+      prototype["basis"]
       |> put_in(["implementation_digest"], "sha256:" <> context["runtime_sha256"])
       |> put_in(["compiler_digest"], "sha256:" <> context["runtime_sha256"])
+      |> Map.put("output", nil)
       |> put_in(["affordance", "name"], context["reader"]["affordance"]["name"])
       |> put_in(["evidence", "freshness_ms"], Keyword.get(options, :freshness_ms, 1000))
       |> put_in(
@@ -45,7 +47,7 @@ defmodule WotexHome.ExternalInputReviewFixture do
     basis = Map.put(basis, "byte_digest", "sha256:" <> digest(R.encode(body)))
 
     unsigned =
-      v["definition"]["mapping"]
+      prototype
       |> Map.delete("sha256")
       |> Map.merge(
         Map.take(
@@ -64,7 +66,7 @@ defmodule WotexHome.ExternalInputReviewFixture do
         Keyword.get(
           options,
           :source_time_basis,
-          v["definition"]["mapping"]["observation"]["source_time_basis"]
+          prototype["observation"]["source_time_basis"]
         )
       )
 
@@ -73,7 +75,7 @@ defmodule WotexHome.ExternalInputReviewFixture do
         %{
           mapping: unsigned,
           context: %{
-            "registry" => v["definition"]["registry"],
+            "registry" => Keyword.get(options, :registry, v["definition"]["registry"]),
             "limits" => ExternalInputFormat.limits()
           }
         },

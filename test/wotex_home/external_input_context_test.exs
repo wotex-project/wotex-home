@@ -273,8 +273,8 @@ defmodule WotexHome.ExternalInputContextTest do
     assert {:error, :store_unavailable} = context(c)
   end
 
-  @tag timeout: 60_000
-  test "each runtime group is remeasured after actual Store private preparation" do
+  @tag timeout: 90_000
+  test "each runtime group is remeasured after native context and complete collector preparation" do
     root =
       Path.join(
         System.tmp_dir!(),
@@ -296,7 +296,7 @@ defmodule WotexHome.ExternalInputContextTest do
         )
 
       assert status == 0, output
-      assert output =~ "4 tests, 0 failures"
+      assert output =~ "8 tests, 0 failures"
     after
       File.rm_rf!(root)
     end

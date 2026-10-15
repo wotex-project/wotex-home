@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.30. Updated: 2026-10-16. Accepted build order; implementation and
+Version: 0.1.31. Updated: 2026-10-16. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -340,16 +340,21 @@ successor. Current status and remaining order:
    plus the shared review-context/byte-preamble/observation and selected native
    installation regressions. The independent eleven-clock/fourteen-report/six-
    uncertainty corpus and thirty-eight arithmetic/projection cases retain their
-   separate evidence. Complete EI-T1–T9 and extracted-package integration remain
-   obligations; this software slice qualifies no installed host or physical source.
-4. Complete the native integer/Boolean/enum/unfamiliar supported-quantity and
-   multi-channel/mixed-scope cases, plus collector closing drift for all four
-   runtime groups. Extend the existing five-archive external-fact lane with a
-   fresh Home native Store consumer using those exact extracted producer ebins;
-   keep the pure whole-result oracle and assertion-only mutants. Run existing
-   ordinary read/unconditional-effect regressions and the owning durable/recovery
-   milestone. Continue complete active-set composition, run/step/root persistence
-   and wider admission under their owners.
+   separate evidence. The extracted-producer and native software integration
+   checkpoint below now passes; complete EI-T1–T9 acceptance remains separate.
+   This software slice qualifies no installed host or physical source.
+4. Native integer/Boolean/enum/unfamiliar supported-quantity and multi-channel/
+   mixed-scope integration is implemented. All four collector runtime-group
+   closing probes pass alongside the four context probes. The existing five-
+   archive external-fact lane now passes six native Store cases, the unchanged
+   pure whole-result oracle and four assertion-only identity/coordinate/clock/
+   qualification mutants. The integrated 79-case install/context/collection/read/
+   invocation milestone passes. Record broader acceptance separately from this
+   bounded software checkpoint.
+5. Specify complete active-set composition, run/step/root persistence and wider
+   admission under their owning contracts before implementation. Preserve the
+   exact current external-input boundary, existing original identities and
+   default-disabled physical dispatch.
 
 Preserve original registry order and immutable wire bytes. Historical decoding
 provides no current authority. Physical review, installed hosts and later effect

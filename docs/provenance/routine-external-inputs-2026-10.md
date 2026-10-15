@@ -830,3 +830,159 @@ Docker volumes/caches and unrelated running work remain untouched. About
 **51 GiB** remains free at this scan. No native/release/archive artifacts, broad
 application suite or Dialyzer run was used. The remaining research/client changes
 stay outside the logical local implementation commit on main.
+
+
+## Native reader breadth and extracted-producer integration
+
+Contract d47e6244 defines these integration checks before implementation. The
+new native cases use the actual Authority/Store import, inspection artifact,
+local approval, source/target selection, synthetic signed input review and
+original report consumption. The shared fixture now obtains the exact artifact
+through Store.external_inspection_artifact/3, instead of assuming the temperature
+manifest when independently selected input bytes change. Review templates accept
+an explicit Mapping/registry while preserving read-only output=null and the
+actual measured context. No signing key or resulting package is written to disk.
+
+The six cases cover integer, both Boolean values, both enum codes, an unfamiliar
+quantity with a supported dimension, a multi-channel target and current signature
+loss. Independent expected values preserve raw 25 -> reader 2.5 -> Home 2500 ->
+routine 250, and enum 0/1 -> closed/open. Actual collected bindings/Mapping reach
+public WRO Evaluation as true while fresh and unknown at exact exclusive expiry.
+The variant fixture explicitly declares 30000 ms freshness to isolate type/unit
+correspondence under host load; production's ten-second preparation deadline and
+report-owner limits are unchanged. Reports supply continuous evidence for a
+reviewed Basis that requires it. Existing baseline/no-edge collection cases stay
+separate.
+
+The unfamiliar quantity keeps its own semantic/quantity identity rather than a
+Home family enum. The density channel with unsupported [-3,0,0,0,0,0,0] dimension
+retains ordinary Home value 2500 and its original report revision. An otherwise
+coherent proposed routine Mapping refuses incompatible_dimension. A complete
+32-member scope returns the usable temperature input plus the density and thirty
+absent input slots in lexical order; no requested member disappears. A changed
+current decision-reviewer public key returns input_unqualified without Fact or
+binding and without a durable change or writer fence.
+
+The isolated context-runtime probe now includes four complete-scope collector
+cases, one per runtime group, alongside the four earlier context cases. Each
+uses a disposable copy of a complete app's compiled files, changes a BEAM chunk
+while preserving its code MD5 during actual private reads, observes whole-call
+external_input_basis_changed, restores the file, and verifies the same writer
+returns all 32 items with the installed missing-report binding. Original tables
+remain unchanged.
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/external_input_context_test.exs:277 --warnings-as-errors`
+
+passes the **one parent case**, seed **907838**, **34.6 seconds**, **14 excluded**;
+its fresh VM reports **8 tests, 0 failures**. The single native multi-channel
+case also passes, seed **563075**, **9.1 seconds**, **5 excluded**. Earlier
+development runs exposed reserved @type usage, wrong test-helper arity, an
+output-bearing prototype Basis, required-continuity mismatch, freshness reached
+under concurrent host load and incomplete candidate Basis rebinding. Those
+fixture issues were corrected without weakening producer/Store validation.
+
+The existing --external-fact-consumer archive lane now runs a second fresh native
+Home process after its pure consumer and mutation baseline. Its five producer
+ebin directories are selected explicitly; Hex validation dependencies cannot be
+counted as producers. It checks the actual public modules' loaded paths, then
+runs the six native integration cases against fresh complete runtime inventories.
+Home's nonproducer storage/transport/validation dependencies retain mix.lock.
+The launcher is copied into the owned temporary directory with a test filename,
+avoiding an unmatched-support-file warning or accidental ordinary-suite loading.
+
+Five immutable package roots from the exact locked deps checkouts are copied
+into an owned temporary tree, built with MIX_ENV=prod mix hex.build --output
+ARCHIVE.tar on Elixir 1.19.6 / OTP 28.5.0.6, and compared to the existing frozen
+archive oracle before the runner starts. No archive is published or retained.
+The runner invocation supplies --external-fact-consumer and all five pairs
+--core-archive/--core-sha, --continuum-archive/--continuum-sha,
+--runtime-archive/--runtime-sha, --profiles-archive/--profiles-sha and
+--routines-archive/--routines-sha:
+
+| Archive | SHA-256 |
+| --- | --- |
+| core | 77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61 |
+| Continuum | db7077c5f0ad92426c94a077a4f58f9b7334df25de8c2a1b8ed25143bab6efb5 |
+| Runtime | 5d8cd7e3012dd2115b63ccc5c4fe67130ab06a82253405c452970abb8d210df7 |
+| Profiles | 34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96 |
+| Routines | fb74f71b6b44b286907d65caaf2271e9e0b6318939236a4aaf736120e42a33ef |
+
+The final lane passes **5 pure tests**, seed **986418**, **1.0 second**, and
+**6 native Store tests**, seed **213465**, **26.9 seconds**, after warnings-as-
+errors compilation. Both unchanged fact identity/original-coordinate mutants
+produce **3 assertion failures** each, with **zero harness errors**, against a
+**5-test seed-0** mutation baseline. The whole frozen pure output is unchanged.
+The consumer lock hash remains
+6ddb05e87f2872a12a244a022d666372d792510c8760188a3ac235ce53c258dd.
+
+The first archive extension incorrectly included transitive Hex ebins in the
+five-producer count; explicit producer selection fixes that failure. A later
+run reached all six native tests and exposed the remaining candidate-affordance
+fixture issue; the corrected final run above is green with no support-file
+warning. Both failed runs still removed the extracted consumer and archive-build
+trees. These are software integration results, not Home packaging, installed-host
+validation or physical review. Complete active-set composition, durable
+run/step/root execution and wider admission remain successors.
+
+
+The focused integration milestone:
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/external_input_installation_test.exs test/wotex_home/external_input_collection_test.exs test/wotex_home/external_input_context_test.exs test/wotex_home/external_input_integration_test.exs test/wotex_home/profile_byte_context_test.exs test/wotex_home/external_observation_test.exs test/wotex_home/external_observation_bounds_test.exs test/wotex_home/rule_kernel_proposal_test.exs test/wotex_home/durable_rule_invocation_test.exs:58 test/wotex_home/durable_rule_invocation_test.exs:75 test/wotex_home/durable_rule_invocation_test.exs:111 --warnings-as-errors`
+
+passes **79 tests**, seed **715968**, **221.3 seconds**, with **27 excluded**.
+This combines actual native install/revoke/original recovery, current input
+collection and faults, measured review context and eight isolated runtime-group
+probes, reader variants, temporary-byte preamble, ordinary observation boundaries,
+public kernel proposal correspondence and three actual immutable held-invocation/
+duplicate/concurrent-original regressions. This is the owning focused software
+milestone; no full Home suite, Dialyzer or host build is inferred.
+
+Two further behavioral mutants complete the archive lane's selected adversarial
+checks. Changing the extracted public WRO Input's floor division to truncation
+causes **4 assertion failures** across the negative-coordinate projection cases.
+The default frozen original has R=-1001 us, source origin=0 and target origin=
+10000 ms, so truncation corrupts the ordinary projection as well as the explicit
+clock matrix. The helper retains the actual producer ebin filename for loaded
+mutant code; an unrelated module-path failure cannot substitute for the clock
+behavior. No extracted or reusable compiled artifact is overwritten.
+
+Bypassing the Home decision's Ed25519 verification while retaining shape/key/
+case checks causes **1 assertion failure** against the **6-test seed-0** review
+baseline. This runs a separate no-start Home claim-verifier process with the
+same five extracted producer ebins and the frozen independently signed review
+corpus. It asserts that Home's application never starts, and creates no Store or
+current authority. All **four mutants** have **zero non-assertion harness errors**.
+
+The final full archive lane passes **5 pure tests**, seed **331802**, **0.9
+seconds**, then **6 native Store cases**, seed **931562**, **25.1 seconds**.
+The pure seed-0 baseline has five passing tests; identity/original-coordinate/
+signed-floor mutants cause **3/3/4** assertion failures. The separate review
+seed-0 baseline has six passing tests; signature bypass causes one. Exact
+archives and consumer lock retain the hashes above. A local six-case baseline/
+mutant preflight established the review harness before this final archive run.
+An initial extension run exposed a pipeline/membership parsing error in that
+harness; it was corrected, and the complete final lane above passes. Formatter
+corrections also pass the final global formatting check.
+
+| Integration source | SHA-256 |
+| --- | --- |
+| bin/check_routines_shadow.exs | 806014383927561511fc3770577313b4d613bebe8d241dff79e7a42b2d644ab2 |
+| test/support/external_input_store_consumer.exs | 7f833b01cd2263e99427676ae735e9f97052e6782b4f37cc4942ca66808905be |
+| test/support/external_input_review_mutations.exs | 331934e5f99056e62a3d9c86c86244314d0bf787bbdde17666ded3c4d3b2f9a5 |
+| test/support/routines_external_fact_mutations.exs | 0142cc8269fc61b20b7b4b535c0f4ab8a380863ba38e25c1fdcf708ce60120e5 |
+| test/support/external_input_context_runtime_probe.exs | a3a0d31924aa160b2b82afbd2a4c9447292cd6fbb3d4c25f2bcc9204218a5772 |
+| test/support/external_input_store_fixture.exs | 745b20e7060d71db9dc31f7459a40c60a083ca80e1b5ae59c9fd09cf5d9d88e1 |
+| test/support/external_input_review_fixture.exs | cfc56ae80414bc7b052b9aedce1b8fa7c208e1760d5b2b735cdc95cdb7c374df |
+| test/wotex_home/external_input_integration_test.exs | e1c792dcbfce6da5eec42b4f2f9a4aa86b5d881ae79ce5583bcf03f3c25a69e7 |
+
+
+Final global formatting, warnings-as-errors compilation, the **22-contract**
+working catalogue and both Git whitespace checks pass. The disposable staged
+projection validates **21 contracts** and **45 relative Markdown references**,
+then removes its tree. The two dependency lock SHA-256 values remain unchanged.
+Both temporary roots contain **zero owned scratch paths** after the milestone,
+archive runs and local mutation preflight; all owned package copies, archives,
+extracted projects and mutant sources are removed on both success and failure.
+No Docker resource or native/release artifact was created. Existing reusable
+caches, unrelated Docker volumes and research/client edits remain intact. About
+**50 GiB** remains free at the final scan.

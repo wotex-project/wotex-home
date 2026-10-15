@@ -34,8 +34,19 @@ ExUnit.start(
 [replacement] = System.argv()
 
 if replacement != "baseline" do
+  paths =
+    Map.new([WotexHome.Rules.ExternalFact, Wotex.Routines.Input], fn module ->
+      Code.ensure_loaded!(module)
+      {module, :code.which(module)}
+    end)
+
   Code.compiler_options(ignore_module_conflict: true)
-  Code.compile_file(replacement)
+
+  for {module, bytes} <- Code.compile_file(replacement) do
+    :code.purge(module)
+    {:module, ^module} = :code.load_binary(module, Map.fetch!(paths, module), bytes)
+    :code.purge(module)
+  end
 end
 
 Code.require_file("test/shadow_test.exs")

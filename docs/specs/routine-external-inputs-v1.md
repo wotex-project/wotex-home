@@ -1,13 +1,14 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.21. Updated: 2026-10-16. Status: accepted successor target.
+Version: 0.1.22. Updated: 2026-10-16. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition,
 signed-review verifier, retained codecs, schema-38 history/migration/recovery and
 measured native review context, computed retirement reserve, atomic durable
 withdrawal, original-first native install/revoke/status and bounded native
 requested-scope collection. Evidence: entry, native correspondence, historical
-package/original/graph and focused current collection software checks pass.
+package/original/graph, native reader breadth and extracted-producer software
+integration checks pass, including a 79-test focused milestone.
 Complete EI-T1–T9 integration, composed execution, installed-host and physical
 obligations remain open.
 
@@ -1054,5 +1055,13 @@ corruption fencing and real expiry between passes. Fifteen review-context, five
 byte-preamble and two observation regressions pass alongside the first sixteen
 collector cases; the added owner-exit case and two actual native installation
 regressions pass separately. This is bounded software evidence under the owning
-record, not complete EI-T1–T9, extracted-package, installed-host or physical
-acceptance. Complete active-set collection and composed execution remain open.
+record. The subsequent integration checkpoint passes six current integer/Boolean/
+enum/unfamiliar supported-quantity/multi-channel/signature-loss cases against the
+exact five extracted producer archives, alongside the unchanged five-case pure
+whole-result consumer. Identity, original-coordinate, signed-floor and decision-
+signature mutants produce assertion failures with no harness errors. Eight
+isolated native context/collector runtime-group probes pass; the integrated
+79-case install/context/collection/read/invocation milestone also passes. These
+results retain their bounded software scope. Complete EI-T1–T9, installed-host
+and physical acceptance are not inferred; complete active-set collection and
+composed execution remain open.
