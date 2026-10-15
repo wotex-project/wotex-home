@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.23. Updated: 2026-10-15. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads, paired first-power composition and last resolved power receipt lookup are implemented development entries; installed signed success, trusted certificate clock, broader paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
+Version: 0.1.24. Updated: 2026-10-15. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads, paired first-power composition and last resolved power receipt lookup are implemented development entries; installed signed success, certificate-clock qualification, broader paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
 
 The [paired power entry](../specs/native-paired-power-v1.md) joins an actual
 authenticated view basis, fresh click scope and one busy reservation across first
@@ -9,15 +9,15 @@ the exact original metadata for explicit reconciliation. It caches no bearer
 and enables no dispatch. The [last resolved paired receipt entry](../specs/native-paired-power-receipt-v1.md)
 now implements explicit recorded-controller reads and Activity delivery, with
 [executed model, raw TLS/Store and refusal evidence](../provenance/native-paired-power-receipt-2026-10.md).
-The trusted certificate clock and signed installed first-power/receipt success
+Certificate-clock qualification and signed installed first-power/receipt success
 remain separate work.
 
 The [shared controller driver](../specs/native-controller-driver-v1.md) adds one
 metadata selection owner to Setup and the menu, selected async Home/Thing reads,
 a distinct production local request fence and original journal routing. It does
-not treat saved association grants as current authorization. The trusted
-certificate-clock application binding, installed signed composition and remaining
-paired tool surfaces remain successors; unsigned fixtures cannot supply a seal.
+not treat saved association grants as current authorization. Positive
+installed signed composition, clock qualification and remaining paired tool
+surfaces remain successors; unsigned fixtures cannot supply a seal.
 
 The [native certificate clock contract](../specs/native-certificate-clock-v1.md)
 now freezes a signed local source and independent original lease, fixed custody,
@@ -27,20 +27,24 @@ second, then source-aware TLS clocks and the shared UI. The inert first stage
 has [executed signature, interval and refusal evidence](../provenance/native-certificate-clock-2026-10.md).
 The fixed-file production owner, volatile generation and source-aware TLS clock
 primitive now have [file/generation/worker and unsigned-refusal evidence](../provenance/native-certificate-clock-owner-2026-10.md).
-Next compose the single owner with shared Setup actions, input/wake invalidation
-and actual driver production factories; execute their focused UI/transport cases.
+The single owner is now composed with shared Setup actions, input/wake
+invalidation and actual driver production factories, with
+[focused software evidence](../provenance/native-certificate-clock-panel-2026-10.md).
 Positive installed signing, owner timer/wake and qualified issuer/host UTC remain
 separate acceptance work. A synthetic signed time cannot qualify either.
 
-The next shared clock stage follows NC-06: passive production binding, absolute
-answer-file input, original action/generation capture, busy/loaded-journal guards and
-always-available revocation. A retained original permits clock renewal without
-changing that original, preventing clock expiry from deadlocking paired recovery. Selection cancels active work while preserving an
-idle accepted app source; wake always withdraws. Add every clock source to the
-explicit native assembly closure. Use held UI-action metadata fixtures for
-stale/input/selection/retirement cases, actual unsigned app refusal and focused
-driver/quick-bar regressions. Render narrow/wide panels, inspect them and remove
-the temporary previews after review; no full release is needed for these checks.
+The implemented shared clock stage follows NC-06: passive production binding,
+absolute answer-file input, original action/generation capture, busy/loaded-journal
+guards and always-available revocation. A retained original permits clock renewal without
+changing that original, preventing clock expiry from deadlocking paired recovery.
+Selection cancels active work while preserving an idle accepted app source; wake
+always withdraws. Every clock source is in the
+explicit native assembly closure. Held UI-action metadata fixtures cover
+stale/input/selection/retirement, and actual unsigned app, focused driver and
+quick-bar checks cover their own boundaries. Narrow/wide panels were inspected
+and temporary previews removed; no full release was built for these checks.
+Continue installed signed/issuer qualification separately, then the broader
+paired tool/history and admitted temporal successors in this plan.
 
 ## Product outcome
 

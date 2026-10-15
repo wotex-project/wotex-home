@@ -1309,10 +1309,47 @@ The latter fixture uses unsealed file/generation helpers and disposable signed
 answers. The parameterless production owner's actual unsigned Begin refuses
 before account custody. These checks read no Keychain, open no Store and contact
 no issuer or device. They establish no positive installed source, UTC accuracy,
-actual owner timer/wake or full application composition. Shared Setup/driver
-binding is next; the app currently has no default clock producer. See the
+actual owner timer/wake or installed application success. Shared Setup/driver
+binding is implemented as described below. See the
 [contract](../../docs/specs/native-certificate-clock-v1.md) and
 [executed owner evidence](../../docs/provenance/native-certificate-clock-owner-2026-10.md).
+
+
+## Explicit certificate clock setup
+
+The shared Setup section **Trusted certificate clock** works with either local
+or paired controller selection. Provision the existing private `policy.json`
+under the actual account's `Library/Application Support/WoTExHome/certificate-clock/`
+using the deployment's qualified issuer/runtime procedure and the
+[closed policy format](../../docs/specs/native-certificate-clock-v1.md). The root
+must be private 0700; the canonical policy is single-link 0400. The app neither
+invents an issuer key nor qualifies source accuracy. An unsigned development
+binary refuses Begin through the actual protected-app gate.
+
+Choose **Begin Clock Request**, transfer the displayed public request file to
+that local issuer, then enter its signed-answer file's absolute local path and
+choose **Import Signed Answer**. The input must be a canonical private 0400
+regular file in safe owned custody. Original response/source deadlines remain
+fixed; identical import does not renew them. **Withdraw Clock** immediately
+revokes confidence, including during other work. Sleep/wake also withdraws.
+There is no automatic request, renewal, issuer connection or OS-clock default.
+
+Clock setup requires loaded safe pending metadata and no active shared work.
+A retained original permits clock renewal so its recovery remains possible;
+ordinary controller/session changes stay blocked. Selection changes cancel an
+active clock action but preserve an idle accepted app source. The default app
+driver uses this actual owner for selected and original-purpose sessions, while
+smaller driver fixtures retain their nil producer. Missing confidence retains
+the chosen controller and never switches to local custody or UDS.
+
+Run `mix woh.native.certificate.clock.panel.smoke` for controlled action/status
+fixtures, original-preserving admission and actual unsigned shared app refusal.
+Review `_build/native/certificate-clock/narrow.png` and `wide.png`, then remove
+that preview directory. The private compiler/cache/executable/file root is
+removed on success or failure. These are software checks, as detailed in the
+[composition evidence](../../docs/provenance/native-certificate-clock-panel-2026-10.md);
+installed signing, qualified UTC/elapsed accuracy and supported-host TLS/lifecycle
+still require their actual acceptance environments.
 
 
 ## Existing paired generation workspace operations

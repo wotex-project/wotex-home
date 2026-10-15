@@ -1,13 +1,15 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.154. Status: accepted target.
+Version: 0.2.155. Status: accepted target.
 
 The [native certificate clock source](native-certificate-clock-v1.md) now has
 its inert codec/lease, fixed-file production owner, volatile withdrawal and
 source-aware TLS clock primitive. Its [pure evidence](../provenance/native-certificate-clock-2026-10.md)
 and [owner evidence](../provenance/native-certificate-clock-owner-2026-10.md)
 distinguish independent arithmetic, unsealed real-file/generation fixtures and
-actual unsigned production refusal. Shared Setup/driver composition, positive
+actual unsigned production refusal. The shared Setup model/panel and production
+driver binding now have [executed composition evidence](../provenance/native-certificate-clock-panel-2026-10.md),
+including renewal admission while preserving a retained original. Positive
 installed ownership and clock qualification remain open, without an OS-clock
 default or synthetic qualification.
 

@@ -1,11 +1,11 @@
 # Native certificate clock source
 
-Version: 0.1.6. Updated: 2026-10-15. Status: accepted implementation contract.
+Version: 0.1.7. Updated: 2026-10-15. Status: accepted implementation contract.
 Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8.
 Implementation: inert codec/lease, fixed-file production owner, volatile generation
-and source-aware TLS clock primitive implemented; shared Setup/driver remains planned.
-Evidence: NC-T1 executed; NC-T2/T3 partial file/generation/worker and actual unsigned
-refusal evidence; shared composition and installed qualification remain open.
+and source-aware TLS clock primitive plus shared Setup/driver composition implemented.
+Evidence: NC-T1 executed; NC-T2/T3 partial file/generation/worker and NC-T4 shared
+model/panel/driver software evidence; positive installed qualification remains open.
 
 ## Observable result and trust boundary
 
@@ -284,3 +284,9 @@ actual private files, unsealed generation withdrawal, stale fixture clocks and
 retiring worker capacity, plus actual unsigned production refusal. It does not
 establish positive installed signing/source ownership, issuer accuracy, actual
 owner timer/wake behavior or shared Setup/driver delivery.
+
+The [shared composition evidence](../provenance/native-certificate-clock-panel-2026-10.md)
+records explicit action and generation guards, original-preserving renewal
+admission, actual unsigned application refusal and narrow/wide panel review.
+Positive presentation fixtures cannot install a source; installed signing,
+issuer/elapsed accuracy and supported-host lifecycle remain separate obligations.

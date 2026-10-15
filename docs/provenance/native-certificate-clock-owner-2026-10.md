@@ -108,3 +108,11 @@ trees were also removed after inspection. No Docker image or container was
 created by this slice. A read-only Docker inventory found no containers; existing
 images, build cache and other projects' database volumes were preserved. The
 filesystem had approximately 28 GiB free at the final inventory.
+
+## Subsequent application composition
+
+The later [shared composition evidence](native-certificate-clock-panel-2026-10.md)
+records the Setup model/panel and production app driver binding in `54b3ce2`.
+The no-default-producer statement above describes this owner-stage commit.
+The application now supplies its actual owner; positive installed source/clock
+qualification remains open.
