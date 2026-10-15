@@ -1,6 +1,6 @@
 # Native external-profile decision review
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09 and H08-T1/T5/T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08 and H18-T6/T8/T11/T12.
 Implementation: local selected reads, complete-file review/confirmation and app composition implemented.
@@ -19,10 +19,12 @@ Inspection, approval, selection, grants and reports remain separate facts.
 
 This owns local selected first decisions, model lifecycle and visible review.
 Signed paired consumption and guided construction are later delivery obligations.
-The current operator API exposes neither a current host-held external-reader basis
-nor a current source-selection/target-counter preparation catalogue. A guided
-builder needs those exact authenticated read contracts before code; it cannot
-derive them from an authoring-contract digest, a report or editable endpoint.
+The [guidance API](external-profile-guidance-v1.md) now exposes current host-held
+reader, source-selection, target-counter and owned inspection artifact data.
+The [native typed read contract](native-external-guidance-reads-v1.md) defines
+strict decoding and identity bracketing before guided construction; implementation
+and guided composition remain successors. No builder derives these facts from an
+authoring-contract digest, a report or editable endpoint.
 Complete files supply explicit originals here; the Store still decides current
 source/reader/import/counter admissibility. This is not complete installed v2 UX.
 
