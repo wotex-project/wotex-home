@@ -8,7 +8,9 @@ defmodule Mix.Tasks.Woh.Native.Generation.Flow.Smoke do
   mutation replies, confirmed missing-original acknowledgement, stale journal
   refusal, explicit repair feedback, fresh manual assessment and root cancellation.
   A revision race checks refused preparation and separately confirmed archival;
-  a scripted provider supplies inert fixture drafts.
+  a scripted provider supplies inert fixture drafts. Separate native/Store restart
+  cohorts check retired preparations, unknown attempts and removed policy, while
+  revocation during refresh must retire private display without deleting originals.
 
   The fixture uses temporary private directories and synthetic custody, with
   no external model, Keychain or device dispatch. Compilation and software

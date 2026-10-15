@@ -1227,3 +1227,16 @@ a preparation rejected by a concurrent Store revision change. Its expanded Store
 fixture has a 30-second execution bound; ordinary SDK fixtures retain 15 seconds.
 Signed paired generation, installed interaction/signing and physical qualification
 retain their separate gates. No model work follows opening or editing.
+
+
+The flow task now also starts separate native processes across actual Store
+restart for each quantity family. A previously running attempt becomes unknown,
+its preparation retires, original lookup/absence acknowledgement retain it, and
+no provider replay or revision change follows. A second cohort removes installed
+generation policy/provider on restart: configuration is empty and attempt
+preparation refuses without fallback. Revocation during an explicit refresh retires
+private context/workspace/status/input/confirmation in the view, while complete
+workspace/pending originals stay intact. Pure input refusal and a missing archive
+confirmation preserve the authenticated input/original view but retire prepared
+decisions. These are focused local software checks; installed signed delivery and
+interaction/accessibility remain separate.

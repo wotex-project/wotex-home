@@ -126,8 +126,9 @@ composition now have [executed native/Store evidence](../provenance/native-gener
 Separately confirmed missing-original acknowledgement and uncertain archival now
 have [executed reconciliation evidence](../provenance/native-generation-reconciliation-2026-10.md).
 Compatible repair with unused budget and expired-root panel refusal are checked.
-Continue with selected-panel withdrawal/retired/unknown cases,
-signed paired delivery and installed interaction/qualification. Live account/model, local OS
+Local withdrawal/retired/unknown and private-content retirement now have
+[executed Store/native restart evidence](../provenance/native-generation-retirement-2026-10.md).
+Continue with signed paired delivery and installed interaction/qualification. Live account/model, local OS
 confinement, native/signed paired delivery and aggregate pool boundaries remain.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with

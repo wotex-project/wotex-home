@@ -1,15 +1,17 @@
 # Native generation workspace and first decisions
 
-Version: 0.1.7. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.8. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18A-02/04/05 and H18-T15/T16/T17;
 WOH.15 H15-03/07 and H15-T8.
 Implementation: workspace, guarded local first decisions, panel, repair/cancellation
 and fresh manual candidate composition implemented. Explicit absent-original
 pending acknowledgement and separately confirmed uncertain archival are implemented;
-installed delivery and the remaining selected-panel acceptance cases remain unfinished.
+private-content retirement after authority failure is implemented. Installed
+delivery and remaining installed acceptance obligations stay unfinished.
 Evidence: [custody dependency](../provenance/native-generation-workspace-2026-10.md)
 and [first-decision checks](../provenance/native-generation-flow-2026-10.md), plus
-[absent-original reconciliation](../provenance/native-generation-reconciliation-2026-10.md).
+[absent-original reconciliation](../provenance/native-generation-reconciliation-2026-10.md)
+and [withdrawal/restart/content retirement](../provenance/native-generation-retirement-2026-10.md).
 
 ## Result, owners and entry conditions
 
@@ -229,6 +231,8 @@ absent original; explicit acknowledgement can clear its exact pending entry, the
 a separate confirmed archive accepts uncertainty while removing only workspace
 metadata. Unreconciled cancellation intent still refuses archive. Compatible repair
 with unused attempt budget and selected-panel expired-root refusal now have
-focused actual-Store evidence; withdrawal/retired/unknown panel cases remain.
+focused actual-Store evidence. Revocation during refresh, retired roots, unknown
+attempts and removed-policy refusal now have actual Store/native restart evidence.
+These establish the exercised local software branches, not installed acceptance.
 Signed paired generation and installed interaction/qualification retain separate
 gates; focused checks alone do not complete NGU-T3–T5.
