@@ -1,19 +1,22 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.59. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.60. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)
 defines durable root/attempt workspace custody, explicit policy/consent/budget,
 ordered publication, repair/cancellation and fresh manual review composition.
 Its workspace custody dependency is implemented with [executed private-file/process
-evidence](../provenance/native-generation-workspace-2026-10.md); driver/panel/review
-composition remains planned. Startup metadata and a model result create no Home authority.
+evidence](../provenance/native-generation-workspace-2026-10.md). Guarded local first
+decisions, repair/cancellation and fresh manual assessment now have [executed
+evidence](../provenance/native-generation-flow-2026-10.md). Missing-original pending
+acknowledgement and installed/signed delivery remain unfinished. Startup metadata
+and a model result create no Home authority.
 
 The [native generation SDK contract](native-generation-sdk-v1.md) defines exact
 options, complete inert assessments/status and original-purpose recovery after
 v7 publication. It is implemented with [executed native/Store/race/restart evidence](../provenance/native-generation-sdk-2026-10.md).
-Reservation, running work and settled result remain distinct; new native submission
-presentation is a later dependency.
+Reservation, running work and settled result remain distinct; local native first
+submission now uses the separate first-decision contract above.
 
 The [v7 generation pending contract](native-pending-generation-v7.md) defines
 complete generation-original custody, an explicit journal upgrade and refusal

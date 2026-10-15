@@ -1,9 +1,13 @@
 # Native generation workspace and first decisions
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18A-02/04/05 and H18-T15/T16/T17;
-WOH.15 H15-03/07 and H15-T8. Implementation: workspace codec/private custody implemented; driver/panel/review composition planned.
-Evidence: [executed custody dependency checks](../provenance/native-generation-workspace-2026-10.md).
+WOH.15 H15-03/07 and H15-T8.
+Implementation: workspace, guarded local first decisions, panel, repair/cancellation
+and fresh manual candidate composition implemented. Explicit absent-original
+pending acknowledgement and installed delivery remain unfinished.
+Evidence: [custody dependency](../provenance/native-generation-workspace-2026-10.md)
+and [executed first-decision checks](../provenance/native-generation-flow-2026-10.md).
 
 ## Result, owners and entry conditions
 
@@ -207,5 +211,8 @@ cross-check but cannot replace the independent oracle.
 
 Implement workspace codec/private custody first, then guarded driver decisions,
 then panel/review composition, with evidence per dependency and focused tests.
-The complete UI stays planned until those steps exist; workspace evidence alone
-cannot establish native first submission or installed delivery.
+The local first-decision flow now has focused native/Store evidence. Missing-status
+pending reconciliation remains an implementation obligation: ordinary lookup
+retains an absent original, so this slice cannot yet archive every first refusal.
+Signed paired generation and installed interaction/qualification retain separate
+gates; focused checks alone do not complete NGU-T3–T5.

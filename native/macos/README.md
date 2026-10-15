@@ -1166,8 +1166,8 @@ credential or model and publishes no pending record. The separate
 now retains complete generation originals through the shared private file and
 whole-file CAS. The [native SDK](../../docs/specs/native-generation-sdk-v1.md) now reads checked
 options/full result status, submits exact originals and supports local original
-lookup/retry. First-submission editing and selected-session presentation remain
-next; v6 authoring and schedule slots keep their own grammar. The new source is included in the app compiler list,
+lookup/retry. Guarded local first-submission editing and selected-session presentation now use
+the first-decision contract below; v6 authoring and schedule slots keep their own grammar. The new source is included in the app compiler list,
 but this pure check builds no installed app or signed artifact.
 
 
@@ -1194,9 +1194,10 @@ the macOS CI job; local passes do not establish a new hosted CI result.
 The SDK keeps model reservation and settlement separate. A complete mechanics
 assessment still has source review and Home consumption not assessed. The pending
 panel can acknowledge uncertainty after explicit confirmation; a later result may
-remain at the controller. Native first-submission editing, confirmation, candidate
-review composition, signed paired generation and installed qualification remain
-later delivery work.
+remain at the controller. The local first-decision flow below now composes
+editing, confirmation and fresh manual assessment; missing-original pending
+acknowledgement, signed paired generation and installed qualification remain
+unfinished.
 
 
 The [first-decision contract](../../docs/specs/native-generation-ui-v1.md) now has
@@ -1204,5 +1205,18 @@ its separate private workspace dependency. It retains complete preparation and
 ordered attempt originals plus cancellation intent under fixed-file CAS; load
 sends no request and stores no credential/current permission. Run
 `mix woh.native.generation.workspace.smoke` for independent roots, private guards,
-four process races and restart. The full driver/panel/review flow remains planned;
-workspace publication alone cannot send a preparation or model attempt.
+four process races and restart. The guarded local driver and Things generation
+panel now load configuration explicitly, freeze selections/consent/budget, publish
+workspace then pending originals, submit once, read status, repair with explicit
+feedback consent, retain cancellation intent and create a fresh ordinary manual
+candidate for review. A saved workspace can restore unchanged originals to pending
+recovery after interrupted publication, without sending a generation mutation.
+
+Run `mix woh.native.generation.flow.smoke` for both families against an actual
+private Store/socket: failed pending publication, unchanged original restoration,
+dropped replies, explicit repair, fresh assessment, late-response retirement and
+lost cancellation intent. This compiles the shared panel/driver closure, not an
+installed app. Missing-status pending acknowledgement remains unfinished; a
+retained absent original cannot yet be explicitly cleared in the pending panel.
+Signed paired generation, installed interaction/signing and physical qualification
+retain their separate gates. No model work follows opening or editing.
