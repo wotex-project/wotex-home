@@ -2,7 +2,8 @@
 
 Reviewed: 2026-10-15. This records an owned producer milestone and source review
 for the next [routine adoption stage](../plans/universal-routines-delivery.md).
-It does not select a dependency or qualify Home facts, clocks or effects.
+It distinguishes exact Home source selection and inert software projection
+from qualified current facts, clocks and effects.
 
 ## Exact producer evidence and current selection
 
@@ -218,3 +219,78 @@ a disposable 21-contract indexed catalogue and all 32 changed indexed Markdown
 references pass. Both Git whitespace checks pass. The metadata workspace is
 removed after validation. No broad Home suite or Dialyzer was run for this
 bounded inert addition.
+
+
+## Extracted Home projection milestone
+
+Home 91d88fc owns the inert implementation and native entry evidence. The new
+closed `--external-fact-consumer` mode of bin/check_routines_shadow.exs requires
+exact core, Continuum, Runtime, Profiles and Routines archive/digest arguments.
+It extracts those five artifacts into one disposable project, copies only seven
+Home modules and the closed fixtures, and clears development dependency/build
+overrides. No Authority, Store or sibling checkout is available to its tests.
+
+The exact selected package roots under deps/{app}/packages/{package} were built
+with `mix hex.build --output ARCHIVE.tar` in the prod environment on Elixir
+1.19.6 / OTP 28.5.0.6. Each output hash was compared to the pre-code entry vector
+before invoking the consumer. This is archive construction, not publication.
+The runner invocation selects `--external-fact-consumer` and all five pairs
+`--core-archive/--core-sha`, `--continuum-archive/--continuum-sha`,
+`--runtime-archive/--runtime-sha`, `--profiles-archive/--profiles-sha` and
+`--routines-archive/--routines-sha`, with the artifact identities below.
+
+| Archive | SHA-256 |
+| --- | --- |
+| core | 77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61 |
+| Continuum | db7077c5f0ad92426c94a077a4f58f9b7334df25de8c2a1b8ed25143bab6efb5 |
+| Runtime | 5d8cd7e3012dd2115b63ccc5c4fe67130ab06a82253405c452970abb8d210df7 |
+| Profiles | 34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96 |
+| Routines | fb74f71b6b44b286907d65caaf2271e9e0b6318939236a4aaf736120e42a33ef |
+
+The final run passes **five tests**, seed **754975**, **1.0 seconds**, after
+warnings-as-errors compilation. It checks extracted-only code, the exact archive
+cohort, the whole independently frozen output, actual integer/Boolean/enum Home
+readers to Evaluation/Kernel, all eleven signed floor vectors, exclusive expiry,
+native forgery/installation refusal and aggregate wrapper bounds. The separate
+no-start mutation baseline also passes all **five tests**, seed **0**. Replacing
+the Fact external profile with its Basis identity causes **three assertion
+failures**. Reusing Home's converted normalized coordinate as the original reader
+coordinate causes **three assertion failures**. Each mutant retains the complete
+five-test total and has **zero non-assertion errors**; process or compilation
+failures do not count as caught mutants.
+
+Consumer lock SHA-256 is
+6ddb05e87f2872a12a244a022d666372d792510c8760188a3ac235ce53c258dd.
+An initial successful archive run emitted Mix's unmatched-support-file warning;
+the disposable project now explicitly ignores test/support, and the final run
+has no such warning. Three incomplete, conflicting and duplicate CLI selections
+also refuse before artifact access.
+
+The final native/schema command from the preceding checkpoint now passes
+**13 tests**, seed **141949**, **2.3 seconds**. Its added actual-current-runtime
+case executes compiled producer inventory checks and refuses a changed current
+assertion. Regenerated installed Mapping profile, closure, capture, semantic,
+compiler and source identity/time-basis substitutions also refuse stale. This
+completes REF-T1–T5 only in the inert contract's bounded software scope. Qualified
+current Store collection/continuity, complete-set composition, wider admission,
+installed host and physical qualification remain subsequent work. No Store schema,
+current fact route, authority proof, grants or dispatch default changed.
+
+| Input | SHA-256 |
+| --- | --- |
+| Home ExternalFact source | 183a6e63cb546d889619226a6a0760f41e9bfcfad2c08d6f5b15d521c5c94c75 |
+| archive runner | ef6c3f1d519be4e033742d733c23083c9f106cc6882a07e7e7eef7e957a375cc |
+| extracted consumer | 95ee3d3cf698b14ec8c966336bfc2ccd55a1a449ca2106ed71c046843214dd2b |
+| mutation driver | a339b20d54eb74fa458bacfb764491955d91ff0f72ce317adb1e7dadd419eedc |
+| independent vectors | 292aa1ce5c2223dcd11dfb1e86feae455abebfbbf806d739a9f0eb56c14db0ef |
+
+All context-managed archive builds, extracted consumers and mutants were removed
+on exit. No Docker image, container or volume was created. The existing reusable
+build/Hex/dependency caches remain; unrelated Docker volumes were not pruned.
+Commits stay local on main.
+
+The final formatting and warnings-as-errors compilation checks pass. The working
+catalogue validates 22 contracts; the independent disposable index projection
+validates the 21 committed contracts and all 32 changed indexed Markdown links.
+Git whitespace checks pass. No full application suite, Dialyzer, host packaging
+or physical campaign was run for this inert projection milestone.

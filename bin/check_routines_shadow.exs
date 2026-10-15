@@ -23,6 +23,8 @@ defmodule Woh.RoutineArchiveShadow do
     profiles/document_chunks.ex profiles/retained_json.ex profiles/retained_source.ex
     profiles/external_target.ex profiles/external_target_preparation.ex profiles/external_report_owner.ex
     profiles/external_observation.ex profiles/external_observation_preparation.ex)
+  @external_fact_sources ~w(id.ex runtime_artifacts.ex profiles/envelope_codec.ex profiles/producer_identity.ex
+    profiles/external_envelope.ex profiles/external_value.ex rules/external_fact.ex)
   @archive_limit 32 * 1024 * 1024
   @contents_limit 16 * 1024 * 1024
 
@@ -39,6 +41,7 @@ defmodule Woh.RoutineArchiveShadow do
       ex_booking_archive: :string,
       ex_booking_sha: :string,
       profile_consumer: :boolean,
+      external_fact_consumer: :boolean,
       profile_store_consumer: :boolean,
       profile_target_store_consumer: :boolean,
       profile_authoring_operator_consumer: :boolean,
@@ -56,9 +59,14 @@ defmodule Woh.RoutineArchiveShadow do
     authoring_operators = opts[:profile_authoring_operator_consumer] == true
     profile_store = opts[:profile_store_consumer] == true or target_store or authoring_operators
     profiles = opts[:profile_consumer] == true or profile_store
+    external_fact = opts[:external_fact_consumer] == true
 
     expected =
       cond do
+        external_fact ->
+          ~w(core_archive core_sha continuum_archive continuum_sha runtime_archive runtime_sha
+            profiles_archive profiles_sha routines_archive routines_sha external_fact_consumer)a
+
         profiles ->
           ~w(core_archive core_sha runtime_archive runtime_sha profiles_archive profiles_sha)a ++
             [
@@ -83,17 +91,30 @@ defmodule Woh.RoutineArchiveShadow do
        do: raise("complete distinct archive/digest arguments required")
 
     archives =
-      if profiles,
-        do: [
-          {:wotex, opts[:core_archive], opts[:core_sha]},
-          {:wotex_runtime, opts[:runtime_archive], opts[:runtime_sha]},
-          {:wotex_profiles, opts[:profiles_archive], opts[:profiles_sha]}
-        ],
-        else: [
-          {:wotex, opts[:core_archive], opts[:core_sha]},
-          {:wotex_continuum, opts[:continuum_archive], opts[:continuum_sha]},
-          {:wotex_routines, opts[:routines_archive], opts[:routines_sha]}
-        ]
+      cond do
+        external_fact ->
+          [
+            {:wotex, opts[:core_archive], opts[:core_sha]},
+            {:wotex_continuum, opts[:continuum_archive], opts[:continuum_sha]},
+            {:wotex_runtime, opts[:runtime_archive], opts[:runtime_sha]},
+            {:wotex_profiles, opts[:profiles_archive], opts[:profiles_sha]},
+            {:wotex_routines, opts[:routines_archive], opts[:routines_sha]}
+          ]
+
+        profiles ->
+          [
+            {:wotex, opts[:core_archive], opts[:core_sha]},
+            {:wotex_runtime, opts[:runtime_archive], opts[:runtime_sha]},
+            {:wotex_profiles, opts[:profiles_archive], opts[:profiles_sha]}
+          ]
+
+        true ->
+          [
+            {:wotex, opts[:core_archive], opts[:core_sha]},
+            {:wotex_continuum, opts[:continuum_archive], opts[:continuum_sha]},
+            {:wotex_routines, opts[:routines_archive], opts[:routines_sha]}
+          ]
+      end
 
     archives =
       if temporal,
@@ -116,7 +137,8 @@ defmodule Woh.RoutineArchiveShadow do
         profiles,
         profile_store,
         target_store,
-        authoring_operators
+        authoring_operators,
+        external_fact
       )
     after
       File.rm_rf!(temporary)
@@ -150,8 +172,11 @@ defmodule Woh.RoutineArchiveShadow do
          profiles,
          profile_store,
          target_store,
-         authoring_operators
+         authoring_operators,
+         external_fact
        ) do
+    reader = profiles or external_fact
+
     deps =
       Enum.map(archives, fn {app, bytes} ->
         directory = Path.join(temporary, Atom.to_string(app))
@@ -167,7 +192,7 @@ defmodule Woh.RoutineArchiveShadow do
     defmodule HomeShadowConsumer.MixProject do
       use Mix.Project
       def project, do: [app: :home_shadow_consumer, version: "0.0.0", elixir: "~> 1.18",
-        deps: #{inspect(deps, limit: :infinity)}]
+        test_ignore_filters: [~r{^test/support/}], deps: #{inspect(deps, limit: :infinity)}]
       def application, do: [extra_applications: []]
     end
     """)
@@ -176,6 +201,7 @@ defmodule Woh.RoutineArchiveShadow do
 
     sources =
       cond do
+        external_fact -> @external_fact_sources
         profiles -> @profile_sources
         civil -> @civil_sources
         temporal -> @temporal_sources
@@ -191,6 +217,7 @@ defmodule Woh.RoutineArchiveShadow do
 
     fixture =
       cond do
+        external_fact -> "routines_external_fact_consumer.exs"
         profiles -> "profiles_external_consumer.exs"
         civil -> "routines_civil_consumer.exs"
         temporal -> "routines_timezone_consumer.exs"
@@ -202,6 +229,22 @@ defmodule Woh.RoutineArchiveShadow do
       Path.join(consumer, "test/shadow_test.exs"),
       "test/support/" <> fixture
     )
+
+    if external_fact do
+      for relative <- [
+            "test/support/routine_external_fact_fixture.exs",
+            "test/fixtures/profiles/routine-external-facts.json",
+            "test/fixtures/profiles/temperature.json",
+            "test/fixtures/profiles/external-values.json"
+          ] do
+        destination = Path.join(consumer, relative)
+        File.mkdir_p!(Path.dirname(destination))
+        copy(Path.join(root, relative), destination, relative)
+      end
+
+      relative = "test/support/routines_external_fact_mutations.exs"
+      copy(Path.join(root, relative), Path.join(consumer, "fact_mutations.exs"), relative)
+    end
 
     if civil do
       copy(
@@ -317,9 +360,10 @@ defmodule Woh.RoutineArchiveShadow do
     File.write!(Path.join(consumer, "test/test_helper.exs"), "ExUnit.start()\n")
 
     environment = [
-      {"WOTEX_HOME_PROFILES_CORE_SHA", if(profiles, do: opts_sha(archives, :wotex))},
-      {"WOTEX_HOME_PROFILES_RUNTIME_SHA", if(profiles, do: opts_sha(archives, :wotex_runtime))},
-      {"WOTEX_HOME_PROFILES_ARCHIVE_SHA", if(profiles, do: opts_sha(archives, :wotex_profiles))},
+      {"WOTEX_HOME_PROFILES_CORE_SHA", if(reader, do: opts_sha(archives, :wotex))},
+      {"WOTEX_HOME_PROFILES_RUNTIME_SHA", if(reader, do: opts_sha(archives, :wotex_runtime))},
+      {"WOTEX_HOME_PROFILES_ARCHIVE_SHA", if(reader, do: opts_sha(archives, :wotex_profiles))},
+      {"HOME_SHADOW_CONTINUUM_SHA", if(external_fact, do: opts_sha(archives, :wotex_continuum))},
       {"WOTEX_PATH_DEPS", nil},
       {"MIX_ENV", "test"},
       {"MIX_BUILD_PATH", nil},
@@ -365,6 +409,7 @@ defmodule Woh.RoutineArchiveShadow do
     end
 
     command(["test", "--warnings-as-errors"], consumer, environment)
+    if external_fact, do: external_fact_mutations(consumer, environment)
     IO.puts("consumer lock sha256: #{sha(File.read!(Path.join(consumer, "mix.lock")))}")
 
     if profile_store do
@@ -404,6 +449,73 @@ defmodule Woh.RoutineArchiveShadow do
         do: "immutable timezone archive comparison passed",
         else: "restricted archive shadow comparison passed"
     )
+  end
+
+  defp external_fact_mutations(consumer, environment) do
+    baseline = external_fact_mutation_run(consumer, environment, "baseline")
+
+    unless baseline.status == 0 and baseline.result["total"] == 5 and
+             baseline.result["failures"] == 0 and baseline.assertions["errors"] == 0,
+           do: raise("external fact mutation baseline failed")
+
+    IO.puts("external fact mutation baseline: five tests passed, seed 0")
+
+    source = File.read!(Path.join(consumer, "lib/wotex_home/rules/external_fact.ex"))
+
+    mutations = [
+      {"profile_identity", ~S|"fact" => fact,|,
+       ~S|"fact" => Map.put(fact, "profile_digest", mapping["basis"]["semantic_digest"]),|},
+      {"original_coordinate",
+       ~S|{:ok, proposal} <- Wotex.Profiles.Proposal.to_map(proposal, context["reader_limits"]),|,
+       ~S|{:ok, proposal} <- Wotex.Profiles.Proposal.to_map(proposal, context["reader_limits"]),| <>
+         "\n           proposal = Map.put(proposal, \"normalized_value\", value.data[\"normalized_value\"]),"}
+    ]
+
+    for {name, from, to} <- mutations do
+      unless length(String.split(source, from)) == 2,
+        do: raise("external fact mutation site changed: " <> name)
+
+      replacement = Path.join(consumer, "mutant-" <> name <> ".ex")
+      File.write!(replacement, String.replace(source, from, to, global: false))
+      result = external_fact_mutation_run(consumer, environment, replacement)
+
+      unless result.status == 1 and result.result["total"] == baseline.result["total"] and
+               result.result["failures"] > 0 and result.assertions["assertions"] > 0 and
+               result.assertions["errors"] == 0,
+             do: raise("external fact mutant survived or harness failed: " <> name)
+
+      IO.puts(
+        "external fact #{name}: #{result.result["failures"]} assertion failures, zero harness errors"
+      )
+    end
+  end
+
+  defp external_fact_mutation_run(consumer, environment, replacement) do
+    {output, status} =
+      System.cmd(
+        "mix",
+        ["run", "--no-start", "--no-compile", "fact_mutations.exs", replacement],
+        cd: consumer,
+        env: environment,
+        stderr_to_stdout: true
+      )
+
+    %{
+      status: status,
+      result: external_fact_marker(output, "EXTERNAL_FACT_RESULT="),
+      assertions: external_fact_marker(output, "EXTERNAL_FACT_ASSERTIONS=")
+    }
+  end
+
+  defp external_fact_marker(output, prefix) do
+    case output |> String.split("\n") |> Enum.find(&String.starts_with?(&1, prefix)) do
+      nil ->
+        IO.write(output)
+        raise("external fact mutation process/formatter failed")
+
+      line ->
+        line |> String.replace_prefix(prefix, "") |> JSON.decode!()
+    end
   end
 
   defp opts_sha(archives, app) do

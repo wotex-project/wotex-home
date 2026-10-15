@@ -1,7 +1,7 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.14. Updated: 2026-10-15. Status: accepted target.
-Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join.
+Version: 0.1.15. Updated: 2026-10-15. Status: accepted target.
+Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, and inert external reader-to-Fact projection.
 Evidence: finite software subset; full acceptance cases remain open.
 
 ## Purpose, ownership and current subset
@@ -293,6 +293,8 @@ independent Home-converted and original Proposal witnesses, complete external
 profile/Basis correspondence, explicit receipt clocks and null receipt UTC.
 REF-T1–T5 require actual native and extracted execution, adverse input/producer
 cases and independent unit/identity/signed-clock expectations. Entry schema/vector
-and native REF-T1–T4 checks pass; the extracted REF-T5 lane remains open.
-The inert consumer is implemented. No current Store fact,
-rule admission or dispatch capability follows from this inert result.
+and native REF-T1–T4 checks pass; the extracted REF-T5 lane now passes five
+archive cases and catches identity/original-coordinate mutants through assertions.
+Thirteen focused native/schema cases include current runtime inventory and
+regenerated Mapping drift refusals. This completes the inert software contract;
+current Store fact collection, rule admission and dispatch remain separate.

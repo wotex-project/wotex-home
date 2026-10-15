@@ -120,6 +120,31 @@ defmodule WotexHome.RoutineExternalFactTest do
     assert {:error, :invalid_external_fact} =
              project(%{c | mapping: Map.put(c.mapping, "private-canary", true)})
 
+    for path <- [
+          ["profile_sha256"],
+          ["closure_sha256"],
+          ["capture_digest"],
+          ["semantic_ref", "sha256"],
+          ["compiler_ref", "sha256"],
+          ["observation", "source_epoch"],
+          ["observation", "source_time_basis"]
+        ] do
+      old = get_in(c.mapping, path)
+
+      replacement =
+        if String.starts_with?(old, "sha256:"),
+          do: "sha256:" <> String.duplicate("0", 64),
+          else: String.duplicate("0", byte_size(old))
+
+      unsigned = c.mapping |> Map.delete("sha256") |> put_in(path, replacement)
+      assert {:error, :stale_external_fact} = project(F.install(c, unsigned))
+    end
+
+    unsigned =
+      c.mapping |> Map.delete("sha256") |> put_in(["observation", "source_ref"], "other-source")
+
+    assert {:error, :stale_external_fact} = project(F.install(c, unsigned))
+
     for {key, maximum} <- c.vector["limits"] do
       limits = Map.put(c.context["limits"], key, maximum + 1)
 
@@ -134,6 +159,29 @@ defmodule WotexHome.RoutineExternalFactTest do
 
     assert {:error, :external_fact_limit} =
              project(%{c | context: Map.put(c.context, "limits", limits)})
+  end
+
+  test "current runtime assertions retain compiled inventory checks", %{fixture: c} do
+    assert {:ok, producer} = WotexHome.Profiles.ProducerIdentity.current()
+    vector = Map.put(c.vector, "producer_assertion", producer)
+    current = F.build(vector, c.source, c.consumer, c.report)
+    assert {:ok, result} = project(current)
+    assert result["fact"] == c.vector["expected_result"]["fact"]
+
+    assert result["source_proposal_sha256"] ==
+             c.vector["expected_result"]["source_proposal_sha256"]
+
+    refute result["external_value_sha256"] == c.vector["expected_result"]["external_value_sha256"]
+
+    changed =
+      put_in(
+        current.context,
+        ["envelope", Access.key!(:inputs), "installed", "producer", "profiles_runtime_sha256"],
+        String.duplicate("0", 64)
+      )
+
+    assert {:error, :stale_external_fact} =
+             ExternalFact.project(current.value, current.mapping, current.metadata, changed)
   end
 
   test "actual Boolean and enum Home readers reach known predicates without scalar coercion", %{

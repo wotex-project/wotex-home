@@ -1,11 +1,11 @@
 # Inert external routine fact projection v1
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: implemented bounded software contract.
 Owner: WOH.20 H20-01/04, H20-T1/T3; WOH.18 H18-04/05.
-Implementation: inert projection implemented and native REF-T1–T4 exercised;
-REF-T5 extracted execution remains open. Evidence: twelve focused native/schema
-cases, including isolated producer refusals, pass; exact commands and independent
-archive entry witnesses are in the
+Implementation: inert projection implemented; REF-T1–T5 exercised in their
+bounded software scope. Evidence: thirteen native/schema cases, five extracted
+archive cases and identity/original-coordinate mutants pass; exact commands,
+cohort and independent witnesses are in the
 [Home evidence](../provenance/routines-external-input-2026-10.md).
 
 ## Result, ownership and dependencies
@@ -241,6 +241,10 @@ The native checkpoint executes REF-T1–T4 through actual Home readers, includin
 Boolean/enum values, eleven independent signed-clock vectors, exact-mode refusal,
 exclusive expiry, retained/replayed/gap unknown results, whole-output bounds and
 five isolated producer faults plus absent APIs. Four schema/independent witness
-cases also pass. REF-T5 remains open: its exact archive cohort and independently
-recomputed consumption/value hashes are frozen before its consumer harness.
-These are software projection checks, not qualified current Store collection.
+cases also pass. A later focused case verifies current compiled-runtime producer
+assertions and stale inventory refusal; regenerated Mapping profile, semantic,
+compiler, capture, closure and source drift also refuse. REF-T5 passes through
+five independently extracted archives, matching the pre-code consumption/value
+hashes. Both identity and original-coordinate mutants cause three assertion
+failures with the same five-test total and no harness errors. These are software
+projection checks, not qualified current Store collection.
