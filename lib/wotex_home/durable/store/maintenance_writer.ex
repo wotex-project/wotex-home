@@ -155,8 +155,12 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
   end
 
   def status(db, credential) do
-    with {:ok, _} <- actor(db, credential),
-         {:ok, revision} <- active(db),
+    with {:ok, _} <- actor(db, credential), do: snapshot(db)
+  end
+
+  @doc "Store-only metadata snapshot; its caller must authenticate before reading."
+  def snapshot(db) do
+    with {:ok, revision} <- active(db),
          {:ok, [[store_revision, epoch, generation]]} <- meta(db) do
       {:ok,
        %{

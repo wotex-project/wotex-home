@@ -1190,13 +1190,17 @@ defmodule WotexHome.LocalAPI.Server do
          authority,
          %{"api_version" => 1, "operation" => operation, "credential" => encoded} = request
        )
-       when operation in ~w(external_profile_inspect external_inspection_status external_trust_change external_trust_status external_profiles external_target_change external_target_status external_report_current external_report_status) do
+       when operation in ~w(external_profile_inspect external_inspection_status external_trust_change external_trust_status external_profiles external_target_change external_target_status external_report_current external_report_status external_profile_context external_source_catalogue external_target_basis external_inspection_artifact) do
     fields =
       case operation do
         "external_profile_inspect" -> ["inspection"]
         "external_trust_change" -> ["change"]
         "external_target_change" -> ["change"]
         "external_profiles" -> []
+        "external_profile_context" -> []
+        "external_source_catalogue" -> []
+        "external_target_basis" -> ["target_id"]
+        "external_inspection_artifact" -> ["inspection_ref"]
         "external_report_current" -> ["target_id", "capability_key"]
         "external_report_status" -> ["report_owner_epoch", "report_id"]
         _ -> ["authority_epoch", "operation_id"]
@@ -1542,6 +1546,34 @@ defmodule WotexHome.LocalAPI.Server do
       profile_body(
         "external_profile_catalogue",
         Authority.external_profile_catalogue(authority, credential)
+      )
+
+  defp external_profile_operation(authority, credential, "external_profile_context", _),
+    do:
+      profile_body(
+        "external_profile_context",
+        Authority.external_profile_context(authority, credential)
+      )
+
+  defp external_profile_operation(authority, credential, "external_source_catalogue", _),
+    do:
+      profile_body(
+        "external_source_catalogue",
+        Authority.external_source_catalogue(authority, credential)
+      )
+
+  defp external_profile_operation(authority, credential, "external_target_basis", request),
+    do:
+      profile_body(
+        "external_target_basis",
+        Authority.external_target_basis(authority, credential, request["target_id"])
+      )
+
+  defp external_profile_operation(authority, credential, "external_inspection_artifact", request),
+    do:
+      profile_body(
+        "external_inspection_artifact",
+        Authority.external_inspection_artifact(authority, credential, request["inspection_ref"])
       )
 
   defp external_profile_operation(authority, credential, "external_inspection_status", request),

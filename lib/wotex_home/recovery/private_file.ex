@@ -1,17 +1,28 @@
 defmodule WotexHome.Recovery.PrivateFile do
   @moduledoc """
-  Publishes and reads bounded private custody files with pinned path identity.
+  Reads and publishes bounded private files with pinned path identity.
 
-  Immutable documents use mode 0400; credential files use mode 0600 and one
-  canonical 32-byte credential encoding. Reads require a regular single-link
-  file under a canonical private parent, compare the opened descriptor with
-  the named file, and retain ancestor/stat identity in a seal. `check/1` rereads
-  and compares that seal; it is an identity check, not a payload hash.
+  `read/2` and `read_sealed/2` select mode-0400 immutable documents, returning
+  `{:ok, bytes}` and `{:ok, bytes, seal}` respectively. `read_input/2` selects
+  mode-0600 caller input and returns opaque `{:ok, bytes}` under the same path
+  checks; it neither decodes the document nor treats it as a credential. The
+  caller supplies a positive byte ceiling up to 4,194,304 and validates content.
 
-  Writes create exclusively, sync the file and parent directory, and refuse
-  replacement or custody drift. Callers supply document-specific size limits
-  up to 4,194,304 bytes and must separately verify content digests or signatures.
-  The module grants no trust merely because bytes are privately stored.
+  Reads require a regular single-link file under a canonical private parent,
+  compare the opened descriptor with the named file and retain ancestor/stat
+  identity in a seal. `check/1` returns `:ok` only when the original seal still
+  matches. This is an identity check, not a payload hash; callers separately
+  verify content digests or signatures when their use case requires them.
+
+  Credential-specific helpers encode/decode one canonical 32-byte bearer in a
+  mode-0600 file. `write/4` and `write_credential/3` publish exclusively, sync
+  file and parent directory, and refuse replacement or custody drift. Successful
+  writes return `:ok`; failed custody reads/checks return
+  `{:error, :private_custody_unavailable}`, and an existing publication returns
+  `{:error, :private_custody_exists}` rather than replacing it.
+
+  Private storage establishes no source authenticity, schema validity or grant.
+  Input, immutable document and credential paths retain their distinct purposes.
   """
 
   import Bitwise
@@ -27,6 +38,9 @@ defmodule WotexHome.Recovery.PrivateFile do
   def read(path, maximum) do
     read_mode(path, maximum, 0o400)
   end
+
+  @doc "Reads a bounded mode-0600 caller-validated input under the same private path checks."
+  def read_input(path, maximum), do: read_mode(path, maximum, 0o600)
 
   defp read_mode(path, maximum, mode) do
     with {:ok, bytes, _seal} <- read_sealed_mode(path, maximum, mode), do: {:ok, bytes}

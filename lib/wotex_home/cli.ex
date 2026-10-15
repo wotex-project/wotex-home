@@ -17,6 +17,14 @@ defmodule WotexHome.CLI do
   exit status: 0 for success/help, 1 for failure/refusal, 2 for invalid usage,
   3 for an uncertain mutation outcome and 4 for a missing original/result.
 
+  Read-only preparation commands include `external-profile-context`,
+  `external-source-catalogue`, `external-target-basis TARGET_ID` and
+  `external-inspection-artifact REFERENCE_FILE`. The reference file is an
+  explicit mode-0600 private JSON input of at most 4,096 bytes containing the
+  exact retained inspection receipt identity. These commands allocate no
+  original, source lease or target grant; returned metadata cannot replace the later
+  mutation's current-basis checks.
+
   Keep the exact original and operation identity after a lost mutation reply.
   Use the command-specific status lookup printed by the client; `receipt` applies
   to request receipts, while profile, authoring and generation operations have
@@ -59,6 +67,8 @@ defmodule WotexHome.CLI do
   @usage @usage <> "\ncontroller scope: controller-scope"
   @usage @usage <>
            "\nexternal profiles: external-profile-inspect ORIGINAL_FILE | external-inspection-status EPOCH OPERATION_ID | external-trust-change ORIGINAL_FILE | external-trust-status EPOCH OPERATION_ID | external-profiles | external-target-change ORIGINAL_FILE | external-target-status EPOCH OPERATION_ID"
+  @usage @usage <>
+           "\nexternal guidance: external-profile-context | external-source-catalogue | external-target-basis TARGET_ID | external-inspection-artifact REFERENCE_FILE"
 
   @usage @usage <>
            "\nexternal reports: external-report-current THING_ID CAPABILITY_KEY | external-report-status OWNER_EPOCH REPORT_ID"
@@ -374,6 +384,27 @@ defmodule WotexHome.CLI do
 
   defp request(["external-profiles"], credential),
     do: {:ok, base("external_profiles", credential)}
+
+  defp request([command], credential)
+       when command in ["external-profile-context", "external-source-catalogue"],
+       do: {:ok, base(String.replace(command, "-", "_"), credential)}
+
+  defp request(["external-target-basis", target], credential) do
+    if Id.valid?(target),
+      do: {:ok, Map.put(base("external_target_basis", credential), "target_id", target)},
+      else: {:error, :usage}
+  end
+
+  defp request(["external-inspection-artifact", path], credential) do
+    with true <- path?(path, 1024),
+         {:ok, bytes} <- WotexHome.Recovery.PrivateFile.read_input(path, 4096),
+         {:ok, reference} <- Frame.decode_request(bytes),
+         true <- WotexHome.Durable.Store.ExternalGuidance.reference?(reference),
+         do:
+           {:ok,
+            Map.put(base("external_inspection_artifact", credential), "inspection_ref", reference)},
+         else: (_ -> {:error, :invalid_external_inspection_reference_file})
+  end
 
   defp request(["external-report-current", target, key], credential) do
     if Id.valid?(target) and Id.valid?(key),

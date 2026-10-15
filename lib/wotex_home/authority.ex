@@ -14,6 +14,13 @@ defmodule WotexHome.Authority do
   records an exact authorized basis, but performs no provider handoff. Workers
   receive scoped work rather than a Store connection or operator bearer.
 
+  `external_profile_context/2`, `external_source_catalogue/2` and
+  `external_target_basis/3` expose authenticated reader/source/target comparison
+  metadata. `external_inspection_artifact/3` rebuilds the caller's exact retained
+  inspection manifest from currently checked bytes. These reads create no new
+  original or source lease and grant no approval or target selection; later mutations
+  still repeat current guards rather than trusting a cached guidance snapshot.
+
   After a lost reply, recover the same original operation and immutable receipt
   before deciding whether further work is needed. Staging, admission, durable
   handoff, protocol acknowledgement and observed state are distinct outcomes;
@@ -659,6 +666,22 @@ defmodule WotexHome.Authority do
 
   def external_profile_catalogue(%__MODULE__{store: store}, credential),
     do: Store.external_profile_catalogue(store, credential)
+
+  @doc "Reads current reader and maintenance comparison metadata without reserving an operation."
+  def external_profile_context(%__MODULE__{store: store}, credential),
+    do: Store.external_profile_context(store, credential)
+
+  @doc "Reads safe configured source choices under current profile and enrollment permissions."
+  def external_source_catalogue(%__MODULE__{store: store}, credential),
+    do: Store.external_source_catalogue(store, credential)
+
+  @doc "Reads exact external target counters, including absent and revoked identities."
+  def external_target_basis(%__MODULE__{store: store}, credential, target),
+    do: Store.external_target_basis(store, credential, target)
+
+  @doc "Rebuilds the actor's inspected artifact from current reader and owned immutable bytes."
+  def external_inspection_artifact(%__MODULE__{store: store}, credential, reference),
+    do: Store.external_inspection_artifact(store, credential, reference)
 
   def profile_change(%__MODULE__{store: store}, credential, input),
     do: Store.profile_change(store, credential, input)

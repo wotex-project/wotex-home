@@ -687,6 +687,18 @@ defmodule WotexHome.Durable.Store do
   def external_profile_catalogue(server, credential),
     do: GenServer.call(server, {:external_profile_catalogue, credential}, 30_000)
 
+  def external_profile_context(server, credential),
+    do: GenServer.call(server, {:external_profile_context, credential}, 10_000)
+
+  def external_source_catalogue(server, credential),
+    do: GenServer.call(server, {:external_source_catalogue, credential}, 10_000)
+
+  def external_target_basis(server, credential, target),
+    do: GenServer.call(server, {:external_target_basis, credential, target}, 10_000)
+
+  def external_inspection_artifact(server, credential, reference),
+    do: GenServer.call(server, {:external_inspection_artifact, credential, reference}, 30_000)
+
   @doc "Authenticated retained profile lifecycle operation."
   def profile_change(server, credential, input),
     do: GenServer.call(server, {:profile_change, credential, input}, 15_000)
@@ -3253,6 +3265,61 @@ defmodule WotexHome.Durable.Store do
 
   defp handle_current_call({:external_profile_catalogue, credential}, _from, state) do
     result = WotexHome.Durable.Store.ExternalTrustWriter.catalogue(state.db, credential)
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:external_profile_context, credential}, _from, state) do
+    result =
+      WotexHome.Durable.Store.ExternalGuidance.context(
+        state.db,
+        credential,
+        state.external_reader
+      )
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:external_source_catalogue, credential}, _from, state) do
+    result =
+      WotexHome.Durable.Store.ExternalGuidance.sources(
+        state.db,
+        credential,
+        state.external_source_owner
+      )
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:external_target_basis, credential, target}, _from, state) do
+    result = WotexHome.Durable.Store.ExternalGuidance.target(state.db, credential, target)
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:external_inspection_artifact, credential, reference}, _from, state) do
+    alias WotexHome.Durable.Store.ExternalGuidance
+    alias WotexHome.Profiles.{ExternalApprovalPreparation, ExternalInspection}
+
+    result =
+      with {:ok, header, original, owned} <-
+             ExternalGuidance.inspection(state.db, credential, reference),
+           {:ok, reader} <- current_external_reader(state, original.input),
+           {:ok, custody} <- authoring_custody(state),
+           {:ok, records} <- read_external_inspection_sources(custody, owned),
+           {:ok, value} <-
+             ExternalApprovalPreparation.build(
+               original.input,
+               Enum.sort_by(records, & &1["object"]["object_digest"]),
+               reader
+             ),
+           {:ok, result_document} <- ExternalInspection.encode_result(value["inspection"]),
+           true <- result_document == original.result_document,
+           {:ok, ^reader} <- current_external_reader(state, original.input),
+           do: ExternalGuidance.artifact(header, reference, value),
+           else: (
+             false -> {:error, :external_artifact_mismatch}
+             error -> error
+           )
+
     {:reply, result, read_health(state, result)}
   end
 
@@ -5843,6 +5910,12 @@ defmodule WotexHome.Durable.Store do
       _ ->
         {:error, :authoring_object_unavailable}
     end
+  end
+
+  defp read_external_inspection_sources(custody, owned) do
+    read_owned_authoring_sources(custody, owned)
+  catch
+    :exit, _ -> {:error, :profile_custody_unavailable}
   end
 
   defp read_owned_authoring_sources(custody, owned) do
