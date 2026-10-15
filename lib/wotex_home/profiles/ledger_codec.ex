@@ -1,10 +1,19 @@
 defmodule WotexHome.Profiles.LedgerCodec do
   @moduledoc """
-  Closed, ordered row encodings for the schema-19 profile mechanism design.
+  Encodes retained portable-profile v1 ledger rows in one canonical layout.
 
-  Decoding preserves historical identities without authenticating an actor,
-  establishing byte custody or promoting a row into current authority. The
-  single Store validates journal links and current guard bases separately.
+  `encode/2` accepts a closed artifact, operation, selection, current-pointer
+  or pin row, checking its fields and internal document/revision relationships.
+  It returns `{:ok, document}` or `{:error, :invalid_profile_row}`. `decode/1`
+  requires exact canonical re-encoding and returns `{:ok, kind, row}` or that
+  same refusal. Decoding is bounded to 262,144 bytes; embedded document fields
+  are at most 65,536 bytes each.
+
+  These are historical representation checks, including the legacy direct-power
+  binding's retained correspondence. They authenticate no actor, read no custody
+  file and establish no current trust or target authority.
+  `WotexHome.Durable.Store` separately checks journal ownership, historical links
+  and current guards before using a retained row.
   """
 
   alias WotexHome.{Id, Profiles.Artifact, Profiles.Bindings, Profiles.Codec, Profiles.Operation}

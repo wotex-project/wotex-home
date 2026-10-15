@@ -1,10 +1,19 @@
 defmodule WotexHome.Qualification.HistoryCodec do
   @moduledoc """
-  Closed immutable qualification snapshots for the schema-20 mechanism design.
+  Encodes immutable qualification-history snapshots and their provenance.
 
-  Legacy migration preserves the original slot without inventing its declaration,
-  actor, epoch or review revision. Guarded new snapshots retain those exact pins.
-  A structurally valid historical row is not current physical qualification.
+  `encode/1` checks the closed row and returns `{:ok, document}` or
+  `{:error, :invalid_qualification_history}`. `decode/1` accepts at most 131,072
+  bytes, requires exact canonical re-encoding and returns `{:ok, row}` or the
+  same refusal. `fields/0` exposes the fixed ordered row layout used by the
+  Store-owned history domain.
+
+  Legacy-migrated rows leave declaration, actor, authority epoch and binding
+  revision absent rather than inventing evidence. Guarded-current rows retain
+  those exact pins and a canonical matching Thing declaration. Both provenance
+  forms describe retained history; structural validity cannot establish current
+  physical qualification, reviewer trust or permission to dispatch.
+  `WotexHome.Durable.Store` owns historical journal links and current use.
   """
 
   alias WotexHome.{Id, Durable.Registry, Profiles.Codec}
