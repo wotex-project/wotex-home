@@ -1,9 +1,11 @@
 # Complete native external-profile originals
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09 and H08-T1/T5/T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08 and H18-T6/T8/T11/T12.
-Implementation: planned. Evidence: missing.
+Implementation: pure complete-original codecs and bounded preflight implemented.
+Evidence: [281 independent cases, 579 URI parity cases and owning checks](../provenance/native-external-profile-originals-2026-10.md).
+Pending mutation/recovery and selected confirmation remain separate.
 
 ## Result and dependencies
 
@@ -34,7 +36,7 @@ records, strictly sorted by reference id/version, unique by reference ID and
 object digest. A profile/envelope digest does not implicitly alias a definition;
 actual ownership/kind/raw/semantic closure checks remain Store decisions.
 
-Reference ID is an absolute ASCII URI with a scheme, at most256 bytes, accepted
+Reference ID is an absolute ASCII URI with a scheme, at most 256 bytes, accepted
 by Home EnvelopeCodec/URI.new in the pinned runtime; no spaces, controls, quotes,
 backslash or non-ASCII bytes. Preserve that metadata predicate, including its
 five-digit port-text bound and existing hexadecimal/dot suffix acceptance after
@@ -42,7 +44,7 @@ an IPv6 literal (for example x://[::1]abc). This is not a network-endpoint valid
 tightening parser behavior requires an owning compatibility decision. Preserve the original URI string without fetching,
 normalizing or repairing it. A bare scheme such as urn: and opaque percent text
 accepted by URI.new remain metadata; they confer no transport support. Version is
-canonical x.y.z, at most17 ASCII bytes, each decimal0–65535 without leading zeros.
+canonical x.y.z, at most 17 ASCII bytes, each decimal 0–65535 without leading zeros.
 
 Trust's nine fields in order are authority_epoch, operation_id, expected_revision,
 action, artifact_digest, expected_trust_revision, expected_policy_generation,
@@ -57,7 +59,7 @@ expected_revision, action, target_id, artifact_digest, expected_trust_revision,
 expected_policy_generation, expected_selection_revision, expected_resource_revision,
 source_ref, source_owner_epoch, source_selection_sha256, objects, acknowledgement.
 All expected counters are nonnegative S64; target_id uses Home ID syntax. Select
-requires source_ref Home ID, source_owner_epoch exactly32 lower hex characters,
+requires source_ref Home ID, source_owner_epoch exactly 32 lower hex characters,
 source_selection_sha256 digest, objects exactly envelope_ref/profile/definitions
 with inspection's handle/reference rules and acknowledgement
 operator_external_selection. Revoke requires all five source/objects/acknowledgement
@@ -77,14 +79,14 @@ Each definition document uses [[id,version,sha],[object_digest,first_revision]].
 Preserve lower hex, integer spelling, nulls and array order, with unescaped slash
 and ordinary JSON string escaping. SHA256 is over these complete original bytes,
 with no added domain or newline. No receipt, capture, provider or current grant is
-embedded. Canonical byte ceilings are inspection16384/trust4096/target32768.
-Native JSON-object input ceilings are respectively65536/16384/131072; whitespace
+embedded. Canonical byte ceilings are inspection 16384/trust4096/target32768.
+Native JSON-object input ceilings are respectively 65536/16384/131072; whitespace
 and key order may vary there, but strict decoded duplicate names refuse.
 
 Before complete Foundation tree materialization, bound nesting to eight containers,
-nodes to4096, arrays to256 members, strings to4096 decoded UTF-8 bytes and integer
-tokens to20 bytes within −S64max..S64max. Canonical input allows no objects or
-boolean/float tokens; native object input additionally allows at most32 keys per
+nodes to 4096, arrays to 256 members, strings to 4096 decoded UTF-8 bytes and integer
+tokens to 20 bytes within −S64max..S64max. Canonical input allows no objects or
+boolean/float tokens; native object input additionally allows at most 32 keys per
 object and forbids duplicate decoded keys. Apply each owning narrower count/string/
 scalar rule after preflight. Re-encoding a canonical input must equal its bytes,
 so alternate escapes, whitespace, number spellings, wrong formats/kinds or trailing

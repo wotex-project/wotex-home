@@ -1426,3 +1426,19 @@ permission/scoping refusal. Credential bytes travel only on stdin/private custod
 The [evidence record](../../docs/provenance/native-external-profile-reads-2026-10.md)
 separates this SDK prerequisite from future complete-original/pending/confirmation
 and native panel delivery. No installed signing or physical qualification is claimed.
+
+
+## Complete external-profile originals
+
+The [complete native codec](../../docs/specs/native-external-profile-originals-v1.md)
+preserves inspection/trust/target input in the existing canonical ordered arrays,
+including explicit nulls, all object/reference handles, operation ID and expected
+revisions. It owns no credential, network request or Store mutation. The separate
+pending/confirmation consumer must retain that complete input before any send.
+
+Run `python3 test/support/native_external_profile_originals_oracle.py --check`
+and `mix woh.native.external.originals.smoke` for the 281 frozen cases, exact
+bytes/SHA and 579 pinned owner URI comparisons. The codec preflights bounds before
+complete Foundation materialization and follows Home's URI metadata predicate
+without using it as a transport endpoint. [Executed evidence](../../docs/provenance/native-external-profile-originals-2026-10.md)
+records owner parity, control-byte refusal and remaining publication/installed gates.

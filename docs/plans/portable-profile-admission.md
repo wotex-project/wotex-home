@@ -152,9 +152,11 @@ it cannot renew a read session or edit the frozen original. Live account/model, 
 confinement, native/signed paired delivery and aggregate pool boundaries remain.
 The native v2 [catalogue/original read prerequisite](../specs/native-external-profile-reads-v1.md)
 now has [executed framed and both-family Store evidence](../provenance/native-external-profile-reads-2026-10.md).
-Build complete inspection/trust/target original codecs, durable pending/recovery,
-then selected confirmations and panel composition; no read receipt grants current
-trust, selection or source qualification.
+Complete inspection/trust/target original codecs now have
+[independent and owning parity evidence](../provenance/native-external-profile-originals-2026-10.md).
+Build durable pending/recovery, then selected confirmations and panel composition;
+no read receipt or structurally encoded input grants current trust, selection or
+source qualification.
 
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with

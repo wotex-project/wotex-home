@@ -1,6 +1,6 @@
 # Native external-profile catalogue and original reads
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09 and H08-T1/T5/T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08 and H18-T6/T8/T11/T12.
 Implementation: typed catalogue and original reads implemented.
@@ -17,8 +17,9 @@ transitions. [Inspection](external-inspections-v1.md), [trust](external-trust-v1
 and [target selection](external-target-selections-v1.md) own unchanged receipt shapes.
 No producer, schema or dependency addition is needed.
 
-The remaining native delivery order is complete inspection/trust/target original
-codecs, durable pending custody/recovery, explicit selected preparation/confirmation
+[Complete inspection/trust/target originals](native-external-profile-originals-v1.md)
+now have pure codec and owning parity evidence. The remaining native delivery order
+is durable pending custody/recovery, explicit selected preparation/confirmation
 and panel composition. This read component creates no mutation route, file write,
 source publisher, grant or signing capability. Source/protocol and installed-host
 qualification remain separate; historical reads need no live producer or publisher.
