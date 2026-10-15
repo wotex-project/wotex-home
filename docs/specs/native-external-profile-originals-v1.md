@@ -1,6 +1,6 @@
 # Complete native external-profile originals
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09 and H08-T1/T5/T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08 and H18-T6/T8/T11/T12.
 Implementation: planned. Evidence: missing.
@@ -34,9 +34,12 @@ records, strictly sorted by reference id/version, unique by reference ID and
 object digest. A profile/envelope digest does not implicitly alias a definition;
 actual ownership/kind/raw/semantic closure checks remain Store decisions.
 
-Reference ID is an absolute ASCII RFC3986 URI with a scheme, at most256 bytes,
-using Home EnvelopeCodec's accepted URI characters; no spaces, controls, quotes,
-backslash or non-ASCII bytes. Preserve the original URI string without fetching,
+Reference ID is an absolute ASCII URI with a scheme, at most256 bytes, accepted
+by Home EnvelopeCodec/URI.new in the pinned runtime; no spaces, controls, quotes,
+backslash or non-ASCII bytes. Preserve that metadata predicate, including its
+five-digit port-text bound and existing hexadecimal/dot suffix acceptance after
+an IPv6 literal (for example x://[::1]abc). This is not a network-endpoint validator;
+tightening parser behavior requires an owning compatibility decision. Preserve the original URI string without fetching,
 normalizing or repairing it. A bare scheme such as urn: and opaque percent text
 accepted by URI.new remain metadata; they confer no transport support. Version is
 canonical x.y.z, at most17 ASCII bytes, each decimal0–65535 without leading zeros.
