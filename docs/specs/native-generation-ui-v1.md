@@ -1,6 +1,6 @@
 # Native generation workspace and first decisions
 
-Version: 0.1.6. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.7. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18A-02/04/05 and H18-T15/T16/T17;
 WOH.15 H15-03/07 and H15-T8.
 Implementation: workspace, guarded local first decisions, panel, repair/cancellation
@@ -191,7 +191,14 @@ and refusals apply; changes of basis require a new reviewed decision.
 
 The Things task exposes these operations as one generation panel sharing pending
 coordination. Disable conflicting actions while busy/unconfirmed; invalidation
-retires prepared decisions and private previews. Confirmation resets on every
+retires prepared decisions and private previews. Authority/scope, transport,
+malformed-response, delivery-uncertainty or private-custody failure also retires
+context, displayed workspace/status, private input/feedback and confirmation,
+while leaving durable workspace/pending originals intact. Require explicit reload;
+no failure handler reads configuration or sends another request. A pure input
+refusal, or missing archive-uncertainty confirmation with both private snapshots
+still current, retires prepared decisions/confirmation while preserving entered
+input and the authenticated original view. Confirmation resets on every
 changed input/context. Archive workspace only on an explicit decision after pending
 and cancellation intent are reconciled. A missing root without attempts, a missing
 last attempt, or an unknown/null attempt requires a separate archive confirmation
