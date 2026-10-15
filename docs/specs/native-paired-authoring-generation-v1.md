@@ -1,6 +1,6 @@
 # Paired native authoring and generation composition
 
-Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18A-02/04/05 and H18-T15/T16/T17.
 Implementation: paired manual closed consumer and upload-owner lifecycle implemented;
@@ -118,9 +118,11 @@ attempt, deadline renewal or identity substitution. The files have ordered CAS,
 not a multi-file transaction. Interrupted publication explicitly restores the
 same bytes to pending under actual existing original custody.
 
-Add a distinct existing-only workspace purpose to the actual signed factory.
+The [workspace session contract](native-paired-generation-workspace-session-v1.md)
+defines the distinct existing-only workspace purpose in the actual signed factory.
 It fixes one exact workspace entry, workspace/association snapshots and closed
-action: status, cancellation, pending restoration or draft assessment. It exposes
+action: status, cancellation, pending restoration, draft assessment or separately
+confirmed archival. It exposes
 no arbitrary SDK callback or caller-supplied successful signing backend. Validate
 the retained association/controller/creation/verifier/context and current scope
 before accessing private material, around every exchange and at final publication.
