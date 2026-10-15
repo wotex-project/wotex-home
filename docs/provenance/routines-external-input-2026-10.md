@@ -33,7 +33,7 @@ on Elixir 1.20.2 / OTP 29.0.4. Exact archives, locks, source hashes and seeds ar
 the producer record; its Routines archive SHA-256 is
 fb74f71b6b44b286907d65caaf2271e9e0b6318939236a4aaf736120e42a33ef.
 
-Home still selects Routines f3e77a431a917b639f7b0d52a93b78c27def4344,
+At the initial checkpoint Home selected Routines f3e77a431a917b639f7b0d52a93b78c27def4344,
 core/Profiles/Continuum 687a5cd70267fa47dbfb36e28eccad6ef2964fdf and
 ExBooking 3fa614cd3cf106aba7161e17015969634afc3730. New sibling HEAD/API
 availability is not runtime selection. This checkpoint changes no lock, active
@@ -121,3 +121,56 @@ OTP 28.5.0.6. This validates entry grammar, offline reference closure and litera
 independent hashes only; it does not execute ExternalFact or promote REF-T1–T5.
 No dependency pin, Store table, current read route, proof or physical dispatch
 changed in this entry slice.
+
+
+## Exact source selection
+
+Home now selects Routines d1b2e87bdc82bd0138887931a9f40a2236ff2fdc in mix.exs
+and root/firmware locks. The other producer and Hex entries are byte-for-byte
+unchanged. Diff review from f3e77a43 finds no Routines mix.exs/CHANGELOG change;
+the accepted execution contract owns the additive behavior and evidence. The
+core/Runtime/Profiles/Continuum package contents have no diff from selected
+687a5cd7 through d1b2e87b. The new Routines commit was fetched into the clean
+dependency cache without configuring remotes; locked dependency resolution
+exited zero and changed no other tuple. No ref was pushed or release published.
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/producer_cohort_test.exs test/wotex_home/installed_profile_runtime_test.exs test/wotex_home/rule_kernel_proposal_test.exs test/wotex_home/routine_calendar_test.exs --warnings-as-errors`
+passes **28 tests**, seed **509759**, **4.3 seconds** on Home's Elixir 1.19.6 /
+OTP 28.5.0.6. Routines' 58 modules compile in that lane. Actual dependency HEADs,
+root/firmware lock parity, public profile values, compiled inventories, initial
+Kernel proposals and calendar behavior are exercised.
+
+The selected line probes in durable_rule_activation_test.exs:574 and
+rule_kernel_runtime_test.exs:142 pass **two tests**, **38 excluded**, seed
+**433114**, **5.3 seconds**. They create an actual held invocation and real v3
+admission/original under historical modules, then preserve immutable history
+through current restart and producer absence. They do not renew every earlier
+current/final writer mutation or qualify a wider admission profile.
+
+Before committing selection, the existing Home civil archive lane was renewed
+against exact selected sparse package sources and ExBooking 3fa614c. A first
+archive attempt used a sparse repository root without a Mix project and exited
+before any build; its context-managed directory was removed. The corrected
+package-root builds and bin/check_routines_shadow.exs --civil-consumer exit zero.
+It passes **14 tests**, seed **103727**, **0.5 seconds**, including all **230**
+independent timezone/label cases, **112** recurrence vectors and a civil
+calculation with no application startup. Pure Hex builds and the consumer use
+Elixir 1.19.6 / OTP 28.5.0.6; no firmware/native image is built.
+
+| Archive | SHA-256 |
+| --- | --- |
+| core | 77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61 |
+| Continuum | db7077c5f0ad92426c94a077a4f58f9b7334df25de8c2a1b8ed25143bab6efb5 |
+| Routines | fb74f71b6b44b286907d65caaf2271e9e0b6318939236a4aaf736120e42a33ef |
+| ExBooking | 5e1b12fbe5fa9e72f02ff7e79674dd35e415fb4aea87222f7ea01cfa50ae1fb2 |
+
+Consumer lock SHA-256 is
+79bb3746c94f2f858f6586eacccfe22eb7ebd51f6d574320b6ec25956a2b439b.
+Root mix.lock SHA-256 is
+3bc9cc0a8a17c7df701007f653ab29bd06028dca2068f100d49feca5b39ed68e;
+firmware mix.lock is
+4b155edd0b88dbfbdc496c87ee2c1756bf234df4d8a34219701a9cf64215334b.
+Both the archive-build directory and runner's extracted consumer directory were
+removed after completion. Dependency/build caches remain reusable. No full Home
+suite, Dialyzer, native packaging or physical campaign ran for this pin change.
+The inert projection and its REF-T1–T5 remain the next implementation obligation.

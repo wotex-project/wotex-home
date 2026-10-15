@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.12. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.13. Updated: 2026-10-15. Status: accepted target.
 Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join.
 Evidence: finite software subset; full acceptance cases remain open.
 
@@ -275,7 +275,8 @@ external binding, required-but-null receipt UTC, explicit conservative precision
 native reader-to-kernel/edge paths and two extracted execution consumers with
 identity/rounding mutations. Its full owning package milestone passes. The
 [cohort and Home source review](../provenance/routines-external-input-2026-10.md)
-distinguishes that producer evidence from Home's unchanged selected source.
+records the later exact Home source selection separately from the producer
+evidence; qualified current external facts remain unavailable.
 
 The next Home contract must reconstruct the original public reader Proposal from
 the exact retained report/envelope, rather than strip Home-converted value fields.

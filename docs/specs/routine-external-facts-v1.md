@@ -1,6 +1,6 @@
 # Inert external routine fact projection v1
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04, H20-T1/T3; WOH.18 H18-04/05.
 Implementation: entry schema/vector frozen; projection planned. Evidence: three
 entry shape/hash cases pass; producer execution milestone and
@@ -26,10 +26,11 @@ WPF.02 owns public Interpreter.project/3 and Proposal.to_map/2. WRO.05 owns
 InputMapping.to_map/3, Input.project/4 and Input.binding_basis/3. Their accepted
 execution successor supports required-but-null received_at, explicit conservative
 receipt precision and complete installed external bindings. The producer is
-implemented at WoTEx 743ef568 with archive/mutation evidence at d1b2e87b. Home's
-current f3e77a43 selection lacks this complete seam; select and verify the new
-exact source before implementing this consumer. Current source selection,
-runtime inventory and historical proof invalidation retain their existing owners.
+implemented at WoTEx 743ef568 with archive/mutation evidence at d1b2e87b. Home
+now selects exact d1b2e87b in both root and firmware locks. Its native cohort,
+initial invocation/history probes and renewed civil archive comparison pass;
+this selection supplies the public seam, not the projection implementation.
+Runtime inventory and historical proof invalidation retain their existing owners.
 
 [External observations](external-observations-v1.md) own actual receipt custody,
 current target/source/author/trust/policy checks, Store boot and retained sequence.

@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.6. Updated: 2026-10-15. Accepted build order; implementation and
+Version: 0.1.7. Updated: 2026-10-15. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -222,7 +222,8 @@ roots, durable completion and wider admission; those contracts are next.
 The generic prerequisite now passes its own bounded software milestone. WoTEx
 743ef568 implements the complete external binding, null receipt UTC and explicit
 floor precision; d1b2e87b records native/archive execution, four behavioral mutants
-and the full 179-test, 95.4% package gate. Home still selects f3e77a43. See the
+and the full 179-test, 95.4% package gate. Home now selects exact d1b2e87b in
+both locks, with the focused native and renewed civil archive checks below. See the
 [exact source review](../provenance/routines-external-input-2026-10.md).
 
 Continue stage 6 in this order:
@@ -259,3 +260,18 @@ archive cases. Native Home value validation may delegate bounded compiled-code
 inventory to RuntimeArtifacts; do not bypass that owner to claim the entire join
 has no I/O. Current Store fact collection/qualification, complete sets, durable
 composition and wider admission remain the following owned stages.
+
+## External execution source selection
+
+Home selects d1b2e87bdc82bd0138887931a9f40a2236ff2fdc for Routines in mix.exs
+and both root/firmware locks. The other producer/Hex tuples are unchanged.
+The owning package changelog and dependency declarations have no difference
+from f3e77a43; its actual additions and acceptance are in the execution contract.
+Twenty-eight focused cohort/profile/kernel/calendar cases pass, plus two actual
+Store probes for a held invocation and genuine v3 restart/producer-loss history.
+The renewed exact civil archive lane passes 14 cases, all 230 timezone/label and
+112 recurrence vectors and no-application-start calculation. These checks do
+not replace the earlier recorded full durable milestone or qualify hardware.
+
+Implement the accepted inert fact projection next. REF-T1–T5 and current Store
+fact collection, complete-set composition and broader admission remain open.
