@@ -1,6 +1,5 @@
 """Freeze original/receipt correspondence without importing Home or Swift."""
 
-import copy
 import hashlib
 import json
 from pathlib import Path
@@ -65,11 +64,20 @@ def allocate():
             indexes = {"trust": {"expected_trust": 5, "expected_policy": 6},
                        "target": {"expected_selection": 8, "expected_resource": 9}}
             for label, index in indexes.get(kind, {}).items():
+                for suffix, counter in [("", json.loads(document)[1][index] + 1), ("-max", MAX)]:
+                    value = json.loads(document)
+                    value[1][index] = counter
+                    changed_document = canonical(value)
+                    altered = dict(receipt, input_sha256=hashlib.sha256(changed_document.encode()).hexdigest())
+                    add(name + "-wrong-" + label + suffix, kind, changed_document, altered, False)
+            if action in ["approve", "select"]:
                 value = json.loads(document)
-                value[1][index] += 1
+                value[1][3] = "revoke"
+                for index in ([7, 8] if kind == "trust" else range(10, 15)):
+                    value[1][index] = None
                 changed_document = canonical(value)
                 altered = dict(receipt, input_sha256=hashlib.sha256(changed_document.encode()).hexdigest())
-                add(name + "-wrong-" + label, kind, changed_document, altered, False)
+                add(name + "-wrong-action", kind, changed_document, altered, False)
             value = json.loads(document)
             value[1][2] = MAX
             changed_document = canonical(value)
@@ -86,6 +94,12 @@ def allocate():
                 opaque += ["source_selection_sha256"]
             for field in opaque:
                 add(name + "-opaque-" + field, kind, document, dict(receipt, **{field: "9" * 64}), True)
+    sample = load("external-inspections")["temperature"]
+    value = json.loads(sample["input_document"])
+    value[1][2] = MAX - 1
+    document = canonical(value)
+    receipt = dict(sample["receipt"], revision=MAX, input_sha256=hashlib.sha256(document.encode()).hexdigest())
+    add("inspection-signed-maximum-receipt", "inspection", document, receipt, True)
     return dict(oracle="independent Python original-derived joins over frozen owning receipts", cases=cases)
 
 

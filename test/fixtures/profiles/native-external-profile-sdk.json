@@ -332,6 +332,26 @@
       "accepted": false
     },
     {
+      "name": "temperature-trust-approve-wrong-expected_trust-max",
+      "kind": "trust",
+      "document": "[\"wotex-home.external-trust.v1\",[1,\"trust:1\",5,\"approve\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",9223372036854775807,0,[1,\"inspection:1\",4,\"91d8c0989c2e8fad76b65bcd22c80c94de1cc58d978c976c029940599a200ce2\",\"e97f35e252b11572816cbbae889ddccbda65f7616866c9d33cb5ee9cb19a1977\"],\"operator_digest_approval\"]]",
+      "receipt": {
+        "action": "approve",
+        "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+        "artifact_first_approval_revision": 6,
+        "authority_epoch": 1,
+        "input_sha256": "aa3573a8f1fc6592bf868090d969ad4d729b0ab08b71c082580adfaa23dbf94e",
+        "operation_id": "trust:1",
+        "outcome_sha256": "d6008c588ec041fcb822fe526b42a80d8acf68833664ba327392a65de1efb783",
+        "policy_generation": 1,
+        "previous_trust_revision": 0,
+        "reader_basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8",
+        "revision": 6,
+        "trust_generation": 1
+      },
+      "accepted": false
+    },
+    {
       "name": "temperature-trust-approve-wrong-expected_policy",
       "kind": "trust",
       "document": "[\"wotex-home.external-trust.v1\",[1,\"trust:1\",5,\"approve\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",0,1,[1,\"inspection:1\",4,\"91d8c0989c2e8fad76b65bcd22c80c94de1cc58d978c976c029940599a200ce2\",\"e97f35e252b11572816cbbae889ddccbda65f7616866c9d33cb5ee9cb19a1977\"],\"operator_digest_approval\"]]",
@@ -341,6 +361,46 @@
         "artifact_first_approval_revision": 6,
         "authority_epoch": 1,
         "input_sha256": "1d4cb756fa86daa37ed6800f7f0f78bb9a3f6f0a38cfc6081bdd00616c8331aa",
+        "operation_id": "trust:1",
+        "outcome_sha256": "d6008c588ec041fcb822fe526b42a80d8acf68833664ba327392a65de1efb783",
+        "policy_generation": 1,
+        "previous_trust_revision": 0,
+        "reader_basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8",
+        "revision": 6,
+        "trust_generation": 1
+      },
+      "accepted": false
+    },
+    {
+      "name": "temperature-trust-approve-wrong-expected_policy-max",
+      "kind": "trust",
+      "document": "[\"wotex-home.external-trust.v1\",[1,\"trust:1\",5,\"approve\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",0,9223372036854775807,[1,\"inspection:1\",4,\"91d8c0989c2e8fad76b65bcd22c80c94de1cc58d978c976c029940599a200ce2\",\"e97f35e252b11572816cbbae889ddccbda65f7616866c9d33cb5ee9cb19a1977\"],\"operator_digest_approval\"]]",
+      "receipt": {
+        "action": "approve",
+        "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+        "artifact_first_approval_revision": 6,
+        "authority_epoch": 1,
+        "input_sha256": "e5f55cc82582ce6541ebadebf96337d485f2907432359a8b964082f9e9a0ac88",
+        "operation_id": "trust:1",
+        "outcome_sha256": "d6008c588ec041fcb822fe526b42a80d8acf68833664ba327392a65de1efb783",
+        "policy_generation": 1,
+        "previous_trust_revision": 0,
+        "reader_basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8",
+        "revision": 6,
+        "trust_generation": 1
+      },
+      "accepted": false
+    },
+    {
+      "name": "temperature-trust-approve-wrong-action",
+      "kind": "trust",
+      "document": "[\"wotex-home.external-trust.v1\",[1,\"trust:1\",5,\"revoke\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",0,0,null,null]]",
+      "receipt": {
+        "action": "approve",
+        "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+        "artifact_first_approval_revision": 6,
+        "authority_epoch": 1,
+        "input_sha256": "134fd74bc8cd418951586a766a57fe762d557ce815d9f77a0472617e948a5115",
         "operation_id": "trust:1",
         "outcome_sha256": "d6008c588ec041fcb822fe526b42a80d8acf68833664ba327392a65de1efb783",
         "policy_generation": 1,
@@ -572,6 +632,26 @@
       "accepted": false
     },
     {
+      "name": "temperature-trust-revoke-wrong-expected_trust-max",
+      "kind": "trust",
+      "document": "[\"wotex-home.external-trust.v1\",[1,\"trust:2\",6,\"revoke\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",9223372036854775807,1,null,null]]",
+      "receipt": {
+        "action": "revoke",
+        "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+        "artifact_first_approval_revision": 6,
+        "authority_epoch": 1,
+        "input_sha256": "2e1c6a94e4fb6bb53c94603a5695b542d9141c9d3fc7c6f80928d6afe6f0b8b5",
+        "operation_id": "trust:2",
+        "outcome_sha256": "5fd57de7a582f1bcd40d8d6477044b98655317d38ec990b0791d47dab4459640",
+        "policy_generation": 2,
+        "previous_trust_revision": 6,
+        "reader_basis_sha256": null,
+        "revision": 7,
+        "trust_generation": 2
+      },
+      "accepted": false
+    },
+    {
       "name": "temperature-trust-revoke-wrong-expected_policy",
       "kind": "trust",
       "document": "[\"wotex-home.external-trust.v1\",[1,\"trust:2\",6,\"revoke\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",6,2,null,null]]",
@@ -581,6 +661,26 @@
         "artifact_first_approval_revision": 6,
         "authority_epoch": 1,
         "input_sha256": "a5a63826b55d91f30d14a72f96ef6d2e1940ba91487d81d6844951bf0877b246",
+        "operation_id": "trust:2",
+        "outcome_sha256": "5fd57de7a582f1bcd40d8d6477044b98655317d38ec990b0791d47dab4459640",
+        "policy_generation": 2,
+        "previous_trust_revision": 6,
+        "reader_basis_sha256": null,
+        "revision": 7,
+        "trust_generation": 2
+      },
+      "accepted": false
+    },
+    {
+      "name": "temperature-trust-revoke-wrong-expected_policy-max",
+      "kind": "trust",
+      "document": "[\"wotex-home.external-trust.v1\",[1,\"trust:2\",6,\"revoke\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",6,9223372036854775807,null,null]]",
+      "receipt": {
+        "action": "revoke",
+        "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+        "artifact_first_approval_revision": 6,
+        "authority_epoch": 1,
+        "input_sha256": "fe2d2163fcc4165a1d901b301b1669a4a7f398bbf9f7fec0f807e064cf19e1e0",
         "operation_id": "trust:2",
         "outcome_sha256": "5fd57de7a582f1bcd40d8d6477044b98655317d38ec990b0791d47dab4459640",
         "policy_generation": 2,
@@ -896,6 +996,30 @@
       "accepted": false
     },
     {
+      "name": "temperature-target-select-wrong-expected_selection-max",
+      "kind": "target",
+      "document": "[\"wotex-home.external-target.v1\",[1,\"selection:1\",6,\"select\",\"sensor:independent\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",6,1,9223372036854775807,0,\"source:independent\",\"ffffffffffffffffffffffffffffffff\",\"c2c20eec5bd4e19a529c2fced677be242e5d69ddf954c870019fcc6b1e0c4510\",[[\"34bc9f0ca2eb679efaae0ce891d79c1c6de031e4501963daf85bc38da52c1357\",1],[[\"urn:example:profile:temperature\",\"1.0.0\",\"031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329\"],[\"8f08db631622afe74498f0325dc73da116f8b20e5eb6fdab11b52771a80f47ef\",2]],[[[\"urn:example:semantic:temperature\",\"1.0.0\",\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\"],[\"c8c83437096d4ab25800edae3fdb4f694c089618e216dbb635f3b778fbe7d5b6\",3]]]],\"operator_external_selection\"]]",
+      "receipt": {
+        "action": "select",
+        "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+        "authority_epoch": 1,
+        "binding_revision": 7,
+        "input_sha256": "d402fbcdbae8e12bf7592e284551bbfb3d4f20249f258a8c91f915f12e1019fa",
+        "operation_id": "selection:1",
+        "outcome_sha256": "7bcd6fea2ee5fc10c6aa7f1e6dded80d9277ba421e2e3f3252f3e659a066d8fc",
+        "policy_generation": 1,
+        "previous_selection_revision": 0,
+        "resource_revision": 0,
+        "revision": 7,
+        "selection_generation": 1,
+        "source_selection_sha256": "c2c20eec5bd4e19a529c2fced677be242e5d69ddf954c870019fcc6b1e0c4510",
+        "target_id": "sensor:independent",
+        "trust_revision": 6,
+        "withdrawn_grants": 0
+      },
+      "accepted": false
+    },
+    {
       "name": "temperature-target-select-wrong-expected_resource",
       "kind": "target",
       "document": "[\"wotex-home.external-target.v1\",[1,\"selection:1\",6,\"select\",\"sensor:independent\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",6,1,0,1,\"source:independent\",\"ffffffffffffffffffffffffffffffff\",\"c2c20eec5bd4e19a529c2fced677be242e5d69ddf954c870019fcc6b1e0c4510\",[[\"34bc9f0ca2eb679efaae0ce891d79c1c6de031e4501963daf85bc38da52c1357\",1],[[\"urn:example:profile:temperature\",\"1.0.0\",\"031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329\"],[\"8f08db631622afe74498f0325dc73da116f8b20e5eb6fdab11b52771a80f47ef\",2]],[[[\"urn:example:semantic:temperature\",\"1.0.0\",\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\"],[\"c8c83437096d4ab25800edae3fdb4f694c089618e216dbb635f3b778fbe7d5b6\",3]]]],\"operator_external_selection\"]]",
@@ -905,6 +1029,54 @@
         "authority_epoch": 1,
         "binding_revision": 7,
         "input_sha256": "66a96683306d36b2355fe3f4edec13e817874c5e2962b004cd48c43c79df3a01",
+        "operation_id": "selection:1",
+        "outcome_sha256": "7bcd6fea2ee5fc10c6aa7f1e6dded80d9277ba421e2e3f3252f3e659a066d8fc",
+        "policy_generation": 1,
+        "previous_selection_revision": 0,
+        "resource_revision": 0,
+        "revision": 7,
+        "selection_generation": 1,
+        "source_selection_sha256": "c2c20eec5bd4e19a529c2fced677be242e5d69ddf954c870019fcc6b1e0c4510",
+        "target_id": "sensor:independent",
+        "trust_revision": 6,
+        "withdrawn_grants": 0
+      },
+      "accepted": false
+    },
+    {
+      "name": "temperature-target-select-wrong-expected_resource-max",
+      "kind": "target",
+      "document": "[\"wotex-home.external-target.v1\",[1,\"selection:1\",6,\"select\",\"sensor:independent\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",6,1,0,9223372036854775807,\"source:independent\",\"ffffffffffffffffffffffffffffffff\",\"c2c20eec5bd4e19a529c2fced677be242e5d69ddf954c870019fcc6b1e0c4510\",[[\"34bc9f0ca2eb679efaae0ce891d79c1c6de031e4501963daf85bc38da52c1357\",1],[[\"urn:example:profile:temperature\",\"1.0.0\",\"031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329\"],[\"8f08db631622afe74498f0325dc73da116f8b20e5eb6fdab11b52771a80f47ef\",2]],[[[\"urn:example:semantic:temperature\",\"1.0.0\",\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\"],[\"c8c83437096d4ab25800edae3fdb4f694c089618e216dbb635f3b778fbe7d5b6\",3]]]],\"operator_external_selection\"]]",
+      "receipt": {
+        "action": "select",
+        "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+        "authority_epoch": 1,
+        "binding_revision": 7,
+        "input_sha256": "bb7039683bd5c60a28a48666e443302dab72c6d113a4f3867b5f4aa771489551",
+        "operation_id": "selection:1",
+        "outcome_sha256": "7bcd6fea2ee5fc10c6aa7f1e6dded80d9277ba421e2e3f3252f3e659a066d8fc",
+        "policy_generation": 1,
+        "previous_selection_revision": 0,
+        "resource_revision": 0,
+        "revision": 7,
+        "selection_generation": 1,
+        "source_selection_sha256": "c2c20eec5bd4e19a529c2fced677be242e5d69ddf954c870019fcc6b1e0c4510",
+        "target_id": "sensor:independent",
+        "trust_revision": 6,
+        "withdrawn_grants": 0
+      },
+      "accepted": false
+    },
+    {
+      "name": "temperature-target-select-wrong-action",
+      "kind": "target",
+      "document": "[\"wotex-home.external-target.v1\",[1,\"selection:1\",6,\"revoke\",\"sensor:independent\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",6,1,0,0,null,null,null,null,null]]",
+      "receipt": {
+        "action": "select",
+        "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+        "authority_epoch": 1,
+        "binding_revision": 7,
+        "input_sha256": "473285843fa99ebae56ce5e930dea744bab98fd2af391d37c1f299157f552aba",
         "operation_id": "selection:1",
         "outcome_sha256": "7bcd6fea2ee5fc10c6aa7f1e6dded80d9277ba421e2e3f3252f3e659a066d8fc",
         "policy_generation": 1,
@@ -1208,6 +1380,30 @@
       "accepted": false
     },
     {
+      "name": "temperature-target-revoke-wrong-expected_selection-max",
+      "kind": "target",
+      "document": "[\"wotex-home.external-target.v1\",[1,\"selection:2\",7,\"revoke\",\"sensor:independent\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",6,1,9223372036854775807,0,null,null,null,null,null]]",
+      "receipt": {
+        "action": "revoke",
+        "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+        "authority_epoch": 1,
+        "binding_revision": 7,
+        "input_sha256": "c9e503e3428e1d463685d13be0b408a5699d5805519ab3548837fed8e2613ab3",
+        "operation_id": "selection:2",
+        "outcome_sha256": "63bb37cd126b4d0107c6729e3634426bf614691a39bcd81b2a3c0fd3c579c1f2",
+        "policy_generation": 1,
+        "previous_selection_revision": 7,
+        "resource_revision": 1,
+        "revision": 8,
+        "selection_generation": 2,
+        "source_selection_sha256": "c2c20eec5bd4e19a529c2fced677be242e5d69ddf954c870019fcc6b1e0c4510",
+        "target_id": "sensor:independent",
+        "trust_revision": 6,
+        "withdrawn_grants": 0
+      },
+      "accepted": false
+    },
+    {
       "name": "temperature-target-revoke-wrong-expected_resource",
       "kind": "target",
       "document": "[\"wotex-home.external-target.v1\",[1,\"selection:2\",7,\"revoke\",\"sensor:independent\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",6,1,7,1,null,null,null,null,null]]",
@@ -1217,6 +1413,30 @@
         "authority_epoch": 1,
         "binding_revision": 7,
         "input_sha256": "2bf4138bef537e354ab281024b716930b6d526e0f5b4fe7bc6f2a8ae18f69649",
+        "operation_id": "selection:2",
+        "outcome_sha256": "63bb37cd126b4d0107c6729e3634426bf614691a39bcd81b2a3c0fd3c579c1f2",
+        "policy_generation": 1,
+        "previous_selection_revision": 7,
+        "resource_revision": 1,
+        "revision": 8,
+        "selection_generation": 2,
+        "source_selection_sha256": "c2c20eec5bd4e19a529c2fced677be242e5d69ddf954c870019fcc6b1e0c4510",
+        "target_id": "sensor:independent",
+        "trust_revision": 6,
+        "withdrawn_grants": 0
+      },
+      "accepted": false
+    },
+    {
+      "name": "temperature-target-revoke-wrong-expected_resource-max",
+      "kind": "target",
+      "document": "[\"wotex-home.external-target.v1\",[1,\"selection:2\",7,\"revoke\",\"sensor:independent\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",6,1,7,9223372036854775807,null,null,null,null,null]]",
+      "receipt": {
+        "action": "revoke",
+        "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+        "authority_epoch": 1,
+        "binding_revision": 7,
+        "input_sha256": "4e3aca32c6c0f908a9204677e84b35db45cf0e48044bfc319622d8c429fe3659",
         "operation_id": "selection:2",
         "outcome_sha256": "63bb37cd126b4d0107c6729e3634426bf614691a39bcd81b2a3c0fd3c579c1f2",
         "policy_generation": 1,
@@ -1634,6 +1854,26 @@
       "accepted": false
     },
     {
+      "name": "research-trust-approve-wrong-expected_trust-max",
+      "kind": "trust",
+      "document": "[\"wotex-home.external-trust.v1\",[1,\"trust:1\",5,\"approve\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",9223372036854775807,0,[1,\"inspection:1\",4,\"51f6f2062b10f2c15e89a70e1f299d3eae66c58d70884d5338cd69df1a18ded6\",\"1b346cb7f50e45232651e497545028d9bb5ba43fe7f5bbee8eb581c4e5cb4266\"],\"operator_digest_approval\"]]",
+      "receipt": {
+        "action": "approve",
+        "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+        "artifact_first_approval_revision": 6,
+        "authority_epoch": 1,
+        "input_sha256": "e1bd34e95b5ad59351ac218269495b2f5e57e82ad0e49232ed2947210fdd764e",
+        "operation_id": "trust:1",
+        "outcome_sha256": "aaa293f28d418d7ff9b60ef2f7e459b8346d283793193ccb92b16382067ab3ca",
+        "policy_generation": 1,
+        "previous_trust_revision": 0,
+        "reader_basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8",
+        "revision": 6,
+        "trust_generation": 1
+      },
+      "accepted": false
+    },
+    {
       "name": "research-trust-approve-wrong-expected_policy",
       "kind": "trust",
       "document": "[\"wotex-home.external-trust.v1\",[1,\"trust:1\",5,\"approve\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",0,1,[1,\"inspection:1\",4,\"51f6f2062b10f2c15e89a70e1f299d3eae66c58d70884d5338cd69df1a18ded6\",\"1b346cb7f50e45232651e497545028d9bb5ba43fe7f5bbee8eb581c4e5cb4266\"],\"operator_digest_approval\"]]",
@@ -1643,6 +1883,46 @@
         "artifact_first_approval_revision": 6,
         "authority_epoch": 1,
         "input_sha256": "61a12d4d7859441c5b0a275fa08eec1ff262049080492afb3233941e88049cb9",
+        "operation_id": "trust:1",
+        "outcome_sha256": "aaa293f28d418d7ff9b60ef2f7e459b8346d283793193ccb92b16382067ab3ca",
+        "policy_generation": 1,
+        "previous_trust_revision": 0,
+        "reader_basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8",
+        "revision": 6,
+        "trust_generation": 1
+      },
+      "accepted": false
+    },
+    {
+      "name": "research-trust-approve-wrong-expected_policy-max",
+      "kind": "trust",
+      "document": "[\"wotex-home.external-trust.v1\",[1,\"trust:1\",5,\"approve\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",0,9223372036854775807,[1,\"inspection:1\",4,\"51f6f2062b10f2c15e89a70e1f299d3eae66c58d70884d5338cd69df1a18ded6\",\"1b346cb7f50e45232651e497545028d9bb5ba43fe7f5bbee8eb581c4e5cb4266\"],\"operator_digest_approval\"]]",
+      "receipt": {
+        "action": "approve",
+        "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+        "artifact_first_approval_revision": 6,
+        "authority_epoch": 1,
+        "input_sha256": "429160d5a4d81c9d1559334493a59b34b8c54dc730a89484acf99958274a1074",
+        "operation_id": "trust:1",
+        "outcome_sha256": "aaa293f28d418d7ff9b60ef2f7e459b8346d283793193ccb92b16382067ab3ca",
+        "policy_generation": 1,
+        "previous_trust_revision": 0,
+        "reader_basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8",
+        "revision": 6,
+        "trust_generation": 1
+      },
+      "accepted": false
+    },
+    {
+      "name": "research-trust-approve-wrong-action",
+      "kind": "trust",
+      "document": "[\"wotex-home.external-trust.v1\",[1,\"trust:1\",5,\"revoke\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",0,0,null,null]]",
+      "receipt": {
+        "action": "approve",
+        "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+        "artifact_first_approval_revision": 6,
+        "authority_epoch": 1,
+        "input_sha256": "32ea87e7643b451d71057d717f169e3d6236cdf3eb66f9faeb74e3a8e6c3d6c5",
         "operation_id": "trust:1",
         "outcome_sha256": "aaa293f28d418d7ff9b60ef2f7e459b8346d283793193ccb92b16382067ab3ca",
         "policy_generation": 1,
@@ -1874,6 +2154,26 @@
       "accepted": false
     },
     {
+      "name": "research-trust-revoke-wrong-expected_trust-max",
+      "kind": "trust",
+      "document": "[\"wotex-home.external-trust.v1\",[1,\"trust:2\",6,\"revoke\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",9223372036854775807,1,null,null]]",
+      "receipt": {
+        "action": "revoke",
+        "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+        "artifact_first_approval_revision": 6,
+        "authority_epoch": 1,
+        "input_sha256": "ca2ed0d18968f7f3e6b7166436e7db365d0206937ef7942c69d86381d999e3b3",
+        "operation_id": "trust:2",
+        "outcome_sha256": "f11a016dcca113f5e7a90da6d29538fee89b09ad64f58d307bc667eca018987a",
+        "policy_generation": 2,
+        "previous_trust_revision": 6,
+        "reader_basis_sha256": null,
+        "revision": 7,
+        "trust_generation": 2
+      },
+      "accepted": false
+    },
+    {
       "name": "research-trust-revoke-wrong-expected_policy",
       "kind": "trust",
       "document": "[\"wotex-home.external-trust.v1\",[1,\"trust:2\",6,\"revoke\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",6,2,null,null]]",
@@ -1883,6 +2183,26 @@
         "artifact_first_approval_revision": 6,
         "authority_epoch": 1,
         "input_sha256": "31f5ae1f6341c7274cb62b166bf04cb1ffc50d9889cc70305a367e8588e3654c",
+        "operation_id": "trust:2",
+        "outcome_sha256": "f11a016dcca113f5e7a90da6d29538fee89b09ad64f58d307bc667eca018987a",
+        "policy_generation": 2,
+        "previous_trust_revision": 6,
+        "reader_basis_sha256": null,
+        "revision": 7,
+        "trust_generation": 2
+      },
+      "accepted": false
+    },
+    {
+      "name": "research-trust-revoke-wrong-expected_policy-max",
+      "kind": "trust",
+      "document": "[\"wotex-home.external-trust.v1\",[1,\"trust:2\",6,\"revoke\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",6,9223372036854775807,null,null]]",
+      "receipt": {
+        "action": "revoke",
+        "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+        "artifact_first_approval_revision": 6,
+        "authority_epoch": 1,
+        "input_sha256": "459e811eca8f6fd5c7f9228976f0fa8cdf0a3f108fa7b67a85377783805260ad",
         "operation_id": "trust:2",
         "outcome_sha256": "f11a016dcca113f5e7a90da6d29538fee89b09ad64f58d307bc667eca018987a",
         "policy_generation": 2,
@@ -2198,6 +2518,30 @@
       "accepted": false
     },
     {
+      "name": "research-target-select-wrong-expected_selection-max",
+      "kind": "target",
+      "document": "[\"wotex-home.external-target.v1\",[1,\"selection:1\",6,\"select\",\"sensor:independent\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",6,1,9223372036854775807,0,\"source:independent\",\"ffffffffffffffffffffffffffffffff\",\"4c73c25589670e00916f1ff0767cf88e256eba041e6300941ec38cadc7cf7d59\",[[\"f56bf80065a96b4c96fd320b28ca975fddf621e7e8932f43e47cbe4e2ec4c611\",1],[[\"urn:example:profile:unseen-density\",\"1.0.0\",\"6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4\"],[\"1774331c8f3df7cc8d1f4bd3ff8f096eea57e197b5284cc03563e76d7dac4de9\",2]],[[[\"urn:example:semantic:unseen-density\",\"1.0.0\",\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\"],[\"7ce93241f7bb5b69e1b240d863ef43b5c829d4fe3548cf2be0752d000ca3aa0d\",3]]]],\"operator_external_selection\"]]",
+      "receipt": {
+        "action": "select",
+        "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+        "authority_epoch": 1,
+        "binding_revision": 7,
+        "input_sha256": "2acd21e1f46a932454ea310b63f373ba43a573556ce925e583ff053e6ca3c2df",
+        "operation_id": "selection:1",
+        "outcome_sha256": "d1cdd12674bc8a4d62e18bffd695a06d7046491bb0b442b97ffefeb06a0ec5aa",
+        "policy_generation": 1,
+        "previous_selection_revision": 0,
+        "resource_revision": 0,
+        "revision": 7,
+        "selection_generation": 1,
+        "source_selection_sha256": "4c73c25589670e00916f1ff0767cf88e256eba041e6300941ec38cadc7cf7d59",
+        "target_id": "sensor:independent",
+        "trust_revision": 6,
+        "withdrawn_grants": 0
+      },
+      "accepted": false
+    },
+    {
       "name": "research-target-select-wrong-expected_resource",
       "kind": "target",
       "document": "[\"wotex-home.external-target.v1\",[1,\"selection:1\",6,\"select\",\"sensor:independent\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",6,1,0,1,\"source:independent\",\"ffffffffffffffffffffffffffffffff\",\"4c73c25589670e00916f1ff0767cf88e256eba041e6300941ec38cadc7cf7d59\",[[\"f56bf80065a96b4c96fd320b28ca975fddf621e7e8932f43e47cbe4e2ec4c611\",1],[[\"urn:example:profile:unseen-density\",\"1.0.0\",\"6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4\"],[\"1774331c8f3df7cc8d1f4bd3ff8f096eea57e197b5284cc03563e76d7dac4de9\",2]],[[[\"urn:example:semantic:unseen-density\",\"1.0.0\",\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\"],[\"7ce93241f7bb5b69e1b240d863ef43b5c829d4fe3548cf2be0752d000ca3aa0d\",3]]]],\"operator_external_selection\"]]",
@@ -2207,6 +2551,54 @@
         "authority_epoch": 1,
         "binding_revision": 7,
         "input_sha256": "67741222227fedf8ed5067cee15f4e5f4e1c6d7b45d536dcc2d27238992b0b3d",
+        "operation_id": "selection:1",
+        "outcome_sha256": "d1cdd12674bc8a4d62e18bffd695a06d7046491bb0b442b97ffefeb06a0ec5aa",
+        "policy_generation": 1,
+        "previous_selection_revision": 0,
+        "resource_revision": 0,
+        "revision": 7,
+        "selection_generation": 1,
+        "source_selection_sha256": "4c73c25589670e00916f1ff0767cf88e256eba041e6300941ec38cadc7cf7d59",
+        "target_id": "sensor:independent",
+        "trust_revision": 6,
+        "withdrawn_grants": 0
+      },
+      "accepted": false
+    },
+    {
+      "name": "research-target-select-wrong-expected_resource-max",
+      "kind": "target",
+      "document": "[\"wotex-home.external-target.v1\",[1,\"selection:1\",6,\"select\",\"sensor:independent\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",6,1,0,9223372036854775807,\"source:independent\",\"ffffffffffffffffffffffffffffffff\",\"4c73c25589670e00916f1ff0767cf88e256eba041e6300941ec38cadc7cf7d59\",[[\"f56bf80065a96b4c96fd320b28ca975fddf621e7e8932f43e47cbe4e2ec4c611\",1],[[\"urn:example:profile:unseen-density\",\"1.0.0\",\"6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4\"],[\"1774331c8f3df7cc8d1f4bd3ff8f096eea57e197b5284cc03563e76d7dac4de9\",2]],[[[\"urn:example:semantic:unseen-density\",\"1.0.0\",\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\"],[\"7ce93241f7bb5b69e1b240d863ef43b5c829d4fe3548cf2be0752d000ca3aa0d\",3]]]],\"operator_external_selection\"]]",
+      "receipt": {
+        "action": "select",
+        "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+        "authority_epoch": 1,
+        "binding_revision": 7,
+        "input_sha256": "57e3868649bd484abb831675b1aceea837fe9308b3bc82b348d07a9f086f8629",
+        "operation_id": "selection:1",
+        "outcome_sha256": "d1cdd12674bc8a4d62e18bffd695a06d7046491bb0b442b97ffefeb06a0ec5aa",
+        "policy_generation": 1,
+        "previous_selection_revision": 0,
+        "resource_revision": 0,
+        "revision": 7,
+        "selection_generation": 1,
+        "source_selection_sha256": "4c73c25589670e00916f1ff0767cf88e256eba041e6300941ec38cadc7cf7d59",
+        "target_id": "sensor:independent",
+        "trust_revision": 6,
+        "withdrawn_grants": 0
+      },
+      "accepted": false
+    },
+    {
+      "name": "research-target-select-wrong-action",
+      "kind": "target",
+      "document": "[\"wotex-home.external-target.v1\",[1,\"selection:1\",6,\"revoke\",\"sensor:independent\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",6,1,0,0,null,null,null,null,null]]",
+      "receipt": {
+        "action": "select",
+        "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+        "authority_epoch": 1,
+        "binding_revision": 7,
+        "input_sha256": "b6aaec1739ff51b03c15bea79b6c3f5c2f9de28d4bc39ab07c241e5b6a44edce",
         "operation_id": "selection:1",
         "outcome_sha256": "d1cdd12674bc8a4d62e18bffd695a06d7046491bb0b442b97ffefeb06a0ec5aa",
         "policy_generation": 1,
@@ -2510,6 +2902,30 @@
       "accepted": false
     },
     {
+      "name": "research-target-revoke-wrong-expected_selection-max",
+      "kind": "target",
+      "document": "[\"wotex-home.external-target.v1\",[1,\"selection:2\",7,\"revoke\",\"sensor:independent\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",6,1,9223372036854775807,0,null,null,null,null,null]]",
+      "receipt": {
+        "action": "revoke",
+        "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+        "authority_epoch": 1,
+        "binding_revision": 7,
+        "input_sha256": "83b1a4a45809118a46d512cb82e00f08644e15fcf67c8e006be60953bf36cb82",
+        "operation_id": "selection:2",
+        "outcome_sha256": "67439381b779b5421db784932426d79cdd7ba3be293f6aa99bde80a6f5c4651b",
+        "policy_generation": 1,
+        "previous_selection_revision": 7,
+        "resource_revision": 1,
+        "revision": 8,
+        "selection_generation": 2,
+        "source_selection_sha256": "4c73c25589670e00916f1ff0767cf88e256eba041e6300941ec38cadc7cf7d59",
+        "target_id": "sensor:independent",
+        "trust_revision": 6,
+        "withdrawn_grants": 0
+      },
+      "accepted": false
+    },
+    {
       "name": "research-target-revoke-wrong-expected_resource",
       "kind": "target",
       "document": "[\"wotex-home.external-target.v1\",[1,\"selection:2\",7,\"revoke\",\"sensor:independent\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",6,1,7,1,null,null,null,null,null]]",
@@ -2519,6 +2935,30 @@
         "authority_epoch": 1,
         "binding_revision": 7,
         "input_sha256": "df888ed758e0dbeafdda2b7b94a854ee0303dff936a2801523b55da71038b51c",
+        "operation_id": "selection:2",
+        "outcome_sha256": "67439381b779b5421db784932426d79cdd7ba3be293f6aa99bde80a6f5c4651b",
+        "policy_generation": 1,
+        "previous_selection_revision": 7,
+        "resource_revision": 1,
+        "revision": 8,
+        "selection_generation": 2,
+        "source_selection_sha256": "4c73c25589670e00916f1ff0767cf88e256eba041e6300941ec38cadc7cf7d59",
+        "target_id": "sensor:independent",
+        "trust_revision": 6,
+        "withdrawn_grants": 0
+      },
+      "accepted": false
+    },
+    {
+      "name": "research-target-revoke-wrong-expected_resource-max",
+      "kind": "target",
+      "document": "[\"wotex-home.external-target.v1\",[1,\"selection:2\",7,\"revoke\",\"sensor:independent\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",6,1,7,9223372036854775807,null,null,null,null,null]]",
+      "receipt": {
+        "action": "revoke",
+        "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+        "authority_epoch": 1,
+        "binding_revision": 7,
+        "input_sha256": "c79bdf432ebe24b26f76ad46be31d6847c6019027597edcf232e9a0272ec398f",
         "operation_id": "selection:2",
         "outcome_sha256": "67439381b779b5421db784932426d79cdd7ba3be293f6aa99bde80a6f5c4651b",
         "policy_generation": 1,
@@ -2870,6 +3310,30 @@
       "accepted": false
     },
     {
+      "name": "multi-target-select-wrong-expected_selection-max",
+      "kind": "target",
+      "document": "[\"wotex-home.external-target.v1\",[1,\"selection:1\",6,\"select\",\"sensor:multi\",\"cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df\",6,1,9223372036854775807,0,\"source:independent\",\"ffffffffffffffffffffffffffffffff\",\"6d98456852eb103be9b58d2ae310d336f5bd1e55feffdd784cbaa966933f88f4\",[[\"4da05e77e5936dd1cca7de36d3f98a9ab1b1922b8f42a224f774ce1e3cb16e43\",2],[[\"urn:example:profile:multi\",\"1.0.0\",\"07d5118efe7b818b8c5749a2ff0696313606c8ee49cc541a0151d18130b918fe\"],[\"32018d26163841012b3b63c0eec6f84554b831d58815505ae4a894c8635e861c\",3]],[[[\"urn:example:semantic:temperature\",\"1.0.0\",\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\"],[\"c8c83437096d4ab25800edae3fdb4f694c089618e216dbb635f3b778fbe7d5b6\",4]],[[\"urn:example:semantic:unseen-density\",\"1.0.0\",\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\"],[\"7ce93241f7bb5b69e1b240d863ef43b5c829d4fe3548cf2be0752d000ca3aa0d\",5]]]],\"operator_external_selection\"]]",
+      "receipt": {
+        "action": "select",
+        "artifact_digest": "cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df",
+        "authority_epoch": 1,
+        "binding_revision": 7,
+        "input_sha256": "38ffd643e67ebb00d488dd18707c34c4ff01865a84fb0c6d04cb9d26e707428f",
+        "operation_id": "selection:1",
+        "outcome_sha256": "b67262fe6e1c7a1a629bebe59568fc122403e1c1653c36efb16cf736f5027965",
+        "policy_generation": 1,
+        "previous_selection_revision": 0,
+        "resource_revision": 0,
+        "revision": 7,
+        "selection_generation": 1,
+        "source_selection_sha256": "6d98456852eb103be9b58d2ae310d336f5bd1e55feffdd784cbaa966933f88f4",
+        "target_id": "sensor:multi",
+        "trust_revision": 6,
+        "withdrawn_grants": 0
+      },
+      "accepted": false
+    },
+    {
       "name": "multi-target-select-wrong-expected_resource",
       "kind": "target",
       "document": "[\"wotex-home.external-target.v1\",[1,\"selection:1\",6,\"select\",\"sensor:multi\",\"cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df\",6,1,0,1,\"source:independent\",\"ffffffffffffffffffffffffffffffff\",\"6d98456852eb103be9b58d2ae310d336f5bd1e55feffdd784cbaa966933f88f4\",[[\"4da05e77e5936dd1cca7de36d3f98a9ab1b1922b8f42a224f774ce1e3cb16e43\",2],[[\"urn:example:profile:multi\",\"1.0.0\",\"07d5118efe7b818b8c5749a2ff0696313606c8ee49cc541a0151d18130b918fe\"],[\"32018d26163841012b3b63c0eec6f84554b831d58815505ae4a894c8635e861c\",3]],[[[\"urn:example:semantic:temperature\",\"1.0.0\",\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\"],[\"c8c83437096d4ab25800edae3fdb4f694c089618e216dbb635f3b778fbe7d5b6\",4]],[[\"urn:example:semantic:unseen-density\",\"1.0.0\",\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\"],[\"7ce93241f7bb5b69e1b240d863ef43b5c829d4fe3548cf2be0752d000ca3aa0d\",5]]]],\"operator_external_selection\"]]",
@@ -2879,6 +3343,54 @@
         "authority_epoch": 1,
         "binding_revision": 7,
         "input_sha256": "31dcea585aaa6fd97d3ff5e4e2db5d970fdb05ed0e33c40ea038aba15bfb3740",
+        "operation_id": "selection:1",
+        "outcome_sha256": "b67262fe6e1c7a1a629bebe59568fc122403e1c1653c36efb16cf736f5027965",
+        "policy_generation": 1,
+        "previous_selection_revision": 0,
+        "resource_revision": 0,
+        "revision": 7,
+        "selection_generation": 1,
+        "source_selection_sha256": "6d98456852eb103be9b58d2ae310d336f5bd1e55feffdd784cbaa966933f88f4",
+        "target_id": "sensor:multi",
+        "trust_revision": 6,
+        "withdrawn_grants": 0
+      },
+      "accepted": false
+    },
+    {
+      "name": "multi-target-select-wrong-expected_resource-max",
+      "kind": "target",
+      "document": "[\"wotex-home.external-target.v1\",[1,\"selection:1\",6,\"select\",\"sensor:multi\",\"cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df\",6,1,0,9223372036854775807,\"source:independent\",\"ffffffffffffffffffffffffffffffff\",\"6d98456852eb103be9b58d2ae310d336f5bd1e55feffdd784cbaa966933f88f4\",[[\"4da05e77e5936dd1cca7de36d3f98a9ab1b1922b8f42a224f774ce1e3cb16e43\",2],[[\"urn:example:profile:multi\",\"1.0.0\",\"07d5118efe7b818b8c5749a2ff0696313606c8ee49cc541a0151d18130b918fe\"],[\"32018d26163841012b3b63c0eec6f84554b831d58815505ae4a894c8635e861c\",3]],[[[\"urn:example:semantic:temperature\",\"1.0.0\",\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\"],[\"c8c83437096d4ab25800edae3fdb4f694c089618e216dbb635f3b778fbe7d5b6\",4]],[[\"urn:example:semantic:unseen-density\",\"1.0.0\",\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\"],[\"7ce93241f7bb5b69e1b240d863ef43b5c829d4fe3548cf2be0752d000ca3aa0d\",5]]]],\"operator_external_selection\"]]",
+      "receipt": {
+        "action": "select",
+        "artifact_digest": "cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df",
+        "authority_epoch": 1,
+        "binding_revision": 7,
+        "input_sha256": "33d5d3a1ef24f5c0739458195c2ebaba4954940c332a1d3d0a724a2d03f23990",
+        "operation_id": "selection:1",
+        "outcome_sha256": "b67262fe6e1c7a1a629bebe59568fc122403e1c1653c36efb16cf736f5027965",
+        "policy_generation": 1,
+        "previous_selection_revision": 0,
+        "resource_revision": 0,
+        "revision": 7,
+        "selection_generation": 1,
+        "source_selection_sha256": "6d98456852eb103be9b58d2ae310d336f5bd1e55feffdd784cbaa966933f88f4",
+        "target_id": "sensor:multi",
+        "trust_revision": 6,
+        "withdrawn_grants": 0
+      },
+      "accepted": false
+    },
+    {
+      "name": "multi-target-select-wrong-action",
+      "kind": "target",
+      "document": "[\"wotex-home.external-target.v1\",[1,\"selection:1\",6,\"revoke\",\"sensor:multi\",\"cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df\",6,1,0,0,null,null,null,null,null]]",
+      "receipt": {
+        "action": "select",
+        "artifact_digest": "cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df",
+        "authority_epoch": 1,
+        "binding_revision": 7,
+        "input_sha256": "8d406c6cc47153534ec9a157c1c8854c76cfb5ae4575df2790ab13ec926dda74",
         "operation_id": "selection:1",
         "outcome_sha256": "b67262fe6e1c7a1a629bebe59568fc122403e1c1653c36efb16cf736f5027965",
         "policy_generation": 1,
@@ -3182,6 +3694,30 @@
       "accepted": false
     },
     {
+      "name": "multi-target-revoke-wrong-expected_selection-max",
+      "kind": "target",
+      "document": "[\"wotex-home.external-target.v1\",[1,\"selection:2\",7,\"revoke\",\"sensor:multi\",\"cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df\",6,1,9223372036854775807,0,null,null,null,null,null]]",
+      "receipt": {
+        "action": "revoke",
+        "artifact_digest": "cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df",
+        "authority_epoch": 1,
+        "binding_revision": 7,
+        "input_sha256": "355b5e52256d38a34407ce8a6e9e299e1c6733a00c4f34072e96efaecac28fd0",
+        "operation_id": "selection:2",
+        "outcome_sha256": "09b78d69e1f4c82839e6f191c3b5a81614b22b7d83fdd59a0e465d04afe22b05",
+        "policy_generation": 1,
+        "previous_selection_revision": 7,
+        "resource_revision": 1,
+        "revision": 8,
+        "selection_generation": 2,
+        "source_selection_sha256": "6d98456852eb103be9b58d2ae310d336f5bd1e55feffdd784cbaa966933f88f4",
+        "target_id": "sensor:multi",
+        "trust_revision": 6,
+        "withdrawn_grants": 0
+      },
+      "accepted": false
+    },
+    {
       "name": "multi-target-revoke-wrong-expected_resource",
       "kind": "target",
       "document": "[\"wotex-home.external-target.v1\",[1,\"selection:2\",7,\"revoke\",\"sensor:multi\",\"cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df\",6,1,7,1,null,null,null,null,null]]",
@@ -3191,6 +3727,30 @@
         "authority_epoch": 1,
         "binding_revision": 7,
         "input_sha256": "4862cd79415a1a7e5c2a48fb5ee0fc365d90459ef708d8b55ebfb93e183ad50d",
+        "operation_id": "selection:2",
+        "outcome_sha256": "09b78d69e1f4c82839e6f191c3b5a81614b22b7d83fdd59a0e465d04afe22b05",
+        "policy_generation": 1,
+        "previous_selection_revision": 7,
+        "resource_revision": 1,
+        "revision": 8,
+        "selection_generation": 2,
+        "source_selection_sha256": "6d98456852eb103be9b58d2ae310d336f5bd1e55feffdd784cbaa966933f88f4",
+        "target_id": "sensor:multi",
+        "trust_revision": 6,
+        "withdrawn_grants": 0
+      },
+      "accepted": false
+    },
+    {
+      "name": "multi-target-revoke-wrong-expected_resource-max",
+      "kind": "target",
+      "document": "[\"wotex-home.external-target.v1\",[1,\"selection:2\",7,\"revoke\",\"sensor:multi\",\"cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df\",6,1,7,9223372036854775807,null,null,null,null,null]]",
+      "receipt": {
+        "action": "revoke",
+        "artifact_digest": "cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df",
+        "authority_epoch": 1,
+        "binding_revision": 7,
+        "input_sha256": "8710078aed3f68d6e8eb4af7001b6c991afc47bd059e799e4dfe6631298681bc",
         "operation_id": "selection:2",
         "outcome_sha256": "09b78d69e1f4c82839e6f191c3b5a81614b22b7d83fdd59a0e465d04afe22b05",
         "policy_generation": 1,
@@ -3274,6 +3834,23 @@
         "target_id": "sensor:multi",
         "trust_revision": 6,
         "withdrawn_grants": 0
+      },
+      "accepted": true
+    },
+    {
+      "name": "inspection-signed-maximum-receipt",
+      "kind": "inspection",
+      "document": "[\"wotex-home.external-inspection.v1\",[1,\"inspection:1\",9223372036854775806,[\"58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8\",[\"34bc9f0ca2eb679efaae0ce891d79c1c6de031e4501963daf85bc38da52c1357\",1],[[\"urn:example:profile:temperature\",\"1.0.0\",\"031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329\"],[\"8f08db631622afe74498f0325dc73da116f8b20e5eb6fdab11b52771a80f47ef\",2]],[[[\"urn:example:semantic:temperature\",\"1.0.0\",\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\"],[\"c8c83437096d4ab25800edae3fdb4f694c089618e216dbb635f3b778fbe7d5b6\",3]]]]]]",
+      "receipt": {
+        "authority_epoch": 1,
+        "capture_digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+        "envelope_sha256": "be5cb3934facd25c5da585a62fec50468bff71df6b7194877b0761be17fb78dd",
+        "home_consumption": "matched",
+        "input_sha256": "b9d8797bc03fbf04de1de4da0f03c2e332476bc52700c1882103858471b20d39",
+        "operation_id": "inspection:1",
+        "reader_basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8",
+        "result_sha256": "e97f35e252b11572816cbbae889ddccbda65f7616866c9d33cb5ee9cb19a1977",
+        "revision": 9223372036854775807
       },
       "accepted": true
     }
