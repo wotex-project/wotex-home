@@ -5,8 +5,10 @@ defmodule Mix.Tasks.Woh.Native.Generation.Flow.Smoke do
   Run `mix woh.native.generation.flow.smoke` on the supported macOS toolchain.
   The task compiles the actual shared driver/panel closure and runs both
   quantity families through private workspace/pending publication, dropped
-  mutation replies, explicit repair feedback, fresh manual assessment and
-  root cancellation. A scripted provider supplies inert fixture drafts.
+  mutation replies, confirmed missing-original acknowledgement, stale journal
+  refusal, explicit repair feedback, fresh manual assessment and root cancellation.
+  A revision race checks refused preparation and separately confirmed archival;
+  a scripted provider supplies inert fixture drafts.
 
   The fixture uses temporary private directories and synthetic custody, with
   no external model, Keychain or device dispatch. Compilation and software

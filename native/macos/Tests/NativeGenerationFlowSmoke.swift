@@ -50,8 +50,27 @@ struct NativeGenerationFlowSmoke {
         do { _ = try fields.original(context, operation: "generation:no-consent"); throw GenerationFlowAssertion.failed(#line) }
         catch LocalHealthError.invalidProfileRequest {}
         fields.remoteConsent = true
-        let rootDecision = try await controller.prepareGeneration(context, fields: fields)
+        let refusedDecision = try await controller.prepareGeneration(context, fields: fields)
         let pendingFile = directory.appendingPathComponent("native-pending-v1.json")
+        let revisionRace = directory.appendingPathComponent("generation-revision-race")
+        try Data("prepare".utf8).write(to: revisionRace)
+        do { _ = try await controller.submitGeneration(refusedDecision, workspace: workspace, journal: journal); throw GenerationFlowAssertion.failed(#line) }
+        catch LocalHealthError.server("resnapshot_required") {}
+        guard let refusedRoot = workspace.entries.first else { throw GenerationFlowAssertion.failed(#line) }
+        try require(refusedRoot.preparation == refusedDecision.original && journal.entries.count == 1)
+        try await missingChecks(journal, credential, socket, directory)
+        let refusedView = NativeGenerationViewModel(controller: controller, journal: journal, workspace: workspace)
+        await refusedView.load()
+        try require(refusedView.entry == refusedRoot)
+        refusedView.archiveConfirmed = true; await refusedView.archive()
+        try require(workspace.entries == [refusedRoot] && refusedView.error != nil)
+        refusedView.archiveConfirmed = true; refusedView.archiveUncertaintyConfirmed = true; await refusedView.archive()
+        try require(workspace.entries.isEmpty && journal.entries.isEmpty)
+        let fresh = try await controller.loadGenerationContext()
+        try require(fresh.identity.revision == 10)
+        let rootDecision = try await controller.prepareGeneration(fresh, fields: fields)
+        let preservedEmpty = try Data(contentsOf: pendingFile)
+        try FileManager.default.removeItem(at: pendingFile)
         try FileManager.default.createSymbolicLink(at: pendingFile, withDestinationURL: directory.appendingPathComponent("absent"))
         do { _ = try await controller.submitGeneration(rootDecision, workspace: workspace, journal: journal); throw GenerationFlowAssertion.failed(#line) }
         catch NativePendingError.unavailable {}
@@ -59,6 +78,7 @@ struct NativeGenerationFlowSmoke {
         try require(journal.entries.count == 1 && root.preparation == rootDecision.original)
         try require(try await controller.readGeneration(root).0 == nil)
         try FileManager.default.removeItem(at: pendingFile)
+        guard FileManager.default.createFile(atPath: pendingFile.path, contents: preservedEmpty, attributes: [.posixPermissions: 0o600]) else { throw GenerationFlowAssertion.failed(#line) }
         journal = NativePendingCoordinator(persistence: NativePendingPersistence(directory: directory), capture: capture, socketPath: { socket })
         await journal.reload()
         try require(journal.entries.isEmpty)

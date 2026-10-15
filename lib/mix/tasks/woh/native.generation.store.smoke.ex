@@ -317,6 +317,15 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
                 do: File.read(Path.join(journal, "generation-read-failure")),
                 else: {:error, :enoent}
 
+            revision_race = Path.join(journal, "generation-revision-race")
+
+            if operation == "authoring_generation_prepare" && File.exists?(revision_race) do
+              :ok = File.rm(revision_race)
+
+              {:ok, _, _} =
+                Store.provision_principal(store, "reader:revision-race", ["read"], [])
+            end
+
             response =
               case read_failure do
                 {:ok, "read"} ->
