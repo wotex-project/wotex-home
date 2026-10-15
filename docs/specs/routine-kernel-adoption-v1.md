@@ -1,8 +1,12 @@
 # Explicit rule kernel adoption v1
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted target.
 Owner: WOH.20 H20-02/03/06/08/10; WOH.04 rule admission; WOH.14 durable execution.
-Implementation: planned. Evidence: missing for this successor.
+Implementation: partial — pure mapping and initial-proposal checking in RKA-01–03.
+Evidence: bounded pure/software checks in the
+[kernel adoption record](../provenance/routines-kernel-2026-10.md).
+Current v4 proof and actual Authority/Store adoption remain planned; no durable
+invocation or physical qualification is established by these pure helpers.
 
 ## Scope and prerequisites
 
