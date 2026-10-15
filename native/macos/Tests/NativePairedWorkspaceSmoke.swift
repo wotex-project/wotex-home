@@ -57,12 +57,26 @@ struct NativePairedWorkspaceSmoke {
             guard CommandLine.arguments.count == 2 else { throw WorkspaceSessionSmokeError.failed(#line) }
             let root = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
             try vectors(root)
+            try selectors()
             try await unsigned(root)
             print("paired workspace independent transitions, file witnesses and unsigned purpose refusal passed")
         } catch WorkspaceSessionSmokeError.failed(let line) {
             FileHandle.standardError.write(Data("paired workspace assertion failed at source line \(line)\n".utf8)); exit(1)
         } catch {
             FileHandle.standardError.write(Data("paired workspace fixture failed\n".utf8)); exit(1)
+        }
+    }
+    private static func selectors() throws {
+        let corpus = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: "test/fixtures/profiles/native-paired-workspace-selectors-v1.json"))) as! [String: Any]
+        let valid = corpus["valid"] as! [[String: Any]], invalid = corpus["invalid"] as! [[String: Any]]
+        try require(valid.count == 8 && invalid.count == 17)
+        for row in valid {
+            let actual = try NativePairedWorkspaceCorrespondence.handles(row["input"] as! [[String: Any]])
+            try require(try JSONSerialization.data(withJSONObject: actual, options: .sortedKeys) == JSONSerialization.data(withJSONObject: row["expected"]!, options: .sortedKeys))
+        }
+        for row in invalid {
+            do { _ = try NativePairedWorkspaceCorrespondence.handles(row["input"] as! [[String: Any]]); throw WorkspaceSessionSmokeError.failed(#line) }
+            catch LocalHealthError.invalidProfileRequest {}
         }
     }
     private static func vectors(_ root: URL) throws {

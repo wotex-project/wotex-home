@@ -15,6 +15,18 @@ struct NativePairedGeneratedAssessment: Sendable, CustomReflectable {
 }
 
 enum NativePairedWorkspaceCorrespondence {
+    static func handles(_ rows: [[String: Any]]) throws -> [[String: Any]] {
+        guard rows.count <= 32 else { throw LocalHealthError.invalidProfileRequest }
+        var selected: [String: Int] = [:]
+        for row in rows {
+            guard Set(row.keys) == Set(["object_digest", "first_revision"]),
+                  let digest = row["object_digest"] as? String, LocalHealthClient.profileDigest(digest),
+                  let first = LocalHealthClient.profileInteger(row["first_revision"]), first > 0,
+                  selected[digest] == nil || selected[digest] == first else { throw LocalHealthError.invalidProfileRequest }
+            selected[digest] = first
+        }
+        return selected.keys.sorted().map { ["object_digest": $0, "first_revision": selected[$0]!] }
+    }
     static func association(_ entry: NativeGenerationWorkspaceEntry, action: NativePairedWorkspaceAction,
                             workspace: NativeGenerationWorkspaceSnapshot, pending: NativePendingSnapshot,
                             associations: NativeControllerAssociationSnapshot) throws -> NativeControllerPublicAssociation {
@@ -120,16 +132,11 @@ enum NativePairedGenerationWorkspaceOperations {
                   object.summary == imported.object, object.firstRevision == Int64(first) else { throw LocalHealthError.invalidResponse }
             let projection = try entry.preparation.fields()["projection"] as! [String: Any]
             func handles(_ rows: [[String: Any]], kind: String) throws -> [[String: Any]] {
-                var selected: [String: Int] = [:]
-                for row in rows {
+                try NativePairedWorkspaceCorrespondence.handles(rows).map { row in
                     let digest = row["object_digest"] as! String, first = LocalHealthClient.profileInteger(row["first_revision"])!
-                    guard selected[digest] == nil || selected[digest] == first else { throw LocalHealthError.invalidProfileRequest }
-                    selected[digest] = first
-                }
-                return try selected.keys.sorted().map { digest in
                     guard let object = try NativeAuthoringReadClient.fetchObject(socketPath: "", credential: credential, digest: digest),
-                          object.summary.kind == kind, object.firstRevision == Int64(selected[digest]!) else { throw LocalHealthError.invalidResponse }
-                    return ["object_digest": digest, "first_revision": selected[digest]!]
+                          object.summary.kind == kind, object.firstRevision == Int64(first) else { throw LocalHealthError.invalidResponse }
+                    return row
                 }
             }
             let sources = try handles((projection["passages"] as! [[String: Any]]).map { $0["reference"] as! [String: Any] }, kind: "source")

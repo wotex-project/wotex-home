@@ -5,6 +5,8 @@ defmodule Mix.Tasks.Woh.Native.Paired.Workspace.Smoke do
   Run `mix woh.native.paired.workspace.smoke` on the supported macOS toolchain.
   Independent frozen transitions exercise exact intent, archival and pending
   publication, full private-file witnesses and actual unsigned factory refusal.
+  Frozen selector joins separately check duplicate collapse, digest ordering,
+  conflicting first revisions and the 32-handle boundary before owned-object reads.
   These software checks do not establish installed signed custody or dispatch.
   """
 
