@@ -31,10 +31,20 @@ enum NativeLocalControllerRequestGuard {
     }
     private static let owner = Owner()
     @TaskLocal private static var recoveringOriginal = false
+    @TaskLocal private static var additionalCheck: (@Sendable () throws -> Void)?
     static func install(_ begin: @escaping @Sendable () throws -> @Sendable () throws -> Void) { owner.install(begin) }
     static func acquire() throws -> @Sendable () throws -> Void {
-        if recoveringOriginal { return {} }
-        return try owner.acquire()
+        let additional = additionalCheck
+        try additional?()
+        let selected: @Sendable () throws -> Void
+        if recoveringOriginal { selected = {} } else { selected = try owner.acquire() }
+        return { try additional?(); try selected() }
+    }
+    // A caller can add only refusal, never replace the selected/native peer guard.
+    static func withAdditionalCheck<Value>(_ check: @escaping @Sendable () throws -> Void,
+                                           operation: () throws -> Value) rethrows -> Value {
+        let prior = additionalCheck
+        return try $additionalCheck.withValue({ try prior?(); try check() }, operation: operation)
     }
     // The journal's closed local recovery already validates exact original
     // custody/context. UI selection must not redirect that original.

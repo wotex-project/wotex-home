@@ -16,25 +16,34 @@ defmodule Woh.Tool.NativeExternalMutationLive do
 
   @owner __MODULE__.Store
 
-  def run(project) do
+  def run(project, panel \\ false) do
     root = Path.join("/private/tmp", "external-sdk-#{System.unique_integer([:positive])}")
     File.mkdir!(root)
     File.chmod!(root, 0o700)
     executable = Path.join(root, "client")
 
     sources =
-      Enum.uniq(["NativePendingCoordinator" | NativePairedRecoverySources.names()]) --
-        ["LocalHealthClient"]
+      if panel do
+        Path.wildcard(Path.join(project, "native/macos/Sources/*.swift"))
+        |> Enum.map(&Path.basename(&1, ".swift"))
+        |> Enum.reject(&(&1 in ~w(WotexHomeApp LocalHealthClient)))
+      else
+        Enum.uniq(["NativePendingCoordinator" | NativePairedRecoverySources.names()]) --
+          ["LocalHealthClient"]
+      end
 
     try do
       with :ok <-
              NativeFixture.compile(
                project,
-               "NativeExternalProfileMutationLiveSmoke.swift",
+               if(panel,
+                 do: "NativeExternalProfilePanelLiveSmoke.swift",
+                 else: "NativeExternalProfileMutationLiveSmoke.swift"
+               ),
                executable,
                sources
              ) do
-        for family <- ~w(temperature research), do: owner(root, executable, family)
+        for family <- ~w(temperature research), do: owner(root, executable, family, panel)
         :ok
       end
     after
@@ -62,7 +71,7 @@ defmodule Woh.Tool.NativeExternalMutationLive do
       Base.encode64(credential) <>
         "\n" <> JSON.encode!(%{"kind" => kind, "input" => input}) <> "\n"
 
-    case Command.run_diagnostic(executable, [socket, journal, mode], 16_384, 15_000, stdin) do
+    case Command.run_diagnostic(executable, [socket, journal, mode], 16_384, 30_000, stdin) do
       {:ok, _} ->
         :ok
 
@@ -71,7 +80,17 @@ defmodule Woh.Tool.NativeExternalMutationLive do
     end
   end
 
-  defp lost(parent, executable, socket, credential, journal, kind, input, mode \\ "lost") do
+  defp lost(
+         parent,
+         executable,
+         socket,
+         credential,
+         journal,
+         kind,
+         input,
+         mode,
+         panel
+       ) do
     path = Path.join(parent, "lost-#{kind}.sock")
 
     {:ok, listener} =
@@ -90,10 +109,28 @@ defmodule Woh.Tool.NativeExternalMutationLive do
       mutation
     ]
 
+    operations =
+      if panel && mode == "lost" do
+        basis = [
+          "controller_identity",
+          "external_profiles",
+          "external_#{kind}_status",
+          "controller_identity"
+        ]
+
+        basis ++
+          basis ++
+          ["controller_identity", "controller_identity", "external_#{kind}_status", mutation]
+      else
+        operations
+      end
+
+    accept_timeout = if panel, do: 30_000, else: 5000
+
     proxy =
       Task.async(fn ->
         for operation <- operations do
-          {:ok, peer} = :gen_tcp.accept(listener, 5000)
+          {:ok, peer} = :gen_tcp.accept(listener, accept_timeout)
 
           try do
             {:ok, <<size::unsigned-big-32>>} = :gen_tcp.recv(peer, 4, 5000)
@@ -126,7 +163,126 @@ defmodule Woh.Tool.NativeExternalMutationLive do
     end
   end
 
-  defp owner(parent, executable, family) do
+  defp review_race(root, executable, socket, credential, journal, input, store, mode) do
+    path = Path.join(root, mode <> ".sock")
+
+    {:ok, listener} =
+      :gen_tcp.listen(0, [:binary, active: false, ifaddr: {:local, String.to_charlist(path)}])
+
+    File.chmod!(path, 0o600)
+
+    basis = [
+      "controller_identity",
+      "external_profiles",
+      "external_inspection_status",
+      "controller_identity"
+    ]
+
+    operations =
+      case mode do
+        "stale-review" ->
+          basis ++ basis
+
+        "retire-prepare" ->
+          basis
+
+        "failed-resolution" ->
+          basis ++
+            basis ++
+            [
+              "controller_identity",
+              "controller_identity",
+              "external_inspection_status",
+              "external_profile_inspect",
+              "controller_identity"
+            ]
+
+        _ ->
+          basis ++
+            basis ++ ["controller_identity", "controller_identity", "external_inspection_status"]
+      end
+
+    proxy =
+      Task.async(fn ->
+        for {operation, index} <- Enum.with_index(operations) do
+          {:ok, peer} = :gen_tcp.accept(listener, 5000)
+
+          try do
+            {:ok, <<size::unsigned-big-32>>} = :gen_tcp.recv(peer, 4, 5000)
+            {:ok, body} = :gen_tcp.recv(peer, size, 5000)
+            {:ok, request} = Frame.decode_request(body)
+            ^operation = request["operation"]
+            {:ok, response} = Client.request(socket, request)
+
+            cond do
+              operation == "external_profile_inspect" and response["outcome"] != "ok" ->
+                Mix.raise("resolution fixture mutation was refused")
+
+              mode == "stale-review" and index == 3 ->
+                {:ok, _, _} = Store.provision_principal(store, "review-race", ["read"], [])
+
+              (mode in ["retire-status", "cancel-status"] and index == 10) or
+                  (mode == "retire-prepare" and index == 3) ->
+                File.write!(Path.join(journal, "retire"), "")
+                File.chmod!(Path.join(journal, "retire"), 0o600)
+
+                wait_file(
+                  Path.join(journal, "retired"),
+                  System.monotonic_time(:millisecond) + 5000
+                )
+
+              mode == "failed-resolution" and index == 12 ->
+                file = Path.join(journal, "pending/native-pending-v1.json")
+
+                ["wotex-home.native-pending.v9", revision, entries] =
+                  JSON.decode!(File.read!(file))
+
+                File.write!(
+                  file,
+                  JSON.encode!(["wotex-home.native-pending.v9", revision + 1, entries])
+                )
+
+                File.chmod!(file, 0o600)
+
+              true ->
+                :ok
+            end
+
+            {:ok, frame} = Frame.encode_response(response)
+            :ok = :gen_tcp.send(peer, frame)
+          after
+            :gen_tcp.close(peer)
+          end
+        end
+
+        :ok
+      end)
+
+    try do
+      :ok = native(executable, path, credential, journal, mode, "inspection", input)
+      :ok = Task.await(proxy, 10_000)
+    after
+      if Process.alive?(proxy.pid), do: Task.shutdown(proxy, :brutal_kill)
+      :gen_tcp.close(listener)
+      File.rm(path)
+    end
+  end
+
+  defp wait_file(path, deadline) do
+    cond do
+      File.exists?(path) ->
+        :ok
+
+      System.monotonic_time(:millisecond) >= deadline ->
+        Mix.raise("native review retirement did not arrive")
+
+      true ->
+        Process.sleep(5)
+        wait_file(path, deadline)
+    end
+  end
+
+  defp owner(parent, executable, family, panel) do
     root = directory(parent, family)
     source = fixture("external-source-selections")[family]["inputs"]
     r = source["reader"]
@@ -226,7 +382,17 @@ defmodule Woh.Tool.NativeExternalMutationLive do
         inspection_journal = directory(root, "inspection")
 
         :ok =
-          lost(root, executable, socket, credential, inspection_journal, "inspection", inspection)
+          lost(
+            root,
+            executable,
+            socket,
+            credential,
+            inspection_journal,
+            "inspection",
+            inspection,
+            "lost",
+            panel
+          )
 
         true = revision(store) == current + 1
         {:ok, inspected} = Store.external_inspection_status(store, credential, 1, "inspection:1")
@@ -267,32 +433,49 @@ defmodule Woh.Tool.NativeExternalMutationLive do
 
         trust_journal = directory(root, "trust")
         before = revision(store)
-        :ok = native(executable, socket, credential, trust_journal, "stage", "trust", approve)
 
-        :ok =
-          native(
-            executable,
-            socket,
-            credential,
-            trust_journal,
-            "lookup-missing",
-            "trust",
-            approve
-          )
+        if panel do
+          :ok =
+            lost(
+              root,
+              executable,
+              socket,
+              credential,
+              trust_journal,
+              "trust",
+              approve,
+              "lost",
+              true
+            )
+        else
+          :ok = native(executable, socket, credential, trust_journal, "stage", "trust", approve)
 
-        ^before = revision(store)
+          :ok =
+            native(
+              executable,
+              socket,
+              credential,
+              trust_journal,
+              "lookup-missing",
+              "trust",
+              approve
+            )
 
-        :ok =
-          lost(
-            root,
-            executable,
-            socket,
-            credential,
-            trust_journal,
-            "trust",
-            approve,
-            "retry-lost"
-          )
+          ^before = revision(store)
+
+          :ok =
+            lost(
+              root,
+              executable,
+              socket,
+              credential,
+              trust_journal,
+              "trust",
+              approve,
+              "retry-lost",
+              panel
+            )
+        end
 
         true = revision(store) == before + 1
         {:ok, approved} = Store.external_trust_status(store, credential, 1, "trust:1")
@@ -319,7 +502,20 @@ defmodule Woh.Tool.NativeExternalMutationLive do
         }
 
         target_journal = directory(root, "target")
-        :ok = lost(root, executable, socket, credential, target_journal, "target", target)
+
+        :ok =
+          lost(
+            root,
+            executable,
+            socket,
+            credential,
+            target_journal,
+            "target",
+            target,
+            "lost",
+            panel
+          )
+
         {:ok, selected} = Store.external_target_status(store, credential, 1, "selection:1")
         stop(reports)
         stop(sources)
@@ -378,7 +574,30 @@ defmodule Woh.Tool.NativeExternalMutationLive do
             revoke_trust
           )
 
-        acknowledgements(root, executable, socket, credential, store, inspection)
+        if panel do
+          before = revision(store)
+
+          for {kind, original} <- [
+                {"inspection", inspection},
+                {"trust", approve},
+                {"target", target}
+              ] do
+            :ok =
+              native(
+                executable,
+                socket,
+                credential,
+                directory(root, "reads-" <> kind),
+                "reads",
+                kind,
+                original
+              )
+          end
+
+          ^before = revision(store)
+        end
+
+        acknowledgements(root, executable, socket, credential, store, inspection, panel)
         {:ok, %{dispatch_enabled: false}} = Store.health(store)
       after
         stop(server)
@@ -388,7 +607,7 @@ defmodule Woh.Tool.NativeExternalMutationLive do
     end
   end
 
-  defp acknowledgements(root, executable, socket, credential, store, inspection) do
+  defp acknowledgements(root, executable, socket, credential, store, inspection, panel) do
     before = revision(store)
 
     absent =
@@ -409,7 +628,10 @@ defmodule Woh.Tool.NativeExternalMutationLive do
     journal = directory(root, "stale")
     :ok = native(executable, socket, credential, journal, "refused", "inspection", stale)
     ^before = revision(store)
-    :ok = native(executable, socket, credential, journal, "ack-absent", "inspection", stale)
+
+    unless panel,
+      do: native(executable, socket, credential, journal, "ack-absent", "inspection", stale)
+
     ^before = revision(store)
     failed = Map.put(absent, "operation_id", "failed:publication")
 
@@ -425,7 +647,84 @@ defmodule Woh.Tool.NativeExternalMutationLive do
       )
 
     ^before = revision(store)
-    denied = Map.put(absent, "operation_id", "denied:inspection")
+
+    if panel do
+      {:ok, maintenance} = Store.maintenance_status(store, credential)
+
+      {:ok, _} =
+        Store.end_maintenance(
+          store,
+          credential,
+          1,
+          "review:end-maintenance",
+          revision(store),
+          maintenance.begin_revision
+        )
+
+      :ok =
+        native(
+          executable,
+          socket,
+          credential,
+          directory(root, "paired-refusal"),
+          "paired-refusal",
+          "inspection",
+          Map.put(absent, "operation_id", "paired:refusal")
+        )
+
+      for mode <- [
+            "retire-status",
+            "cancel-status",
+            "retire-prepare",
+            "stale-review",
+            "failed-resolution"
+          ] do
+        input =
+          Map.merge(absent, %{"operation_id" => mode, "expected_revision" => revision(store)})
+
+        before = revision(store)
+
+        :ok =
+          review_race(
+            root,
+            executable,
+            socket,
+            credential,
+            directory(root, mode),
+            input,
+            store,
+            mode
+          )
+
+        true =
+          revision(store) ==
+            before + if(mode in ["stale-review", "failed-resolution"], do: 1, else: 0)
+
+        if mode == "failed-resolution" do
+          before = revision(store)
+
+          :ok =
+            native(
+              executable,
+              socket,
+              credential,
+              Path.join(root, mode),
+              "lookup",
+              "inspection",
+              input
+            )
+
+          ^before = revision(store)
+        end
+      end
+    end
+
+    denied =
+      Map.merge(absent, %{
+        "operation_id" => "denied:inspection",
+        "expected_revision" => revision(store)
+      })
+
     journal = directory(root, "denied")
     :ok = native(executable, socket, credential, journal, "stage", "inspection", denied)
 

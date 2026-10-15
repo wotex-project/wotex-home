@@ -60,7 +60,7 @@ defmodule Woh.Tool.NativeFixture do
 
     timeout = if "NativeControllerSessionDriver" in extra_sources, do: 90_000, else: 60_000
 
-    case Command.run("swiftc", args, 1_048_576, timeout) do
+    case Command.run_diagnostic("swiftc", args, 1_048_576, timeout) do
       {:ok, _} -> :ok
       {:error, reason} -> {:error, "Swift fixture compilation failed: #{reason}"}
     end

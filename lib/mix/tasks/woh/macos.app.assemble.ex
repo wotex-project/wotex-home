@@ -174,6 +174,7 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativeExternalProfileClient.swift"),
         Path.join(native, "Sources/NativeExternalProfileOriginalWire.swift"),
         Path.join(native, "Sources/NativeExternalProfileMutationClient.swift"),
+        Path.join(native, "Sources/NativeExternalProfilePanel.swift"),
         Path.join(native, "Sources/NativeExternalReportPanel.swift"),
         Path.join(native, "Sources/HomeTaskShell.swift"),
         Path.join(native, "Sources/HomeApplicationModel.swift"),
