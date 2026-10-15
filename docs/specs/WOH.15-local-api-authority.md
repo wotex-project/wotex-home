@@ -1,11 +1,13 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.137. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.138. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)
 defines durable root/attempt workspace custody, explicit policy/consent/budget,
 ordered publication, repair/cancellation and fresh manual review composition.
-It is planned; startup metadata and a model result create no Home authority.
+Its workspace custody dependency is implemented with [executed private-file/process
+evidence](../provenance/native-generation-workspace-2026-10.md); driver/panel/review
+composition remains planned. Startup metadata and a model result create no Home authority.
 
 The [native generation SDK contract](native-generation-sdk-v1.md) defines exact
 options, complete inert assessments/status and original-purpose recovery after

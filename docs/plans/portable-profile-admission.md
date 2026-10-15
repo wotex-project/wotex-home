@@ -119,8 +119,10 @@ queued-result, Store/process and native evidence](../provenance/native-generatio
 Unsettled unknown remains retained until explicit acknowledgement; no new handoff follows.
 The [first-decision contract](../specs/native-generation-ui-v1.md) now freezes
 durable workspace, explicit first submission/repair/cancel and manual review
-composition. Build its custody dependency before driver/panel composition; signed
-paired delivery remains a successor. Live account/model, local OS
+composition. Its workspace custody dependency now has [executed private-file and
+process evidence](../provenance/native-generation-workspace-2026-10.md). Continue
+with guarded driver decisions and panel/review composition; signed paired delivery
+remains a successor. Live account/model, local OS
 confinement, native/signed paired delivery and aggregate pool boundaries remain.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with

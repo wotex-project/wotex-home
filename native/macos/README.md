@@ -1197,3 +1197,12 @@ panel can acknowledge uncertainty after explicit confirmation; a later result ma
 remain at the controller. Native first-submission editing, confirmation, candidate
 review composition, signed paired generation and installed qualification remain
 later delivery work.
+
+
+The [first-decision contract](../../docs/specs/native-generation-ui-v1.md) now has
+its separate private workspace dependency. It retains complete preparation and
+ordered attempt originals plus cancellation intent under fixed-file CAS; load
+sends no request and stores no credential/current permission. Run
+`mix woh.native.generation.workspace.smoke` for independent roots, private guards,
+four process races and restart. The full driver/panel/review flow remains planned;
+workspace publication alone cannot send a preparation or model attempt.
