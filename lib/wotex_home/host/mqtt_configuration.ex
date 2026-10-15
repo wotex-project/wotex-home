@@ -13,21 +13,34 @@ defmodule WotexHome.Host.MQTTConfiguration do
   and authentication choice. Capture remains a host assertion; TLS verifies
   the broker, not the sensor.
 
-  `load/2` returns `{:ok, snapshot}` for an immutable mode-0400 source file under
-  the canonical private root, or `{:ok, absence}` with an ancestor witness when
-  the fixed file is missing. A present source requires private authoring policy;
-  it cannot fall back to authoring-only startup on invalid MQTT data. Password
-  mode requires TLS and a separately sealed `WotexHome.MQTT.Credential`
-  reference. Anonymous mode reads no credential file. The prepared publisher
-  receives a resolver capturing the sealed reference, not a retained password.
+  `load/2` and `load/3` return `{:ok, snapshot}` for an immutable mode-0400 source
+  file under the canonical private root, or `{:ok, absence}` with an ancestor
+  witness when the fixed file is missing. A present source requires private
+  authoring policy; it cannot fall back to authoring-only startup on invalid data.
+
+  Authentication is explicit. Anonymous mode reads no credential file. Password
+  mode requires TLS and a sealed `WotexHome.MQTT.Credential` reference. Keychain
+  mode also requires TLS and a live `WotexHome.MQTT.NativeCredential` supplied as
+  the third argument to `load/3`, matching the exact raw source digest and seal.
+  A missing or unusable native capability returns
+  `{:error, :mqtt_native_credential_required}` without password-file fallback.
+  Other modes ignore an unused native capability. The publisher receives a
+  resolver over the selected reference, not a retained decoded pair.
   Missing authoring policy returns `{:error, :mqtt_profile_configuration_required}`;
   malformed and unavailable source data return `:invalid_mqtt_configuration` or
   `:mqtt_configuration_unavailable` in error tuples.
 
-  `check/3` returns `:ok` only when the selected file seal, raw-byte hash and
-  credential remain unchanged, or the witnessed absence still holds. Drift
-  returns `:mqtt_configuration_changed` or `:mqtt_credential_changed` in an
-  error tuple. No load or check opens a broker or selects a target.
+  `native_request/1` reconstructs a present source against private authoring
+  policy and rechecks its witnesses. For Keychain mode the result is
+  `{:ok, %{sha256: digest, seal: seal}}`; absent/other policy returns `{:ok, nil}`.
+  It selects no Keychain account or secret itself.
+
+  `check/3` returns `:ok` only for unchanged file witnesses and the completely
+  rebuilt prepared basis, including live native custody when selected, or for
+  continued witnessed absence. Errors include `:mqtt_configuration_changed`,
+  `:mqtt_credential_changed` and `:mqtt_native_credential_unavailable`. Checking
+  neither consumes nor renews a native capability. No load or check opens a
+  broker or selects a target.
 
   `publish/3` requires an existing private root, installed authoring policy and
   an explicit private source. It validates and rechecks before non-replacing,
@@ -35,15 +48,18 @@ defmodule WotexHome.Host.MQTTConfiguration do
   Exact-byte retry succeeds; different destination bytes return
   `{:error, :mqtt_configuration_exists}`. Invalid, unavailable and missing-policy
   refusals retain fixed configuration, credential or producer errors rather than
-  file bodies or foreign failure terms.
+  file bodies or foreign failure terms. Publishing Keychain source policy does
+  not read Keychain or consume a native capability.
 
   Install authoring and required credentials first, MQTT source policy last,
   then start `WotexHome.Host`. Selection is immutable for one Host incarnation;
   these files are neither hot-reloaded nor restored from Store/profile backups.
+  Keychain mode requires a fresh native bootstrap on a new Core startup; a
+  consumed capability cannot reconnect after a Store-child restart.
   """
 
   alias WotexHome.Host.{ProfileConfiguration, ProfileInstallation}
-  alias WotexHome.MQTT.{Configuration, Credential}
+  alias WotexHome.MQTT.{Configuration, Credential, NativeCredential}
   alias WotexHome.Profiles.{AuthoringProducer, EnvelopeCodec, ReaderSelection}
   alias WotexHome.Recovery.PrivateFile
   @filename "mqtt-source-v1.json"
@@ -130,11 +146,11 @@ defmodule WotexHome.Host.MQTTConfiguration do
 
   def decode(_, _), do: invalid()
 
-  def load(root, authoring) do
+  def load(root, authoring, native_credential \\ nil) do
     with {:ok, witness} <- PrivateFile.directory_witness(root) do
       case File.lstat(Path.join(root, @filename)) do
         {:error, :enoent} -> {:ok, %Absence{directory: root, witness: witness}}
-        {:ok, _} -> load_present(root, authoring)
+        {:ok, _} -> load_present(root, authoring, native_credential)
         _ -> unavailable()
       end
     else
@@ -142,12 +158,13 @@ defmodule WotexHome.Host.MQTTConfiguration do
     end
   end
 
-  defp load_present(_, nil), do: {:error, :mqtt_profile_configuration_required}
+  defp load_present(_, nil, _), do: {:error, :mqtt_profile_configuration_required}
 
-  defp load_present(root, authoring) do
+  defp load_present(root, authoring, native_credential) do
     with {:ok, bytes, seal} <- PrivateFile.read_sealed(Path.join(root, @filename), @maximum),
          {:ok, prepared} <- decode(bytes, authoring),
-         {:ok, credential} <- credential(root, prepared.authentication) do
+         {:ok, credential} <-
+           selected_credential(root, prepared.authentication, bytes, seal, native_credential) do
       prepared = bind_provider(prepared, credential)
 
       {:ok,
@@ -160,6 +177,30 @@ defmodule WotexHome.Host.MQTTConfiguration do
     else
       {:error, :private_custody_unavailable} -> unavailable()
       error -> error
+    end
+  end
+
+  @doc "Reconstructs the exact source requesting native custody before any Store starts."
+  def native_request(root) do
+    case File.lstat(Path.join(root, @filename)) do
+      {:error, :enoent} ->
+        {:ok, nil}
+
+      {:ok, _} ->
+        with {:ok, %ProfileConfiguration.Snapshot{} = profile} <- ProfileConfiguration.load(root),
+             {:ok, bytes, seal} <- PrivateFile.read_sealed(Path.join(root, @filename), @maximum),
+             {:ok, prepared} <- decode(bytes, profile.configuration),
+             :ok <- ProfileConfiguration.check(profile, root),
+             {:ok, ^bytes, ^seal} <- PrivateFile.read_sealed(Path.join(root, @filename), @maximum) do
+          if prepared.authentication == "keychain",
+            do: {:ok, %{sha256: AuthoringProducer.sha(bytes), seal: seal}},
+            else: {:ok, nil}
+        else
+          _ -> unavailable()
+        end
+
+      _ ->
+        unavailable()
     end
   end
 
@@ -189,6 +230,7 @@ defmodule WotexHome.Host.MQTTConfiguration do
          do: :ok,
          else: (
            {:error, :mqtt_credential_changed} = error -> error
+           {:error, :mqtt_native_credential_unavailable} = error -> error
            _ -> changed()
          )
   end
@@ -217,7 +259,7 @@ defmodule WotexHome.Host.MQTTConfiguration do
 
   defp connection(c) do
     with true <- EnvelopeCodec.keys?(c, ~w(address authentication local_address port tls)),
-         true <- c["authentication"] in ~w(none password),
+         true <- c["authentication"] in ~w(none password keychain),
          true <- c["authentication"] == "none" or c["tls"] != nil,
          {:ok, tls} <- tls(c["tls"]),
          {:ok, address} <- address(c["address"]),
@@ -256,13 +298,33 @@ defmodule WotexHome.Host.MQTTConfiguration do
 
   defp credential(_, "none"), do: {:ok, :none}
   defp credential(root, "password"), do: Credential.load(root)
+  defp credential(_, "keychain"), do: {:ok, :native_required}
+
+  defp selected_credential(_, "keychain", bytes, seal, cap) do
+    if NativeCredential.matches?(cap, AuthoringProducer.sha(bytes), seal),
+      do: {:ok, cap},
+      else: {:error, :mqtt_native_credential_required}
+  end
+
+  defp selected_credential(root, mode, _, _, _), do: credential(root, mode)
 
   defp bind_provider(prepared, credential),
     do: put_in(prepared, [:publisher, :connection, :credentials], provider(credential))
 
   defp provider(:none), do: fn -> :none end
+  defp provider(%NativeCredential{} = cap), do: fn -> NativeCredential.resolve(cap) end
   defp provider(credential), do: fn -> Credential.resolve(credential) end
   defp credential_basis(:none, _, "none"), do: :ok
+
+  defp credential_basis(%NativeCredential{sha256: sha, seal: seal} = cap, root, "keychain") do
+    with true <- seal.path == Path.join(root, @filename),
+         {:ok, bytes, ^seal} <- PrivateFile.read_sealed(seal.path, @maximum),
+         true <-
+           NativeCredential.matches?(cap, AuthoringProducer.sha(bytes), seal) and
+             sha == AuthoringProducer.sha(bytes),
+         do: :ok,
+         else: (_ -> {:error, :mqtt_native_credential_unavailable})
+  end
 
   defp credential_basis(
          %Credential{seal: %PrivateFile.Seal{path: path}} = reference,
@@ -276,6 +338,7 @@ defmodule WotexHome.Host.MQTTConfiguration do
 
   defp credential_basis(_, _, _), do: {:error, :mqtt_credential_changed}
   defp check_credential(:none), do: :ok
+  defp check_credential(:native_required), do: :ok
   defp check_credential(reference), do: Credential.check(reference)
 
   defp write(path, bytes, sync) do

@@ -27,12 +27,14 @@ defmodule WotexHome.Application do
   alias WotexHome.Host
 
   @impl true
-  def start(_type, _args) do
+  def start(_type, args) do
+    native = Keyword.get(args, :native_mqtt_credential)
+
     children =
       case Application.get_env(:wotex_home, :data_dir) ||
              System.get_env("WOTEX_HOME_DATA_DIR") do
         nil -> []
-        directory -> [{Host, data_dir: directory}]
+        directory -> [{Host, data_dir: directory, native_mqtt_credential: native}]
       end
 
     Supervisor.start_link(children, strategy: :one_for_one, name: WotexHome.Supervisor)

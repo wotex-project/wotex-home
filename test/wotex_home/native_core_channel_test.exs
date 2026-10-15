@@ -312,7 +312,20 @@ defmodule WotexHome.NativeCoreHostCLITest do
     refute File.exists?(Path.join(c.directory, "ipc/home.sock"))
   end
 
-  defp child(directory) do
+  @tag requires_socket: true
+  test "bootstrap wrong reply and oversized header refuse before SQLite", c do
+    for reply <- [frame("[\"wotex-home.native-mqtt-bootstrap@1\",\"credential\"]"), <<8193::32>>] do
+      port = child(c.directory, true)
+      {body, ""} = receive_frame(port, "")
+      assert body == "[\"wotex-home.native-mqtt-bootstrap@1\",\"none\"]"
+      assert Port.command(port, reply)
+      assert_receive {^port, {:exit_status, 1}}, 5_000
+      refute File.exists?(c.path)
+      refute File.exists?(Path.join(c.directory, "ipc/home.sock"))
+    end
+  end
+
+  defp child(directory, bootstrap \\ false) do
     port =
       Port.open({:spawn_executable, System.find_executable("mix")}, [
         :binary,
@@ -325,6 +338,7 @@ defmodule WotexHome.NativeCoreHostCLITest do
            {~c"MIX_ENV", ~c"test"},
            {~c"WOTEX_HOME_GIT_DEPS", ~c"1"},
            {~c"WOTEX_HOME_DATA_DIR", String.to_charlist(directory)},
+           {~c"WOTEX_HOME_NATIVE_MQTT_BOOTSTRAP", if(bootstrap, do: ~c"1", else: false)},
            {~c"WOTEX_HOME_LIFX_INTERFACE", false}
          ]}
       ])

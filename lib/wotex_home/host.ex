@@ -188,7 +188,12 @@ defmodule WotexHome.Host do
       case File.lstat(data_dir) do
         {:ok, %{type: :directory}} ->
           with {:ok, canonical} <- canonical_directory(data_dir, 32),
-               do: MQTTConfiguration.load(canonical, profile_input(selection))
+               do:
+                 MQTTConfiguration.load(
+                   canonical,
+                   profile_input(selection),
+                   Keyword.get(opts, :native_mqtt_credential)
+                 )
 
         _ ->
           {:ok, :absent}

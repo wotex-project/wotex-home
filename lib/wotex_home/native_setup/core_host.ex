@@ -2,14 +2,28 @@ defmodule WotexHome.NativeSetup.CoreHost do
   @moduledoc """
   Runs the normal Home host owned by one private native-parent process.
 
-  `main/0` requires the explicit absolute data-root setting and refuses to take
-  over an already running Home application. It starts its own Host, serves the
-  private setup bridge on the parent's framed channel, and stops only the host
-  resources it acquired when the channel ends.
+  `main/0` is an entry point for the dedicated Core VM. It requires an absolute
+  `WOTEX_HOME_DATA_DIR` and refuses an already running Home application with
+  `{:error, :native_setup_unavailable}`. It owns its Host resources and serves
+  `WotexHome.NativeSetup.Bridge` on the original parent's framed channel rather
+  than attaching to another controller.
 
-  This entry point does not attach to an arbitrary existing controller or infer
-  credential custody. Installed profile startup policy uses the same Host
-  boundary as other normal application startup.
+  With the nonsecret `WOTEX_HOME_NATIVE_MQTT_BOOTSTRAP=1` flag, required
+  dependencies start first, then `WotexHome.NativeSetup.MQTTBootstrap.run/2`
+  completes before Store/socket acquisition. Its source-bound capability passes
+  through `WotexHome.Application.start/2` arguments to Host, not an environment
+  variable or public API field. Without the flag, normal application startup
+  applies; Keychain policy without a matching native capability fails closed.
+  The flag enables the exchange and is not proof of signing or Keychain access.
+
+  Known Logger handlers are routed to stderr before serving so diagnostics
+  cannot corrupt framed stdout. Channel completion stops only the supervisor
+  and native credential owner acquired here. This owned run terminates the VM
+  with status 0 on success or 1 with a fixed diagnostic on failure.
+
+  Installed profile and MQTT policy retain the normal `WotexHome.Host` checks.
+  The entry point creates no target grant or physical qualification, and a new
+  native Core startup requires a fresh bootstrap for Keychain mode.
   """
 
   alias WotexHome.Host
@@ -34,7 +48,7 @@ defmodule WotexHome.NativeSetup.CoreHost do
            true <- Path.type(directory) == :absolute,
            :ok <- :io.setopts(:standard_io, binary: true, encoding: :latin1),
            :ok <- own_logger(),
-           {:ok, _} <- Application.ensure_all_started(:wotex_home) do
+           {:ok, owned} <- start_home(directory) do
         try do
           if own_logger() == :ok and logger_owned?() and is_pid(Host.store()) do
             case Bridge.run(Host.authority()) do
@@ -49,7 +63,7 @@ defmodule WotexHome.NativeSetup.CoreHost do
         catch
           _, _ -> 1
         after
-          Application.stop(:wotex_home)
+          stop_home(owned)
           Logger.flush()
         end
       else
@@ -58,6 +72,44 @@ defmodule WotexHome.NativeSetup.CoreHost do
 
     if status != 0, do: IO.puts(:stderr, "native core channel unavailable")
     System.stop(status)
+  end
+
+  defp start_home(directory) do
+    if System.get_env("WOTEX_HOME_NATIVE_MQTT_BOOTSTRAP") == "1" do
+      Application.load(:wotex_home)
+      dependencies = Application.spec(:wotex_home, :applications)
+
+      with :ok <-
+             Enum.reduce_while(dependencies, :ok, fn app, _ ->
+               case Application.ensure_all_started(app) do
+                 {:ok, _} -> {:cont, :ok}
+                 _ -> {:halt, :error}
+               end
+             end),
+           :ok <- own_logger(),
+           {:ok, credential} <- WotexHome.NativeSetup.MQTTBootstrap.run(directory) do
+        case WotexHome.Application.start(:normal, native_mqtt_credential: credential) do
+          {:ok, supervisor} ->
+            {:ok, {:native, supervisor, credential}}
+
+          error ->
+            WotexHome.MQTT.NativeCredential.stop(credential)
+            error
+        end
+      end
+    else
+      with {:ok, _} <- Application.ensure_all_started(:wotex_home), do: {:ok, :application}
+    end
+  end
+
+  defp stop_home(:application), do: Application.stop(:wotex_home)
+
+  defp stop_home({:native, supervisor, credential}) do
+    try do
+      Supervisor.stop(supervisor)
+    after
+      WotexHome.MQTT.NativeCredential.stop(credential)
+    end
   end
 
   # Handler output type is immutable after installation. Replace only the

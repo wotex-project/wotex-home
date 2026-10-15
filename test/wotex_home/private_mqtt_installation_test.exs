@@ -9,7 +9,7 @@ defmodule WotexHome.PrivateMQTTInstallationTest do
   alias WotexHome.{Host, Authority}
   alias WotexHome.Durable.Store
   alias WotexHome.Host.{ProfileConfiguration, MQTTConfiguration, MQTTInstallation}
-  alias WotexHome.MQTT.{Credential, Publisher}
+  alias WotexHome.MQTT.{Credential, NativeCredential, Publisher}
   alias WotexHome.Profiles.ExternalSourceOwner
   alias WotexHome.TestSupport.MQTTFixture, as: F
   @moduletag :requires_socket
@@ -434,6 +434,177 @@ defmodule WotexHome.PrivateMQTTInstallationTest do
     File.ln_s!(path <> ".real", path)
     assert {:error, :mqtt_credential_unavailable} = Credential.load(c.root)
     refute File.exists?(Path.join(c.root, "home.sqlite"))
+  end
+
+  test "source-scoped native capability is required before Store and consumed only by TLS", c do
+    tls =
+      WotexHome.TestSupport.ControllerTLSFixture.create(Path.join(c.root, "tls"), "mqtt.example")
+
+    c =
+      prepare(c,
+        tls: [
+          certfile: String.to_charlist(tls.certificates["valid"]),
+          keyfile: String.to_charlist(tls.key)
+        ]
+      )
+
+    document =
+      c.document
+      |> put_in(["connection", "authentication"], "keychain")
+      |> put_in(["connection", "tls"], %{
+        "server_name" => "mqtt.example",
+        "cacerts" => [Base.encode64(tls.ca)]
+      })
+
+    c = install(%{c | document: document})
+    assert {:error, :mqtt_native_credential_required} = Host.start_link(data_dir: c.root)
+    refute File.exists?(Path.join(c.root, "home.sqlite"))
+    refute File.exists?(Path.join(c.root, "ipc"))
+    assert {:ok, selected} = MQTTConfiguration.native_request(c.root)
+
+    assert {:ok, cap} =
+             NativeCredential.start_link(
+               selected.sha256,
+               selected.seal,
+               {:password, "native-user-canary", "native-password-canary"}
+             )
+
+    on_exit(fn -> NativeCredential.stop(cap) end)
+    forged = %{cap | sha256: String.duplicate("0", 64)}
+
+    assert {:error, :mqtt_native_credential_required} =
+             Host.start_link(data_dir: c.root, native_mqtt_credential: forged)
+
+    assert {:ok, snapshot} = MQTTConfiguration.load(c.root, c.profile, cap)
+    assert :ok = MQTTConfiguration.check(snapshot, c.root, c.profile)
+    h = start_host(c, native_mqtt_credential: cap)
+    assert_receive {:mqtt_connect, _, connect}
+    assert connect =~ "native-user-canary" and connect =~ "native-password-canary"
+    assert {:error, :mqtt_native_credential_unavailable} = NativeCredential.resolve(cap)
+    refute File.exists?(Path.join(c.root, Credential.filename()))
+    refute inspect(:sys.get_status(MQTTInstallation)) =~ "native-password-canary"
+    store = h.store
+    Process.exit(store, :kill)
+    wait(fn -> Host.store() != nil and Host.store() != store end)
+    refute_receive {:mqtt_connect, _, _}
+    assert Process.whereis(MQTTInstallation) == nil
+  end
+
+  test "actual native Core pipe bootstraps the exact policy before TLS and closes on parent EOF",
+       c do
+    tls =
+      WotexHome.TestSupport.ControllerTLSFixture.create(Path.join(c.root, "tls"), "mqtt.example")
+
+    c =
+      prepare(c,
+        tls: [
+          certfile: String.to_charlist(tls.certificates["valid"]),
+          keyfile: String.to_charlist(tls.key)
+        ]
+      )
+
+    document =
+      c.document
+      |> put_in(["connection", "authentication"], "keychain")
+      |> put_in(["connection", "tls"], %{
+        "server_name" => "mqtt.example",
+        "cacerts" => [Base.encode64(tls.ca)]
+      })
+
+    c = install(%{c | document: document})
+    python = System.find_executable("python3")
+
+    script = ~S"""
+    import base64, hashlib, json, os, struct, subprocess, sys
+    environment = dict(os.environ, WOTEX_HOME_DATA_DIR=sys.argv[1], MIX_ENV='test', WOTEX_HOME_GIT_DEPS='1', WOTEX_HOME_NATIVE_MQTT_BOOTSTRAP='1')
+    environment.pop('WOTEX_HOME_LIFX_INTERFACE', None)
+    process = subprocess.Popen(['mix','run','--no-start','--no-compile','--no-deps-check','bin/native_core_host.exs'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=environment)
+    def read():
+      header = process.stdout.read(4)
+      assert len(header) == 4
+      size = struct.unpack('>I', header)[0]
+      assert 1 <= size <= 4096
+      data = process.stdout.read(size)
+      assert len(data) == size
+      return json.loads(data)
+    def write(values):
+      body = json.dumps(values, separators=(',',':')).encode()
+      process.stdin.write(struct.pack('>I', len(body)) + body)
+      process.stdin.flush()
+    try:
+      sha = hashlib.sha256(open(sys.argv[1] + '/mqtt-source-v1.json','rb').read()).hexdigest()
+      assert read() == ['wotex-home.native-mqtt-bootstrap@1','credential',sha]
+      assert not os.path.exists(sys.argv[1] + '/home.sqlite')
+      write(['wotex-home.native-mqtt-bootstrap@1','credential',sha,'fixture-user','Zml4dHVyZS1wYXNzd29yZA=='])
+      write(['wotex-home.native-setup-authority.v1','identity'])
+      identity = read()
+      assert identity[0:2] == ['wotex-home.native-setup-authority.v1','identity']
+      assert len(identity) == 6 and identity[4:] == [1,0]
+      process.stdin.close()
+      assert process.wait(timeout=5) == 0
+      assert process.stdout.read(1) == b''
+      assert b'fixture-password' not in process.stderr.read(8193)
+      print('native MQTT Core startup and EOF passed')
+    finally:
+      if process.poll() is None:
+        process.kill()
+        process.wait(timeout=5)
+    """
+
+    assert {:ok, "native MQTT Core startup and EOF passed\n"} =
+             Woh.Tool.Command.run(python, ["-c", script, c.root], 16_384, 15_000)
+
+    assert_receive {:mqtt_connect, _, connect}
+    assert connect =~ "fixture-user" and connect =~ "fixture-password"
+    assert {:ok, lock} = WotexHome.Durable.HostLock.acquire(Path.join(c.root, "home.sqlite"))
+    assert :ok = WotexHome.Durable.HostLock.release(lock)
+    refute File.exists?(Path.join(c.root, Credential.filename()))
+    refute File.exists?(Path.join(c.root, "ipc/home.sock"))
+    refute File.read!(Path.join(c.root, "home.sqlite")) =~ "fixture-password"
+  end
+
+  test "changed raw source or expired native custody refuses before acquiring Store", c do
+    tls =
+      WotexHome.TestSupport.ControllerTLSFixture.create(Path.join(c.root, "tls"), "mqtt.example")
+
+    c = prepare(c)
+
+    document =
+      c.document
+      |> put_in(["connection", "authentication"], "keychain")
+      |> put_in(["connection", "tls"], %{
+        "server_name" => "mqtt.example",
+        "cacerts" => [Base.encode64(tls.ca)]
+      })
+
+    c = install(%{c | document: document})
+    assert {:ok, selected} = MQTTConfiguration.native_request(c.root)
+
+    assert {:ok, cap} =
+             NativeCredential.start_link(selected.sha256, selected.seal, {:password, "u", "p"})
+
+    on_exit(fn -> NativeCredential.stop(cap) end)
+    path = Path.join(c.root, MQTTConfiguration.filename())
+    File.chmod!(path, 0o600)
+    File.write!(path, File.read!(path) <> "\n")
+    File.chmod!(path, 0o400)
+
+    assert {:error, :mqtt_native_credential_required} =
+             Host.start_link(data_dir: c.root, native_mqtt_credential: cap)
+
+    assert {:ok, selected} = MQTTConfiguration.native_request(c.root)
+
+    assert {:ok, fresh} =
+             NativeCredential.start_link(selected.sha256, selected.seal, {:password, "u", "p"})
+
+    on_exit(fn -> NativeCredential.stop(fresh) end)
+    :sys.replace_state(fresh.owner, &%{&1 | deadline: System.monotonic_time(:millisecond) - 1})
+
+    assert {:error, :mqtt_native_credential_required} =
+             Host.start_link(data_dir: c.root, native_mqtt_credential: fresh)
+
+    refute File.exists?(Path.join(c.root, "home.sqlite"))
+    refute_receive {:mqtt_connect, _, _}
   end
 
   test "partial broker setup failure retires all children and redacts the startup report", c do
