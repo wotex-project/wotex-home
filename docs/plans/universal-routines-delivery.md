@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.9. Updated: 2026-10-15. Accepted build order; implementation and
+Version: 0.1.10. Updated: 2026-10-15. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -280,3 +280,16 @@ frozen before the harness; current-runtime and regenerated Mapping drift checks
 pass. Next specify qualified current Store fact collection and its transaction/
 continuity evidence before implementation. Complete-set composition and broader
 admission remain open.
+
+
+## Current external input prerequisites
+
+Source review at aa8ec898 found two explicit missing owners: qualified external
+Mapping installation and the original consumed report lifetime. Implement the
+[Store-only lifetime witness](../specs/external-report-lifetime-v1.md) first,
+following its committed closed schema and independent signed/exclusive-deadline
+vectors. Keep original publication/consumption receipts and the existing quotas.
+Then specify reviewed current Mapping installation and atomic complete current
+collection, including actor/grant/semantic/source qualification, Store boot,
+rebuild/revision/current-final guards and baseline continuity. Do not promote
+ordinary profile approval or fabricate an owner deadline from current defaults.

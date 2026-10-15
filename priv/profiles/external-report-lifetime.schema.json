@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:wotex-home:schema:external-report-lifetime:1",
+  "title": "Consumed external report lifetime witness",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "channel_id",
+    "expires_at_us",
+    "format",
+    "owner_epoch",
+    "receipt_monotonic_us",
+    "report_id",
+    "report_sha256",
+    "sequence",
+    "source_epoch",
+    "source_owner_epoch",
+    "source_ref",
+    "source_selection_sha256",
+    "state"
+  ],
+  "properties": {
+    "format": {
+      "const": "wotex-home.external-report-lifetime@1"
+    },
+    "owner_epoch": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+    },
+    "report_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])"
+    },
+    "source_owner_epoch": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+    },
+    "source_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])"
+    },
+    "source_selection_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+    },
+    "channel_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])"
+    },
+    "source_epoch": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$(?![\\s\\S])"
+    },
+    "sequence": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,19})$(?![\\s\\S])"
+        }
+      ]
+    },
+    "report_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+    },
+    "state": {
+      "const": "consumed"
+    },
+    "receipt_monotonic_us": {
+      "type": "string",
+      "maxLength": 20,
+      "pattern": "^(0|-?[1-9][0-9]{0,18})$(?![\\s\\S])"
+    },
+    "expires_at_us": {
+      "type": "string",
+      "maxLength": 20,
+      "pattern": "^(0|-?[1-9][0-9]{0,18})$(?![\\s\\S])"
+    }
+  }
+}

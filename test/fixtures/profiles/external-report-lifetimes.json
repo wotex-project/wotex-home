@@ -1,0 +1,99 @@
+{
+  "oracle": "Independent signed-integer addition; no owner clock or production constructor",
+  "ttl_ms": 60000,
+  "families": {
+    "temperature": {
+      "expected": {
+        "format": "wotex-home.external-report-lifetime@1",
+        "owner_epoch": "ffffffffffffffffffffffffffffffff",
+        "report_id": "report:1",
+        "source_owner_epoch": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_ref": "source:independent",
+        "source_selection_sha256": "c2c20eec5bd4e19a529c2fced677be242e5d69ddf954c870019fcc6b1e0c4510",
+        "channel_id": "sample",
+        "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "sequence": "7",
+        "report_sha256": "34c20626cefbcc4233b968d0b93a36ee22950f6707f530f26d19404e25cad92d",
+        "state": "consumed",
+        "receipt_monotonic_us": "-5",
+        "expires_at_us": "59999995"
+      },
+      "checks": [
+        {
+          "now_us": "59999994",
+          "expected": "live"
+        },
+        {
+          "now_us": "59999995",
+          "expected": "external_report_retired"
+        },
+        {
+          "now_us": "59999996",
+          "expected": "external_report_retired"
+        }
+      ]
+    },
+    "research": {
+      "expected": {
+        "format": "wotex-home.external-report-lifetime@1",
+        "owner_epoch": "ffffffffffffffffffffffffffffffff",
+        "report_id": "report:1",
+        "source_owner_epoch": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_ref": "source:independent",
+        "source_selection_sha256": "4c73c25589670e00916f1ff0767cf88e256eba041e6300941ec38cadc7cf7d59",
+        "channel_id": "sample",
+        "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "sequence": "7",
+        "report_sha256": "82cc30a99f8cb53a6b045599d8f9a25fd3580b6b09d4f42452cd62df47c8301f",
+        "state": "consumed",
+        "receipt_monotonic_us": "-5",
+        "expires_at_us": "59999995"
+      },
+      "checks": [
+        {
+          "now_us": "59999994",
+          "expected": "live"
+        },
+        {
+          "now_us": "59999995",
+          "expected": "external_report_retired"
+        },
+        {
+          "now_us": "59999996",
+          "expected": "external_report_retired"
+        }
+      ]
+    },
+    "multi": {
+      "expected": {
+        "format": "wotex-home.external-report-lifetime@1",
+        "owner_epoch": "ffffffffffffffffffffffffffffffff",
+        "report_id": "report:1",
+        "source_owner_epoch": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_ref": "source:independent",
+        "source_selection_sha256": "6d98456852eb103be9b58d2ae310d336f5bd1e55feffdd784cbaa966933f88f4",
+        "channel_id": "density",
+        "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "sequence": "7",
+        "report_sha256": "47054b6f07bdb86a9478ccbac67638b96455e49c4bc39bc0ab84ff2394bc4850",
+        "state": "consumed",
+        "receipt_monotonic_us": "-5",
+        "expires_at_us": "59999995"
+      },
+      "checks": [
+        {
+          "now_us": "59999994",
+          "expected": "live"
+        },
+        {
+          "now_us": "59999995",
+          "expected": "external_report_retired"
+        },
+        {
+          "now_us": "59999996",
+          "expected": "external_report_retired"
+        }
+      ]
+    }
+  }
+}

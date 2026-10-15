@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.15. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.16. Updated: 2026-10-15. Status: accepted target.
 Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, and inert external reader-to-Fact projection.
 Evidence: finite software subset; full acceptance cases remain open.
 
@@ -298,3 +298,11 @@ archive cases and catches identity/original-coordinate mutants through assertion
 Thirteen focused native/schema cases include current runtime inventory and
 regenerated Mapping drift refusals. This completes the inert software contract;
 current Store fact collection, rule admission and dispatch remain separate.
+
+
+The [consumed report lifetime contract](external-report-lifetime-v1.md) is the
+next concrete prerequisite for qualified current collection. Durable v1 retains
+the original Store receipt coordinate but no report-owner deadline; the native
+owner currently discards that deadline after consumption. A bounded Store-only
+witness must preserve it without processing-time renewal or a new durable format.
+Reviewed Mapping installation and complete current collection follow separately.
