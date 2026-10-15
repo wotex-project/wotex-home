@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.15. Updated: 2026-10-15. Accepted build order; implementation and
+Version: 0.1.16. Updated: 2026-10-15. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -310,6 +310,8 @@ successor. Current status and remaining order:
    software foundations and create no current Store installation or Fact.
 2. Retained package/input/outcome/receipt codecs and the exact original join are
    implemented; thirty-three focused retention/Definition/review/entry cases pass.
+   The exact schema/retained graph and source-revision recovery projection are
+   now specified, including unchanged v1 commitments after empty migration.
    Implement schema 38 operation/history/current tables, exact original-first
    install/revoke, atomic withdrawal, integrity/migration and quarantined recovery.
 3. Implement Store-owned complete requested-scope collection from actual private

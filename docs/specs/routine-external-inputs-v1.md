@@ -1,6 +1,6 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.5. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.6. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition and
 signed-review verifier and retained codec foundations. Evidence: entry, native
@@ -386,6 +386,64 @@ Each history row has its own external_input_installed, external_input_revoked or
 external_input_withdrawn journal event with target entity ID, even when several
 slots retire in one enclosing transaction. No prior receipt is rewritten.
 
+All three tables use SQLite's ordinary rowid representation. All columns are
+NOT NULL except history cause_revision. Identity, action, state and document
+columns have TEXT affinity; counters/revisions have INTEGER affinity. Operations
+principal_id references principals(principal_id). History target_id and current
+target_id each reference enrolled_things(thing_id). History additionally has
+UNIQUE(target_id, capability_key, revision), so both current foreign keys are
+scoped to that exact slot: (target_id, capability_key, history_revision) and
+(target_id, capability_key, install_revision) reference that history triple.
+History cause_revision references authority_journal(revision). No cascading
+deletion, explicit index, trigger, view or alternate head is added.
+
+SQL CHECK constraints require integer-typed positive authority epochs,
+generations and revisions; current install_revision <= history_revision; and
+positive cause_revision < revision only for withdraw. For install/revoke,
+cause_revision is null. Actions/states have the closed enums above. Installed
+current rows require history_revision = install_revision; revoked current rows
+require history_revision > install_revision. Documents are nonempty text and
+their UTF-8 byte ceilings are input/outcome 524288 and receipt 4096. Home ID
+grammar, exact signed-64 bounds and canonical document contents are repeated by
+semantic validation rather than inferred from SQLite affinity. Retained table
+DDL is fixed by this migration; whitespace normalization is permitted, semantic
+DDL changes, missing autoindexes and additional domain indexes/triggers refuse
+even when all three tables are empty.
+
+Integrity walks history by ascending revision, independently for each target/key.
+The first row is install at generation 1; every subsequent generation is exactly
+the preceding generation plus one. Install/revoke rows correspond one-to-one to
+their scoped operations and exact outcome bytes. Receipt revision/generation and
+input expected_install_revision/expected_generation agree with the preceding
+slot (0/0 only when missing). Revoke and withdraw require an installed predecessor
+and preserve its exact package and Definition SHA, changing only outcome action.
+Install replaces the installation revision with its own; every other transition
+retains the preceding installation revision. The current relation is exactly the
+latest history row for every slot, with no missing or additional head. Every
+operation has an existing principal and an epoch no later than meta's authority
+epoch; every history row is at or before meta's revision. The complete set of
+external-input journal events equals the complete history relation.
+
+A withdrawal has no user operation and cites the first applicable durable loss
+after its installed predecessor, before its own history revision. Applicable
+causes are target selection/replacement/revocation or enrollment loss for that
+target; external profile approval/revocation advancing the globally bound policy;
+revocation of the installer, selector or approver; removal of any such author's
+whole-Thing grant; or controller source retirement/destination acceptance.
+Native target-grant revocation resolves its principal/target through its retained
+native operation rather than parsing a concatenated journal entity. An installed
+head or later explicit user change cannot skip an earlier applicable loss.
+Regranting an author never removes that loss. Transient source/producer/runtime
+absence has no invented journal cause; current use must still refuse it.
+
+The internal ExternalInputs collaborator exposes schema/0 and tables/0 for the
+single schema/recovery owners, validate/1 for this complete retained graph and
+capacity/5 with nonnegative prospective operation/history/slot/byte increments.
+It borrows Store's handle and opens no transaction or connection. Validation
+normalizes malformed domain data to corrupt_external_inputs; prospective
+capacity returns external_input_capacity and propagates actual SQL errors.
+These historical primitives do not authenticate a caller or install a package.
+
 Outcome has exactly format wotex-home.external-input-result@1, action, target_id,
 capability_key, definition_sha256 and package_document; install retains its exact
 package, revoke/withdraw retain the last installed package and definition identity.
@@ -569,14 +627,31 @@ fences Store startup/writes; current signature/runtime checks remain separate.
 
 Backup and recovery inventories include all three actual tables and sanitized
 package bytes for schema 38. Earlier schemas declare empty new tables. Include
-explicit retained/current input row counts and external_inputs_reactivate false;
-no reviewer key, live lifetime pair, source owner, private raw artifact or Store
+external_input_operation_rows, external_input_history_rows,
+external_input_current_rows, external_input_installed_rows and
+external_inputs_reactivate false. Each count is an integer from the actual table
+or zero for an earlier schema; installed counts only state=installed and is not
+a claim of current usability. Retained input packages require independently
+configured reviewer keys for current use. No
+reviewer key, live lifetime pair, source owner, private raw artifact or Store
 boot authority is restored. Inclusive, database-only and normalized transfer stay
 quarantined. A source/Store restart requires fresh current selection and review
 against its new clock context; old scoped receipts remain history and cannot add
 this-boot markers. Lost replies recover the original before signing/installing
 again. Cancellation/refusal does not refund a retained original or silently retry
 an uncertain enclosing effect.
+
+The full schema-38 snapshot commitment covers the actual 62 user tables and 68
+non-internal schema objects (six existing explicit indexes, no new explicit
+index). Its existing row/byte ceilings remain unchanged. For the normalized v1
+retained transfer commitment, omit all three input-domain tables when no input
+history exists at or before the source retirement revision. This preserves
+existing schema-37 commitments after an empty migration. Otherwise include exact
+operation/history rows through that source revision and reconstruct each current
+head from its latest history through that revision, including the last install
+revision in that slot. Later acceptance/withdrawal never changes this projection.
+The pre-transfer and post-acceptance retained commitments must remain identical;
+adding empty tables, later heads or a new boot never authorizes reactivation.
 
 ## Implementation entry and acceptance
 
