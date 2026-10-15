@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.78. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.79. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
 now defines fresh signed authorization after human review, unchanged first originals,
@@ -31,7 +31,9 @@ now has [framed and real Store evidence](../provenance/native-external-profile-r
 The [v9 external-profile journal](native-pending-external-profiles-v9.md) now has
 [executed independent, native and private-process evidence](../provenance/native-pending-external-profiles-2026-10.md)
 for complete originals, monotone compatibility and pre-consumer refusal. Fixed
-mutation/recovery and selected confirmations remain successors.
+mutation/recovery is specified by the [fixed SDK](native-external-profile-sdk-v1.md),
+including status-first retry, complete receipt correspondence and local pending
+recovery. Implementation/evidence are pending; selected confirmations follow.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)
 defines durable root/attempt workspace custody, explicit policy/consent/budget,
