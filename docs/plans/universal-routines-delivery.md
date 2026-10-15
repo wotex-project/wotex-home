@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.4. Updated: 2026-10-13. Accepted build order; implementation and
+Version: 0.1.5. Updated: 2026-10-15. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -216,3 +216,29 @@ source replacement and foreign-epoch proposals refuse without publication.
 The owning rule/temporal software milestone passed 115 tests. Stage 6 still
 requires qualified facts/continuity, complete-set collection, composed run/step
 roots, durable completion and wider admission; those contracts are next.
+
+## External input execution checkpoint
+
+The generic prerequisite now passes its own bounded software milestone. WoTEx
+743ef568 implements the complete external binding, null receipt UTC and explicit
+floor precision; d1b2e87b records native/archive execution, four behavioral mutants
+and the full 179-test, 95.4% package gate. Home still selects f3e77a43. See the
+[exact source review](../provenance/routines-external-input-2026-10.md).
+
+Continue stage 6 in this order:
+
+1. Specify and freeze the bounded Home original-reader/fact correspondence,
+   independent unit/identity/negative-clock vectors and inert result grammar.
+   A Home ExternalValue may already contain converted data, so reexecute the
+   original WPF report under the exact checked envelope; retain both witnesses.
+2. Select and verify the coherent producer cohort, then implement that pure
+   projection with focused reader-to-evaluation/kernel and failure tests. Preserve
+   runtime-proof invalidation and historical originals under the source change.
+3. Specify qualified current Store collection and its exact authenticated scope,
+   semantic/source installation, report/resource/selection revisions, current/final
+   guards and reconnect/restart/expiry behavior before adding a current fact route.
+4. Implement complete-set and composed run/step/root persistence plus their bounded
+   admission proof, rollback/history/restart and independent correspondence cases.
+
+This checkpoint neither extends the legacy FactReadModel nor changes observation
+admission, grants, active rules, clocks or default-disabled physical dispatch.

@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.10. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.11. Updated: 2026-10-15. Status: accepted target.
 Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join.
 Evidence: finite software subset; full acceptance cases remain open.
 
@@ -267,3 +267,19 @@ cancellation advances request outcomes; restored archives remain quarantined.
 Profile-custody loss, source replacement and foreign-epoch proposals also refuse
 without publication. The owning rule/temporal software milestone passed 115 tests.
 Full composed execution and sensor joins remain subsequent WOH.20 obligations.
+
+## External input producer checkpoint
+
+WoTEx now implements the bounded external input execution join: complete installed
+external binding, required-but-null receipt UTC, explicit conservative precision,
+native reader-to-kernel/edge paths and two extracted execution consumers with
+identity/rounding mutations. Its full owning package milestone passes. The
+[cohort and Home source review](../provenance/routines-external-input-2026-10.md)
+distinguishes that producer evidence from Home's unchanged selected source.
+
+The next Home contract must reconstruct the original public reader Proposal from
+the exact retained report/envelope, rather than strip Home-converted value fields.
+Define the inert correspondence and explicit Store receive-clock/expiry basis
+before implementing it. Qualified current facts, complete-set collection, durable
+composition and wider admission follow their own current Store/proof contracts;
+external read approval and a generic constructor cannot supply those permissions.
