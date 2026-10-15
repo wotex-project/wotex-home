@@ -33,11 +33,14 @@ defmodule WotexHome.Profiles.RetainedSource do
          true <- epoch?(owner_epoch),
          i = selection.inputs,
          {:ok, inputs} <-
-           document(%{
-             "source" => i["source"],
-             "reader" => i["reader"].inputs,
-             "channels" => i["channels"]
-           }),
+           document(
+             %{
+               "source" => i["source"],
+               "reader" => i["reader"].inputs,
+               "channels" => i["channels"]
+             },
+             1
+           ),
          {:ok, reader} <- document(i["reader"].inputs),
          {:ok, policy} <- document(i["channels"]),
          {:ok, input_chunks} <- DocumentChunks.encode(inputs, 262_144),
@@ -67,7 +70,7 @@ defmodule WotexHome.Profiles.RetainedSource do
          {:ok, inputs_doc} <- DocumentChunks.decode(ic, 262_144),
          {:ok, reader_doc} <- DocumentChunks.decode(rc, 262_144),
          {:ok, policy_doc} <- DocumentChunks.decode(pc, 262_144),
-         {:ok, inputs} <- RetainedJSON.decode(inputs_doc),
+         {:ok, inputs} <- RetainedJSON.decode(inputs_doc, 9),
          {:ok, reader} <- RetainedJSON.decode(reader_doc),
          {:ok, channels} <- RetainedJSON.decode(policy_doc),
          true <- EnvelopeCodec.keys?(inputs, ~w(channels reader source)),
@@ -167,12 +170,12 @@ defmodule WotexHome.Profiles.RetainedSource do
            (c["value_kind"] == "external" and (is_nil(c["unit"]) or is_map(c["unit"])) and
               c["constraints"] == nil))
 
-  defp document(value) do
+  defp document(value, wrapper_depth \\ 0) do
     case apply(Wotex.JSON, :encode, [
            value,
            [
              max_bytes: 262_144,
-             max_depth: 8,
+             max_depth: 8 + wrapper_depth,
              max_nodes: 4096,
              max_collection_size: 256,
              max_string_bytes: 4096

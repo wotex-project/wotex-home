@@ -542,7 +542,7 @@ defmodule WotexHome.Profiles.ExternalSourceOwner do
            },
            [
              max_bytes: limits["max_bytes"],
-             max_depth: limits["max_depth"],
+             max_depth: limits["max_depth"] + 1,
              max_nodes: limits["max_nodes"],
              max_collection_size: 256,
              max_string_bytes: 4096

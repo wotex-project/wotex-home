@@ -70,6 +70,16 @@ defmodule WotexHome.ProducerCohortTest do
       assert {:git, "https://github.com/wotex-project/wotex.git", ^ref, _} = root[app]
       assert root[app] == firmware[app]
     end
+
+    for app <- [:emqtt, :cowlib, :gun, :getopt, :quicer, :snabbkaffe],
+        do: assert(root[app] == firmware[app])
+
+    assert {:hex, :emqtt, "1.16.1", _, _, _, _, _} = root[:emqtt]
+    deps = WotexHome.MixProject.project()[:deps]
+    assert {:emqtt, "== 1.16.1", emqtt_options} = List.keyfind(deps, :emqtt, 0)
+    assert emqtt_options[:system_env] == [{"BUILD_WITHOUT_QUIC", "1"}]
+    assert {:quicer, "== 0.2.15", quic_options} = List.keyfind(deps, :quicer, 0)
+    assert quic_options == [compile: false, app: false, runtime: false, override: true]
   end
 
   test "ordinary public profile producers match two independent contract and bundle byte vectors" do

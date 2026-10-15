@@ -2,14 +2,17 @@ defmodule WotexHome.Profiles.RetainedJSON do
   @moduledoc false
 
   # This is a bounded historical container, not a WPF parser or unit validator.
-  def decode(bytes) when is_binary(bytes) and byte_size(bytes) in 1..262_144 do
+  def decode(bytes, max_depth \\ 8)
+
+  def decode(bytes, max_depth)
+      when is_binary(bytes) and byte_size(bytes) in 1..262_144 and max_depth in [8, 9] do
     with true <- String.valid?(bytes),
          {value, {0, nodes, nil}, ""} when nodes <= 4096 <-
            JSON.decode(bytes, {0, 0, nil},
-             array_start: &start/1,
+             array_start: &start(&1, max_depth),
              array_push: &push/2,
              array_finish: &finish_array/2,
-             object_start: &start/1,
+             object_start: &start(&1, max_depth),
              object_push: &push_member/3,
              object_finish: &finish_object/2,
              string: &string/1,
@@ -26,15 +29,15 @@ defmodule WotexHome.Profiles.RetainedJSON do
     :throw, :invalid_retained_json -> invalid()
   end
 
-  def decode(bytes) when is_binary(bytes) and byte_size(bytes) > 262_144,
+  def decode(bytes, _) when is_binary(bytes) and byte_size(bytes) > 262_144,
     do: {:error, :external_profile_limit}
 
-  def decode(_), do: invalid()
+  def decode(_, _), do: invalid()
 
-  defp start({depth, nodes, _}) when depth < 8 and nodes < 4096,
+  defp start({depth, nodes, _}, max_depth) when depth < max_depth and nodes < 4096,
     do: {depth + 1, nodes + 1, []}
 
-  defp start(_), do: throw(:external_profile_limit)
+  defp start(_, _), do: throw(:external_profile_limit)
 
   defp push(value, {depth, nodes, values}) when length(values) < 256 do
     nodes = nodes + if(is_list(value) or is_map(value), do: 0, else: 1)

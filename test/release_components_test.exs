@@ -96,6 +96,33 @@ defmodule WotexHome.ReleaseComponentsTest do
     assert String.contains?(reason, "pinned otp license input differs")
   end
 
+  test "MQTT runtime packages retain the actual locked license bytes", %{release: release} do
+    for component <- ~w(emqtt-1.16.1 gun-2.7.0 cowlib-2.21.0 getopt-1.0.3),
+        do: File.mkdir_p!(Path.join([release, "lib", component]))
+
+    assert %{path: ^release} =
+             Woh.Tool.ReleaseLegal.include_mqtt_inputs(
+               %{path: release},
+               Path.join(@project, "deps")
+             )
+
+    for {app, version} <- [
+          {:emqtt, "1.16.1"},
+          {:gun, "2.7.0"},
+          {:cowlib, "2.21.0"},
+          {:getopt, "1.0.3"}
+        ] do
+      assert File.read!(Path.join([release, "lib", "#{app}-#{version}", "priv/LICENSE"])) ==
+               File.read!(Path.join([@project, "deps", Atom.to_string(app), "LICENSE"]))
+    end
+
+    File.rm_rf!(Path.join([release, "lib", "emqtt-1.16.1"]))
+
+    assert_raise Mix.Error, fn ->
+      Woh.Tool.ReleaseLegal.include_mqtt_inputs(%{path: release}, Path.join(@project, "deps"))
+    end
+  end
+
   test "keeps package notices distinct from complete license inputs", %{
     source: source,
     release: release

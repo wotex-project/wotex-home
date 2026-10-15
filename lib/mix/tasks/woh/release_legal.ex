@@ -13,6 +13,23 @@ defmodule Woh.Tool.ReleaseLegal do
   def wotex_udp_license, do: @wotex_udp_license
   def wotex_udp_notice, do: @wotex_udp_notice
 
+  def include_mqtt_inputs(release, dependencies) do
+    for {app, version} <- [
+          {:emqtt, "1.16.1"},
+          {:gun, "2.7.0"},
+          {:cowlib, "2.21.0"},
+          {:getopt, "1.0.3"}
+        ] do
+      application = Path.join([release.path, "lib", "#{app}-#{version}"])
+      unless File.dir?(application), do: Mix.raise("Missing locked MQTT runtime package: #{app}")
+      destination = Path.join(application, "priv/LICENSE")
+      File.mkdir_p!(Path.dirname(destination))
+      File.cp!(Path.join([dependencies, Atom.to_string(app), "LICENSE"]), destination)
+    end
+
+    release
+  end
+
   def matches?(path, digest, limit \\ 20_000) do
     case File.lstat(path) do
       {:ok, %File.Stat{type: :regular, size: size}} when size > 0 and size <= limit ->

@@ -29,7 +29,7 @@ defmodule WotexHome.Profiles.ExternalSourceSelection do
          :ok <- channel_shapes(channels),
          {:ok, selection} <- ReaderSelection.to_map(reader),
          encoded_inputs = %{"source" => source, "reader" => reader.inputs, "channels" => channels},
-         {:ok, bytes} <- bounded_json(encoded_inputs, selection["reader_limits"]),
+         {:ok, bytes} <- bounded_json(encoded_inputs, selection["reader_limits"], 1),
          :ok <- consumers(channels, selection),
          {:ok, policy_bytes} <- bounded_json(channels, selection["reader_limits"]) do
       data = %{
@@ -126,12 +126,12 @@ defmodule WotexHome.Profiles.ExternalSourceSelection do
     end)
   end
 
-  defp bounded_json(value, limits) do
+  defp bounded_json(value, limits, wrapper_depth \\ 0) do
     case apply(Wotex.JSON, :encode, [
            value,
            [
              max_bytes: limits["max_bytes"],
-             max_depth: limits["max_depth"],
+             max_depth: limits["max_depth"] + wrapper_depth,
              max_nodes: limits["max_nodes"],
              max_collection_size: 256,
              max_string_bytes: 4096

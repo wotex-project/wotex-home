@@ -115,6 +115,6 @@ defmodule WotexHome.Firmware.MixProject do
       )
     end
 
-    release
+    apply(Woh.Tool.ReleaseLegal, :include_mqtt_inputs, [release, Path.join(__DIR__, "deps")])
   end
 end

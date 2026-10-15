@@ -31,6 +31,7 @@ defmodule WotexHome.MixProject do
             &include_apache_license_inputs/1,
             &include_wotex_udp_legal_inputs/1,
             &include_producer_legal_inputs/1,
+            &include_mqtt_legal_inputs/1,
             &package_linux_service/1
           ]
         ]
@@ -68,6 +69,8 @@ defmodule WotexHome.MixProject do
       {:bumblebee, "~> 0.8.0", only: :dev, runtime: false},
       {:exla, "~> 1.0", only: :dev, runtime: false},
       {:yaml_elixir, "~> 2.12", runtime: false},
+      {:emqtt, "== 1.16.1", system_env: [{"BUILD_WITHOUT_QUIC", "1"}]},
+      {:quicer, "== 0.2.15", compile: false, app: false, runtime: false, override: true},
       local_or_hex(:ex_maude, "../ex_maude", @ex_maude_version, env: :prod),
       producer_dep(:wotex, "wotex"),
       producer_dep(:wotex_runtime, "wotex-runtime"),
@@ -252,6 +255,9 @@ defmodule WotexHome.MixProject do
 
     release
   end
+
+  defp include_mqtt_legal_inputs(release),
+    do: apply(Woh.Tool.ReleaseLegal, :include_mqtt_inputs, [release, Path.join(__DIR__, "deps")])
 
   defp copy_wotex_udp_legal_inputs(application) do
     destination = Path.join(application, "priv")
