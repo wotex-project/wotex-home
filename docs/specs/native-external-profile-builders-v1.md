@@ -1,6 +1,6 @@
 # Pure native external-profile decision builders
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08/H18-T6/T8/T11/T12.
 Implementation: planned. Evidence: missing.
@@ -141,7 +141,8 @@ No state survives restart; retain the constructed original only through the
 owning pending journal after separate review. A changed input or basis requires
 a new explicit construction/review. Never silently regenerate an operation ID or
 CAS after refusal. Complete-file entry, original encodings and receipt recovery
-remain byte-compatible. Signed/paired and physical requirements are unchanged.
+remain byte-compatible. Native typed Int64 inputs use their exact signed value;
+this adds no JSON boolean/float/string/overflow coercion and changes no wire bytes. Signed/paired and physical requirements are unchanged.
 
 | Case | Requirements | Stimulus and falsifier | Level |
 | --- | --- | --- | --- |
