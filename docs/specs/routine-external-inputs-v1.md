@@ -1,6 +1,6 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition and
 signed-review verifier foundations. Evidence: entry, native correspondence,
@@ -322,6 +322,28 @@ wire/hash correspondence; it does not verify a current signature without the
 host-pinned keys or reinterpret producer data. Live verification revalidates the
 complete native Definition and all signatures against those actual keys.
 
+Rules.ExternalInputPackage.encode(package) validates historical correspondence
+and generates the four canonical inner documents through the public JSON
+producer, returning {:ok, package_document}. It checks representations, not current
+keys or source authority. decode(package_document) calls no producer, current
+programme file or reviewer key and returns {:ok, historical} with exactly plain
+string keys data, document and sha256. The immutable v1 case definitions and
+programme SHA are compiled historical data; current programme/0 still rereads the
+actual shipped file for live verification. Historical validation requires the
+exact sorted eight passed cases/cohort, canonical signature representations,
+decision/Definition/programme/cohort/evidence-set identities and distinct reviewer
+IDs. Signature trust and distinct public-key bytes require live verification.
+
+verify(package_document, current_context, case_keys, decision_keys) decodes the
+whole historical package, compares its full claimed context, reconstructs the
+native Definition and requires its exact original document, then calls the
+separate decision verifier. Success returns the same historical metadata; Store
+still owns measuring current_context and installing any result. Named refusals
+are the existing closed external-input errors plus invalid_external_input_decision
+and qualification_unavailable. Context mismatch is external_input_basis_changed.
+Encoding/decoding retained input/outcome/receipt history never calls this live
+verifier, samples a runtime or requires a current producer/key/source.
+
 The sanitized complete package is retained in this domain's bounded SQLite
 history; raw captures and private keys are not. This differs from the LIFX
 write-qualification claim file and does not change that format or custody owner.
@@ -382,6 +404,29 @@ DocumentChunks preserves the package bytes. Input/outcome wire ceilings are
 524288 bytes each, receipt 4096, package 262144. Exact inner/outer hashes and actor/scope/
 action/generation links must agree with operation/history/current/journal rows.
 Freeze independent vectors before code rather than invent a migration in a helper.
+
+Rules.ExternalInputOperation exposes encode/decode for changes,
+encode_outcome/decode_outcome and encode_receipt/decode_receipt. Encoders return
+{:ok, document}, decoders {:ok, data}; every refusal is a closed external-input
+code. All six operations are producer-independent and require canonical outer
+wire, exact closed shape and bounded retained package correspondence. An install
+input's package target/key/authority epoch must equal its own. Missing-slot
+expectations are exactly 0/0; otherwise both are positive. A revoke input has null
+package and positive expected counters. Outcome target/key and Definition SHA
+match its retained package for install, revoke and withdraw.
+
+validate_original(input_document, outcome_document, receipt_document) returns
+{:ok, original} with exactly plain string keys input, outcome and receipt, or a
+closed refusal. It repeats all decoding and checks input/outcome SHA, matching
+epoch/operation/slot/action, receipt generation = expected_generation + 1 and
+expected install revision < new revision. Install retains the exact input package,
+sets install_revision = revision and uses its Definition's Store boot; selection,
+binding and trust revisions must precede installation. Revoke retains the old
+installation revision and may carry a new Store boot/authority epoch, because
+retiring old authority needs no renewed qualification. Withdraw has no scoped
+user-operation receipt and is checked through history/cause links by Store.
+Principal ownership and actual journal/current/history row links remain Store
+Integrity responsibilities; this pure join neither queries nor writes SQLite.
 
 Retain at most 1024 user operations, 4096 history rows and 1024 current slots;
 combined input/outcome UTF-8 bytes across operations and history are at most

@@ -181,3 +181,14 @@ Cleanup finds zero owned temporary paths in either temporary root; approximately
 54 GiB remains free. This slice created no Docker resource, native build,
 unrelated dependency update or persistent test artifact. No full suite, Dialyzer
 or host packaging was needed. Commits remain local on main.
+
+## Retained codec implementation review
+
+Before implementing retained codecs, the contract now fixes package encode,
+producer-free historical decode and explicit live verification boundaries, plus
+change/outcome/receipt codecs and the pure exact-original correspondence join.
+Historical package validation uses compiled immutable v1 case policy rather than
+the current programme file. Explicit revoke may retire a package from a previous
+Store boot/authority epoch; it cannot be forced to requalify old authority merely
+to remove it. Actual principal/journal/SQLite links remain the Store's owner.
+No production codec or schema migration is included in this review commit.
