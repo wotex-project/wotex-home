@@ -39,7 +39,7 @@ def allocate():
                     pending_after[1] += 1
                     pending_after[2] = [["generation", entry[0], entry[1],
                                           ["generation_operation", kind, original], ["pending"]]]
-                body = {"case": vector["case"] + "-" + action, "action": action, "index": index,
+                body = {"case": vector["case"] + "-" + action, "action": action, "index": index, "permitted": action not in ["restore", "archive"] or not entry[5],
                         "before": canonical(before), "after": canonical(after),
                         "pending_before": canonical(pending_before), "pending_after": canonical(pending_after)}
                 body["after_sha256"] = hashlib.sha256(body["after"].encode()).hexdigest()
