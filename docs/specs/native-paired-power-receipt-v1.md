@@ -1,6 +1,6 @@
 # Last resolved paired power receipt
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted implementation contract.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted implementation contract.
 Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Implementation/evidence: planned.
 
 ## Observable result
@@ -24,6 +24,11 @@ matching controller identity, deployment, owner, epoch, principal, creation
 revision and verifier. Current UI selection does not choose its destination.
 Missing/replaced association refuses; no new account, endpoint or local fallback.
 Metadata is a read query, never a successful signing or authorization seal.
+A fully self-consistent different reference is a different read query, not proof
+that its association created an earlier operation. The presentation owner keeps
+its exact resolved entry immutable and never substitutes another association
+after a refusal. Identical verifier/principal values in two saved associations
+do not make their association IDs interchangeable for that retained entry.
 
 **PR-02 — Fresh read-only purpose.** Add a distinct actual paired-session
 purpose usable only for the fixed status read. The factory acquires actual
