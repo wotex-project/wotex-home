@@ -1,0 +1,54 @@
+{
+  "schema": "wotex-home.qualification-programme.v1",
+  "programme_id": "external-routine-input-v1",
+  "cases": [
+    {
+      "case_id": "ERI-identity",
+      "requirement_id": "H11-01",
+      "capability_key": "external_input",
+      "environment": "hardware"
+    },
+    {
+      "case_id": "ERI-conversion",
+      "requirement_id": "H20-01",
+      "capability_key": "external_input",
+      "environment": "hardware"
+    },
+    {
+      "case_id": "ERI-invalid",
+      "requirement_id": "H20-04",
+      "capability_key": "external_input",
+      "environment": "integration"
+    },
+    {
+      "case_id": "ERI-clock",
+      "requirement_id": "H20-04",
+      "capability_key": "external_input",
+      "environment": "integration"
+    },
+    {
+      "case_id": "ERI-continuity",
+      "requirement_id": "H20-04",
+      "capability_key": "external_input",
+      "environment": "integration"
+    },
+    {
+      "case_id": "ERI-reconnect",
+      "requirement_id": "H18-08",
+      "capability_key": "external_input",
+      "environment": "hardware"
+    },
+    {
+      "case_id": "ERI-revocation",
+      "requirement_id": "H20-06",
+      "capability_key": "external_input",
+      "environment": "integration"
+    },
+    {
+      "case_id": "ERI-offline",
+      "requirement_id": "H18-05",
+      "capability_key": "external_input",
+      "environment": "hardware"
+    }
+  ]
+}

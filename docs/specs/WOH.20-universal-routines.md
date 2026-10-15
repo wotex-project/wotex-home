@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.17. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.18. Updated: 2026-10-15. Status: accepted target.
 Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, and inert external reader-to-Fact projection.
 Evidence: finite software subset; full acceptance cases remain open.
 
@@ -307,3 +307,15 @@ the prior native owner discarded it after consumption. The bounded Store-only
 witness now preserves it without processing-time renewal or a new durable format.
 Its native owner, exclusive-clock, quota and failure checks pass.
 Reviewed Mapping installation and complete current collection follow separately.
+
+## Reviewed current external input successor
+
+The [reviewed external input contract](routine-external-inputs-v1.md) now owns
+exact context/Definition/runtime correspondence, signed read qualification,
+scoped install/revoke history and bounded complete requested collection. It
+preserves original owner receipt/lifetime, explicit unknown and current-final
+guards. Its entry programme, closed schemas and independent wire/hash/signature
+vectors pass [entry checks](../provenance/routine-external-inputs-2026-10.md);
+EI-T1–T9 implementation and physical obligations remain open. Requested-scope
+collection does not establish complete active program membership, composed run
+persistence, admission or permission to send.

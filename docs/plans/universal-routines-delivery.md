@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.11. Updated: 2026-10-15. Accepted build order; implementation and
+Version: 0.1.12. Updated: 2026-10-15. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -295,3 +295,24 @@ installation and atomic complete current collection, including actor/grant/
 semantic/source qualification, Store boot,
 rebuild/revision/current-final guards and baseline continuity. Do not promote
 ordinary profile approval or fabricate an owner deadline from current defaults.
+
+## Reviewed external input delivery
+
+The [accepted input contract](../specs/routine-external-inputs-v1.md) and
+[entry evidence](../provenance/routine-external-inputs-2026-10.md) close the next
+requirements before production code. Deliver in this order:
+
+1. Fresh four-group runtime inventory, pure Definition/native reconstruction and
+   historical decoding, fixed programme and separate signed-review verifier.
+2. Schema 38 operation/history/current tables, exact original-first install and
+   revoke, atomic invalidation, integrity/migration and quarantined recovery.
+3. Store-owned complete requested-scope collection from actual private custody,
+   committed original pointer and live consumed lifetime; independent receipt,
+   unit, continuity and final-basis fault traces.
+4. Extracted producer consumer and existing read/unconditional-effect regressions,
+   then the owning durable/recovery milestone. Continue complete active-set
+   composition, run/step/root persistence and wider admission under their owners.
+
+The entry is software grammar/correspondence evidence only. Physical review,
+installed hosts and later execution authority remain unestablished. Use focused
+checks between logical commits; remove each owned temporary workspace on exit.

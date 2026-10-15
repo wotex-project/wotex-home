@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.99. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.100. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 The [private MQTT installation](private-mqtt-installation-v1.md) supplies
 ordinary Host composition from explicit local source/capture/policy plus separate
@@ -700,3 +700,13 @@ consumption. It is a bounded transient successor with no durable encoding change
 its native software implementation is complete. A future routine collector must retain narrower
 original owner lifetime as well as declaration/Mapping freshness. Read approval,
 a live witness and generic Mapping construction do not qualify an external input.
+
+## Reviewed external routine inputs
+
+The [current input successor](routine-external-inputs-v1.md) binds one reviewed
+read-only Mapping to the actual target declaration, source incarnation, private
+reader closure, Store receipt clock and four-group runtime inventory. Explicit
+install/revoke originals and complete requested collection have separate native,
+durable and recovery obligations. The programme and independent entry vectors
+are frozen; implementation and physical review remain open. Existing ordinary
+read approval and retained historical packages do not grant routine input use.

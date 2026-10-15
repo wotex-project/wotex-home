@@ -1,6 +1,6 @@
 # WOH.11 — Qualification and evidence programme
 
-Version: 0.2.13. Status: accepted target, partial implementation.
+Version: 0.2.14. Status: accepted target, partial implementation.
 
 ## Evidence is multidimensional
 
@@ -61,3 +61,14 @@ cannot supply missing read/write/readback evidence. Firmware/profile selection
 changes revoke prior qualification rather than merely regenerating hashes.
 Data portability between hosts does not imply equal protocol behavior or
 installed custody; physical and signed/board cases remain separate.
+
+## Reviewed external routine input programme
+
+The [external input successor](routine-external-inputs-v1.md) defines an exact
+eight-case read-only programme, separately pinned case and physical-review
+signatures, complete retained review packages and current Store/runtime/source
+checks. Its independent entry schema/wire/signature checks pass; the native and
+durable implementation is planned. Synthetic claims exercise trust mechanics and
+cannot fill hardware obligations. The programme creates no mutating capability
+or physical dispatch permission. [Entry evidence](../provenance/routine-external-inputs-2026-10.md)
+keeps these levels separate.
