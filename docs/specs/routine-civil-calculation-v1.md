@@ -1,6 +1,6 @@
 # Immutable civil calendar calculation v1
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted target.
 Owner: WOH.20 H20-02/07/08 and H20-T7; WOH.04 owns temporal admission.
 Implementation: RCC-01–03 provider implemented; RCC-04–05/public archive join planned.
 Evidence: direct Home provider checks pass; actual Home civil archive and runtime
@@ -134,8 +134,21 @@ faults map to invalid_routine_calendar_projection. Never return partial results,
 log producer payloads, retry another callback or fall back to the old calculator.
 Identical supplied source/nominal/bytes produce the same result.
 
-**RCC-05 — Preserve consumer recurrence policy.** Runtime adoption delegates
-calendar label resolution to RCC-04. Seed localization and Home source/window
+**RCC-05 — Preserve consumer recurrence policy.** RoutineCalendar.next(source,
+after_ms, zone), validate_source(source, zone) and coordinate(source, due_ms,
+zone) expose the complete pure calendar candidate before runtime selection.
+They use the existing Recurrence signatures/results: next is strictly after an
+integer cursor -1–253402300739999 ms and returns `{:ok, due_or_nil}`; coordinate
+requires a supported UTC integer and returns :ok or schedule_coordinate_mismatch.
+Invalid cursors return invalid_schedule_cursor; closed source and missing/mismatched
+zone errors retain their existing typed refusals. Only once/daily/weekdays source
+kinds enter this candidate. A one-shot's explicitly chosen due must be in its
+complete resolved set, otherwise invalid_resolved_schedule_time. An incompatible
+nominal label at RCC-04 returns schedule_coordinate_mismatch.
+
+Runtime adoption delegates Recurrence's calendar branches to these public pure
+entries and removes the replaced legacy calendar algorithm, retaining no runtime
+selection switch or fallback. Every selected label resolves through RCC-04. Seed localization and Home source/window
 policy remain Home-owned. Search at most 32 successive local dates in their
 current local-date order. Resolve selected labels one at a time; do not replace
 that order with the global earliest UTC point from a 32-date batch. Select the
@@ -155,8 +168,11 @@ occurrence bytes, durable original, watermark, retry or eligibility rule changes
 
 ## Implementation entry and acceptance
 
-RCC-01–04 may be built and compared through exact extracted producer archives
-before dependency selection. Existing Recurrence remains authoritative until
+The complete pure RoutineCalendar candidate may be built and compared through
+exact extracted producer archives before dependency selection. During that
+comparison the existing Recurrence is the separately compiled baseline; adoption
+then removes its replaced calendar calculation. Existing Recurrence remains
+authoritative until
 the runtime contract's cohort/current-basis gates are implemented. There is no
 automatic optional fallback when runtime adoption occurs. The archive harness
 adds a distinct --civil-consumer mode requiring the existing four archive/SHA
