@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.67. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.68. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
 now defines fresh signed authorization after human review, unchanged first originals,
@@ -9,8 +9,10 @@ are [v8 pending custody](native-pending-paired-authoring-v8.md) and
 [v2 generation workspace](native-generation-workspace-v2.md), including monotone
 mixed-version correspondence. The v8 representation/private CAS and mixed-version
 paired guards now have [executed foundation evidence](../provenance/native-pending-paired-authoring-2026-10.md).
-The workspace and signed category consumers remain planned; physical guards and
-current local evidence retain their existing scope.
+The v2 workspace now has [executed custody/local-refusal
+evidence](../provenance/native-generation-workspace-v2-2026-10.md). Signed category
+consumers remain planned; physical guards and current local evidence retain their
+existing scope.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)
 defines durable root/attempt workspace custody, explicit policy/consent/budget,

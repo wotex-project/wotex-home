@@ -1257,5 +1257,12 @@ storage task includes those cases along with older cohorts.
 `mix woh.native.paired.recovery.smoke` checks mixed-version correspondence and
 actual production new-category refusal before clock/network. Decoding v8 creates
 no signing seal or current grant; paired authoring/generation dispatch remains
-disabled until its closed signed consumers exist. The v1 generation workspace
-still refuses paired custody; its separately specified v2 is the next dependency.
+disabled until its closed signed consumers exist. The [v2 workspace](../../docs/specs/native-generation-workspace-v2.md) now
+retains paired custody under the same fixed file, with v1-to-v2 upgrade and
+version retention through archive/empty/local writes. v1 markers still refuse
+paired records. `mix woh.native.generation.workspace.smoke` checks both versions,
+independent vectors, eight process races, restart and mixed-root upgrade. The
+local driver refuses paired workspace operations before credential capture;
+`mix woh.native.generation.flow.smoke` checks that boundary and existing local
+Store flows. Workspace metadata creates no signed session or model dispatch;
+closed signed consumers remain the next step.

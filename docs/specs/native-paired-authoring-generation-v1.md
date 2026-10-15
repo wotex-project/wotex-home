@@ -1,6 +1,6 @@
 # Paired native authoring and generation composition
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18A-02/04/05 and H18-T15/T16/T17.
 Implementation: planned. Evidence: missing.
@@ -22,9 +22,11 @@ Required implemented foundations are [selected session](native-paired-session-v1
 existing Keychain item, pinned TLS peer and host certificate-clock producer are
 required; decoded public metadata/raw keys cannot create a production session.
 New representation prerequisites are [v8 pending](native-pending-paired-authoring-v8.md)
-and [v2 workspace](native-generation-workspace-v2.md), both planned before this code.
-Implement representations, paired manual closed consumer, paired generation
-consumer, then selected driver/panel composition and installed acceptance.
+and [v2 workspace](native-generation-workspace-v2.md), now implemented as private
+metadata dependencies with [workspace evidence](../provenance/native-generation-workspace-v2-2026-10.md).
+They create no signed session or dispatch. Continue with paired manual closed
+consumer, paired generation consumer, selected driver/panel composition and
+installed acceptance.
 
 ## Current signed scope and human review
 

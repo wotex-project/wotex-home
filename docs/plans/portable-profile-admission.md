@@ -133,8 +133,10 @@ owns that successor, with explicit [v8 pending](../specs/native-pending-paired-a
 and [v2 workspace](../specs/native-generation-workspace-v2.md) prerequisites.
 The v8 representation/private CAS and mixed-version paired guards now have
 [executed foundation evidence](../provenance/native-pending-paired-authoring-2026-10.md).
-Continue with v2 workspace, paired manual consumer, paired generation consumer,
-selected driver/presentation and installed interaction/qualification. Human confirmation obtains fresh actual signed scope;
+The v2 workspace now has [executed custody/local-refusal
+evidence](../provenance/native-generation-workspace-v2-2026-10.md). Continue with
+paired manual consumer, paired generation consumer, selected driver/presentation
+and installed interaction/qualification. Human confirmation obtains fresh actual signed scope;
 it cannot renew a read session or edit the frozen original. Live account/model, local OS
 confinement, native/signed paired delivery and aggregate pool boundaries remain.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
