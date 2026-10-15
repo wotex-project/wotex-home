@@ -804,5 +804,16 @@
       "maximum_expiry_ms": null,
       "expected_error": "input_limit"
     }
-  ]
+  ],
+  "archive": {
+    "producer_assertion": {
+      "core_archive_sha256": "77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61",
+      "profiles_archive_sha256": "34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96",
+      "runtime_archive_sha256": "5d8cd7e3012dd2115b63ccc5c4fe67130ab06a82253405c452970abb8d210df7"
+    },
+    "consumption_sha256": "58dce0c0912ae080f2eede5a9f90008fd0ed47cdeb6bbffaa2a835ed49fdf487",
+    "external_value_sha256": "34c01ed412d136cfc138b54e97cc50717c7b9814476894222b701730bd843b9c",
+    "continuum_archive_sha256": "db7077c5f0ad92426c94a077a4f58f9b7334df25de8c2a1b8ed25143bab6efb5",
+    "routines_archive_sha256": "fb74f71b6b44b286907d65caaf2271e9e0b6318939236a4aaf736120e42a33ef"
+  }
 }

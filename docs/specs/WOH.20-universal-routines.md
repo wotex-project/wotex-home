@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.13. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.14. Updated: 2026-10-15. Status: accepted target.
 Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join.
 Evidence: finite software subset; full acceptance cases remain open.
 
@@ -278,10 +278,10 @@ identity/rounding mutations. Its full owning package milestone passes. The
 records the later exact Home source selection separately from the producer
 evidence; qualified current external facts remain unavailable.
 
-The next Home contract must reconstruct the original public reader Proposal from
-the exact retained report/envelope, rather than strip Home-converted value fields.
-Define the inert correspondence and explicit Store receive-clock/expiry basis
-before implementing it. Qualified current facts, complete-set collection, durable
+The inert Home projection reconstructs the original public reader Proposal from
+the exact retained report/envelope and preserves separate Home-converted and
+original witnesses. Its explicit receipt correspondence and expiry remain inert.
+Qualified current facts, complete-set collection, durable
 composition and wider admission follow their own current Store/proof contracts;
 external read approval and a generic constructor cannot supply those permissions.
 
@@ -293,5 +293,6 @@ independent Home-converted and original Proposal witnesses, complete external
 profile/Basis correspondence, explicit receipt clocks and null receipt UTC.
 REF-T1–T5 require actual native and extracted execution, adverse input/producer
 cases and independent unit/identity/signed-clock expectations. Entry schema/vector
-checks pass; the consumer implementation remains planned. No current Store fact,
+and native REF-T1–T4 checks pass; the extracted REF-T5 lane remains open.
+The inert consumer is implemented. No current Store fact,
 rule admission or dispatch capability follows from this inert result.

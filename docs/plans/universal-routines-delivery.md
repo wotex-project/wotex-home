@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.7. Updated: 2026-10-15. Accepted build order; implementation and
+Version: 0.1.8. Updated: 2026-10-15. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -273,5 +273,8 @@ The renewed exact civil archive lane passes 14 cases, all 230 timezone/label and
 112 recurrence vectors and no-application-start calculation. These checks do
 not replace the earlier recorded full durable milestone or qualify hardware.
 
-Implement the accepted inert fact projection next. REF-T1–T5 and current Store
-fact collection, complete-set composition and broader admission remain open.
+The inert fact projection is implemented with native REF-T1–T4 evidence and
+four independent schema/witness cases. The extracted REF-T5 harness is next;
+its exact archive consumption/value witnesses are frozen before code. Qualified
+current Store fact collection, complete-set composition and broader admission
+remain open.

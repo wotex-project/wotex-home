@@ -174,3 +174,47 @@ Both the archive-build directory and runner's extracted consumer directory were
 removed after completion. Dependency/build caches remain reusable. No full Home
 suite, Dialyzer, native packaging or physical campaign ran for this pin change.
 The inert projection and its REF-T1–T5 remain the next implementation obligation.
+
+
+## Inert Home projection native checkpoint
+
+ExternalFact.project/4 now revalidates the exact native ExternalValue, reconstructs
+the original public WPF Proposal from its retained report and checked envelope,
+and calls public Mapping/Input/Fact/binding APIs under explicit Registry/Limits.
+The bounded eight-member result preserves both witnesses and complete installed
+correspondence. It adds no Store read, schema, admission or effect. Its module
+documentation was reviewed by the dedicated documentation-only agent.
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/routine_external_fact_test.exs test/wotex_home/routine_external_fact_schema_test.exs --warnings-as-errors`
+passes **12 tests**, seed **545892**, **1.8 seconds**, on Elixir 1.19.6 /
+OTP 28.5.0.6. Eight native cases exercise actual Home/readers-to-Kernel integer,
+Boolean and enum values; original versus Home-converted units; complete identity;
+forged/current native substitutions; closed metadata and null UTC; installed
+Mapping and aggregate bounds; all eleven independent signed receipt vectors,
+including 65-bit subtraction; exact precision; exclusive expiry; retained/replayed/
+gap unknown outcomes; and a fresh isolated VM with five producer faults plus
+missing public APIs. Four independent schema/witness cases pass. Two initial
+test runs exposed test expectations using an atom for the producer's JSON
+unknown string and attempting a non-existent raw replay member; both fixtures
+were corrected to the public producer grammar before this passing run.
+
+REF-T1–T4 have bounded native software evidence. REF-T5 remains open. Before
+its harness code, an independent Python sorted-UTF-8 JSON/hash oracle reproduced
+the historical consumption/value hashes, then selected the actual archive
+Runtime SHA 5d8cd7e3 with the unchanged core/Profiles archives. The archive entry
+vector freezes consumption SHA
+58dce0c0912ae080f2eede5a9f90008fd0ed47cdeb6bbffaa2a835ed49fdf487
+and Home value SHA
+34c01ed412d136cfc138b54e97cc50717c7b9814476894222b701730bd843b9c.
+The original Proposal, Mapping, Fact and receipt coordinates are unchanged.
+No fresh physical, Store collection, host or full-suite qualification is claimed.
+
+No Docker resource or persistent test artifact was created. Isolated VMs exit
+after their assertions; prior archive/metadata workspaces remain absent. Shared
+build/dependency/PLT caches and pre-existing Docker volumes are preserved.
+
+Formatting, warnings-as-errors compilation, the 22-contract working catalogue,
+a disposable 21-contract indexed catalogue and all 32 changed indexed Markdown
+references pass. Both Git whitespace checks pass. The metadata workspace is
+removed after validation. No broad Home suite or Dialyzer was run for this
+bounded inert addition.

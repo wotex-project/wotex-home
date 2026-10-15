@@ -61,6 +61,33 @@ defmodule WotexHome.RoutineExternalFactSchemaTest do
              %{"$ref" => "#/definitions/input_mapping"}
   end
 
+  test "the independent archive cohort changes the Home witness while retaining original coordinates",
+       c do
+    archive = c.vector["archive"]
+
+    data =
+      Map.put(c.vector["home_value_data"], "consumption_sha256", archive["consumption_sha256"])
+
+    assert hash("wotex-home.external-value@1", data) == archive["external_value_sha256"]
+
+    refute archive["external_value_sha256"] ==
+             c.vector["expected_result"]["external_value_sha256"]
+
+    result =
+      Map.put(
+        c.vector["expected_result"],
+        "external_value_sha256",
+        archive["external_value_sha256"]
+      )
+
+    assert :ok = ExJsonSchema.Validator.validate(c.schema, result)
+    assert result["fact"]["value"] == 250
+    assert result["fact"]["receipt_ms"] == 9998
+
+    assert result["source_proposal_sha256"] ==
+             hash("wotex.routines.input-proposal@1", c.vector["proposal"])
+  end
+
   defp hash(prefix, value) do
     {:ok, bytes} = Wotex.JSON.encode(value)
     Base.encode16(:crypto.hash(:sha256, prefix <> "\n" <> bytes), case: :lower)

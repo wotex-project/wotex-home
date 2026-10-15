@@ -1,11 +1,12 @@
 # Inert external routine fact projection v1
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04, H20-T1/T3; WOH.18 H18-04/05.
-Implementation: entry schema/vector frozen; projection planned. Evidence: three
-entry shape/hash cases pass; producer execution milestone and
-[Home source review](../provenance/routines-external-input-2026-10.md);
-the Home projection cases below have not executed.
+Implementation: inert projection implemented and native REF-T1–T4 exercised;
+REF-T5 extracted execution remains open. Evidence: twelve focused native/schema
+cases, including isolated producer refusals, pass; exact commands and independent
+archive entry witnesses are in the
+[Home evidence](../provenance/routines-external-input-2026-10.md).
 
 ## Result, ownership and dependencies
 
@@ -29,7 +30,7 @@ receipt precision and complete installed external bindings. The producer is
 implemented at WoTEx 743ef568 with archive/mutation evidence at d1b2e87b. Home
 now selects exact d1b2e87b in both root and firmware locks. Its native cohort,
 initial invocation/history probes and renewed civil archive comparison pass;
-this selection supplies the public seam, not the projection implementation.
+this selection supplies the public seam consumed by the inert implementation.
 Runtime inventory and historical proof invalidation retain their existing owners.
 
 [External observations](external-observations-v1.md) own actual receipt custody,
@@ -235,3 +236,11 @@ The independent oracle uses exact rational conversion, mathematical floor and
 sorted UTF-8 JSON hashing, not the adapter's own result. Record exact sources,
 locks, fixture digests, toolchain and executed commands. Pure/software/archive
 success does not qualify a household source, clock, Store commit or device.
+
+The native checkpoint executes REF-T1–T4 through actual Home readers, including
+Boolean/enum values, eleven independent signed-clock vectors, exact-mode refusal,
+exclusive expiry, retained/replayed/gap unknown results, whole-output bounds and
+five isolated producer faults plus absent APIs. Four schema/independent witness
+cases also pass. REF-T5 remains open: its exact archive cohort and independently
+recomputed consumption/value hashes are frozen before its consumer harness.
+These are software projection checks, not qualified current Store collection.
