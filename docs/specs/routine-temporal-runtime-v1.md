@@ -1,6 +1,6 @@
 # Bound temporal producer runtime v1
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted target.
 Owner: WOH.20 H20-02/07/08, WOH.07 runtime correspondence and WOH.14 current guards.
 Implementation: RTR-01–03 and complete guard inventory implemented; ten-member Store opening/closing cases pass. Final-reader/historical acceptance remains partial.
 Evidence: [pinned source, runtime mutations and bounded Store cases](../provenance/routines-runtime-2026-10.md).
@@ -118,7 +118,12 @@ half-open occurrence window after code inventory work. No deadline or report
 freshness bound is widened to make a slower path pass. A stale source/runtime
 refuses or withdraws under its owning phase; it cannot queue catch-up work.
 Lost replies recover the scoped original; no generic projection generation
-creates a new original. No duplicate reservation, spent-root refund or retry of
+creates a new original. A `stale_schedule_admission` returned by the final
+unscoped queue/no-send/claim/handoff guard is a current-basis policy denial:
+restore tentative work, retain any required sticky withdrawal against the
+original phase and return the typed refusal while leaving the writer usable.
+It is not database corruption. Raw SQL failures, damaged historical content
+and other unclassified errors still roll back and disable writes. No duplicate reservation, spent-root refund or retry of
 an uncertain committed handoff is introduced. Default-disabled physical dispatch
 and the single-active ordinary Light profile stay intact.
 

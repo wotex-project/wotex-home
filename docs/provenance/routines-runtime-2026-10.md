@@ -188,3 +188,26 @@ actual historical v1/v2/v3 retained-row/restart cases remain separate acceptance
 work. This campaign does not establish atomic live upgrades, physical control,
 installed host performance or a full Home quality milestone. No real device
 transport was opened, and no socket-free suite filter was used.
+
+## Final-reader classification finding
+
+A deterministic test-only RuntimeArtifacts BEAM inserts a one-use file mutation
+immediately after its successful complete closing inventory. Its loaded code and
+retained file match while the actual Store creates its reviewed fixture; no
+production source or hook is added. Store, its SQL transitions, admission and
+final execution guards are unchanged. The mutation then changes a selected
+producer's complete bytes with an equal OTP code checksum before the independent
+final guard. The ordinary complete byte/file/loaded checks remain enabled.
+
+The first Routines run selected queue/claim/handoff with and without withdrawal
+SQL faults: six cases, seed 906163, 27.3 seconds. The three injected SQL failures
+passed. The three ordinary final refusals instead returned `store_unavailable`.
+Inspection found `stale_schedule_admission` in ExecutionWriter's initial-policy
+set but absent from its final-policy set; the final reader correctly detected
+stale admission, then treated that semantic refusal as writer damage.
+
+Before correcting production classification, RTR-05 was clarified: final stale
+admission is a closed current-basis denial, preserving sticky withdrawal and
+original spend while leaving the writer usable. SQL and historical damage remain
+rollback/disabled-writer failures. This failed run is a counterexample, not
+positive final-boundary acceptance evidence.
