@@ -1,7 +1,9 @@
 # Component preview retirement ownership
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted implementation contract.
-Owner: WOH.17 H17-03/H17-T3/T4. Implementation/evidence: planned.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted implementation contract.
+Owner: WOH.17 H17-03/H17-T3/T4. Implementation: VM-local lifecycle implemented.
+Evidence: [executed original-Port and restart faults](../provenance/component-retirement-2026-10.md);
+actual native ABI, whole-VM restart and production containment remain separate.
 
 ## Result and scope
 

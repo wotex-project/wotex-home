@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.173. This plan separates executable slices from external acceptance gates.
+Version: 0.2.174. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -49,9 +49,11 @@ Synthetic fixtures do not promote these mappings to physical qualification.
 The [component plan](component-extensions.md) owns optional WIT helpers. Its
 implemented import-free previews have no Store/device effect; [historical
 validation](component-extensions-validation.md) records independent authors and
-failure retirement. Source review found cancellation-slot reuse can overlap
-retiring native children; native memory/OS containment is also open. A production
-helper needs a named mapping benefit plus those gates, then the shared lifecycle
+failure retirement. The [original-Port retirement repair](../provenance/component-retirement-2026-10.md)
+now holds one aggregate VM slot through cancellation and Runner restart, fencing
+admission when exit evidence is lost. Whole-VM restart and native memory/OS
+containment remain open. A production helper needs a named mapping benefit plus
+those gates, then the shared lifecycle
 and physical evidence. The direct-power critical path below retains current
 compiled profiles, the full runtime basis and default-disabled dispatch.
 

@@ -1,6 +1,6 @@
 # Component extension implementation and review plan
 
-Version: 0.1.2. Updated: 2026-10-03. Optional executable-helper track; evidence
+Version: 0.1.3. Updated: 2026-10-15. Optional executable-helper track; evidence
 gates stay separate. [The portable profile plan](portable-profile-admission.md)
 owns the consolidated production build order under ADR 0010. Background and
 primary sources are in [the research report](wit-wasm-plugins.md) and
@@ -55,8 +55,8 @@ these development checks. ADR 0009 and system architecture record the choice.
 | Compilation bombs / Canonical ABI allocation abuse | Artifact/process bounds and deadline outside fuel; finite lifted memory/output; production native-memory containment gate |
 | False sensor result / unsafe bytes | Preview is unqualified; host checks exact supported encoder semantics; future qualified decoder joins evidence identity |
 | Hung callback, guest loop, native panic | No initial callbacks; fuel plus watchdog and EOF retirement; typed failure without restarting Store |
-| Caller dies, supervisor stops, response arrives late | Monitor owner, close Port, native EOF exit; one invocation per process, no identity reuse |
-| Flood, mailbox or queue pressure | One admitted OTP invocation, immediate capacity rejection, bounded frames; production must also count retiring OS children and restart races; future external API needs ingress limits |
+| Caller dies, supervisor stops, response arrives late | Independent original-Port owner monitors caller/Runner; cancellation byte, actual exit status and restart fence; no identity reuse |
+| Flood, mailbox or queue pressure | One aggregate VM invocation including retiring children, immediate capacity rejection and lost-evidence fencing; whole-VM/native-descendant containment and future external ingress limits remain |
 | Upgrade/revoke between staging, claim and send | Store transaction barriers and repeated current pins at every boundary; future lifecycle tests use real SQLite failure injection |
 | Crash after send / rollback | Preserve unknown and spent causal root; no resend, no reinterpretation |
 | Missing artifact on restart/restore | Fail dependent work, retain history, quarantine restore; exact external dependency custody |
@@ -105,8 +105,11 @@ Home rebuild, and the optional OTP child cannot commit a report/effect. SDK
 metadata and both-side WIT hash checks prevent an old runner silently claiming
 a new interface identity. Actual function types are checked before guest start.
 No source-backed plugin loader, Store migration, active profile or physical
-path was introduced. Source reconciliation found that cancellation releases the
-OTP slot before observing OS retirement; prior PID checks prove eventual exit,
-not a strict live-process capacity ceiling. Mac RSS and pre-validation native
-allocations also remain open. The next production work is portable data phase P1,
-followed by the shared lifecycle; helper hardening and delivery stay separate.
+path was introduced. The later [retirement ownership contract](../specs/component-retirement-v1.md)
+now closes cancellation/Runner-restart slot overlap with an independent
+original-Port owner and a persistent lost-evidence fence. Its
+[executed software cases](../provenance/component-retirement-2026-10.md) include
+delayed native exit, two Runners, stop/kill, owner/Port loss and actual loader
+failure. Whole-VM restart, Mac RSS and pre-validation native allocations remain
+open. Data profile delivery and the shared lifecycle remain independent; helper
+hardening and installed/physical acceptance stay separate.

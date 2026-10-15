@@ -5,6 +5,11 @@ implementation against [the plan](component-extensions.md) and
 [WOH.17](../specs/WOH.17-component-extensions.md); it closes no physical or
 installed-host acceptance case.
 
+This is a historical first-preview checkpoint. The later
+[retirement ownership evidence](../provenance/component-retirement-2026-10.md)
+supersedes its pending cancellation/Runner-restart software gap while retaining
+separate whole-VM and production containment obligations.
+
 ## Implemented boundary
 
 Elixir/OTP 1.19.6/28.5.0.6, Rust 1.97.1, Wasmtime 49.0.2, wit-bindgen 0.62.0

@@ -26,7 +26,7 @@ generated from the authored world at compile time.
 | Input bytes | 2 for decode; one Boolean byte for encode |
 | IPC response | 8 bytes excluding four-byte prefix |
 | Lifted byte list | At most the guest memory range, up to 4 MiB, then exact six-byte validation |
-| Admission | One admitted OTP job per runner; no queue; retiring native children are not yet included in the ceiling |
+| Admission | One aggregate VM job including loading and retiring native children; no queue; Runner restarts share the slot |
 | Elixir total job deadline | 5 seconds from admission |
 | Native lifetime watchdog | 5 seconds from process start |
 | Fuel / guest stack | 2,000,000 / 512 KiB |
@@ -40,10 +40,14 @@ memory and the watchdog do not bound all compiler/host allocations. Measure
 native RSS and establish production host containment before delivery. The
 runner exits on stdin EOF even during compilation or guest execution; its
 independent watchdog covers work outside guest fuel. The guest has no imports.
-On cancellation the OTP slot is released before native exit is observed. Tests
-check eventual OS retirement, but rapid replacements/restarts can overlap old
-workers. Production must retain a retirement owner and fence capacity across
-that boundary; do not treat this table as a hard live-process/RSS guarantee.
+On cancellation, timeout, malformed output or caller/Runner loss, an independent
+owner sends one extra zero byte on the original stdin. The existing native
+monitor exits on that byte or EOF. The owner retains its Port and capacity until
+original native exit status; a response, EOF or Port close alone cannot release
+the slot. Runner stop/kill/replacement cannot discard that owner. Lost owner
+evidence leaves a VM-local persistent fence: new previews return capacity and
+there is no reset. Restarting the VM is not qualified host cleanup. This ceiling
+does not establish whole-VM crash, native-descendant or host-wide RSS containment.
 
 IPC is four-byte big-endian length followed by a closed binary body. Request:
 version byte 1, operation byte (0 decode / 1 encode), 32 raw component SHA-256 bytes,
@@ -93,6 +97,22 @@ scripted process-retirement tests still run. Enabling that module without the
 runner/fixtures fails visibly. An optimized runner can be built with `--release`
 and selected using `WOTEX_HOME_COMPONENT_RUNNER=/absolute/path/to/runner` for
 native tests, or `benchmark.py --runner /absolute/path/to/runner` for measurement.
+
+## Focused retirement checks
+
+No Rust/WIT rebuild is needed for changes limited to the OTP retirement owner.
+From the repository root, use the locked dependencies:
+
+```sh
+MIX_ENV=test WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/component_retirement_test.exs test/wotex_home/component_runner_test.exs test/wotex_home/component_bundle_test.exs
+```
+
+These independent process fixtures deliberately delay native exit and exercise
+Runner stop/kill/replacement, original Port/owner loss, late output, EOF and
+loader failure. Fresh child BEAMs isolate permanent fences; fixtures observe
+actual child retirement and remove private roots. Their
+[executed evidence](../../docs/provenance/component-retirement-2026-10.md) is
+separate from the actual Wasmtime/ABI, signed-host and physical milestone lanes.
 
 ## Authoring and Elixir integration
 

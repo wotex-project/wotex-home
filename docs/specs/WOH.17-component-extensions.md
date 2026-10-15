@@ -1,6 +1,6 @@
 # WOH.17 — WIT component extensions
 
-Version: 0.1.4. Status: accepted target; optional executable helpers, pure preview only.
+Version: 0.1.5. Status: accepted target; optional executable helpers, pure preview only.
 
 ## Authority and scope
 
@@ -74,9 +74,11 @@ Interface evolution uses a separately supported world version and SDK;
 compatibility does not transfer qualification. No digest scope is narrowed
 without the affected proof and physical review.
 
-The [retirement ownership contract](component-retirement-v1.md) freezes the next
-software repair: an independent original-Port owner, aggregate VM slot and
-fail-closed restart fencing. It is planned until its lifecycle cases execute.
+The [retirement ownership contract](component-retirement-v1.md) now implements
+an independent original-Port owner, aggregate VM slot and fail-closed Runner
+restart fencing, with [executed process-fault evidence](../provenance/component-retirement-2026-10.md).
+Whole-VM restart, host-wide memory/OS containment and production delivery remain
+separate obligations.
 
 ## Execution and Elixir boundary
 
@@ -102,7 +104,10 @@ retirement owner after caller cancellation; do not release capacity or reuse
 state until retirement is observed, or fence admission when it cannot be proved.
 Include runner restart in that ceiling. A PID alone is not durable process
 identity and cannot justify killing an unrelated reused PID. The development
-OTP-slot implementation does not yet meet this complete capacity requirement.
+owner now holds capacity across cancellation and Runner/Host restart until
+original exit status, and fences replacement after lost evidence. Whole-VM
+crash/restart and native descendants still need their actual host containment
+qualification; the VM-local software ceiling is not that complete host claim.
 
 **H17-04.** Budgets apply before allocation/instantiation: finite artifact and
 IPC sizes, input/output lengths, fuel, guest stack, memory/table/instance counts,
@@ -204,6 +209,7 @@ checks and measurements. H17-T5–T7, enforceable production native-memory/OS
 containment, signed delivery and physical mapping admission remain unimplemented
 or unqualified. Existing Store schema, compiled profile admission and default
 physical dispatch are unchanged; catalogue evidence remains missing.
-Cancellation releases the admitted-job slot before native exit is observed;
-rapid replacement/restart can overlap retiring workers. H17-T4's complete
-production capacity obligation therefore remains open along with H17-T5–T7.
+The [retirement repair](../provenance/component-retirement-2026-10.md) now keeps
+a VM-wide slot across cancellation, delayed exit and Runner replacement. Losing
+original exit evidence fences further previews. This closes that software race
+without claiming H17-T4's whole-host/VM-crash containment or H17-T5–T7.
