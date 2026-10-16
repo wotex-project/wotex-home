@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.44. Updated: 2026-10-16. Accepted build order; implementation and
+Version: 0.1.45. Updated: 2026-10-16. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -537,6 +537,8 @@ and implements fixed composed Profile/Limits, complete source/closure compilatio
 whole-program current-context checks, complete pending collection and sixteen-group
 whole-set arbitration in `Rules.ComposedProfile`. The existing
 admission route refuses composed sources/Programs while preserving retained
-legacy work. Next implement `Rules.ComposedMapping.build/2` under the installed
-mapping contract. Current cut/journal, wider proof/admission and host delivery
-remain separate required code; the newer Decision verifier is not selected yet.
+legacy work. `Rules.ComposedMapping.build/2` and validate/3 now derive exact
+installed scalar/read contexts and reconstruct full external Definitions, with
+closed schemas, independent input/hash vectors and focused integration tests.
+Current cut/journal, wider proof/admission and host delivery remain separate
+required code; the newer Decision verifier is not selected yet.

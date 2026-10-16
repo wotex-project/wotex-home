@@ -1,10 +1,12 @@
 # Installed mappings for composed routines v1
 
-Version: 0.1.2. Updated: 2026-10-16. Status: accepted target.
+Version: 0.1.3. Updated: 2026-10-16. Status: accepted target.
 Owner: WOH.20 H20-01/03/04/06/09; WOH.01 declarations; WOH.18 input custody.
-Implementation: planned; no activation, dependency or dispatch change.
-Evidence: source reconciliation and the limited generic feasibility probe below;
-Home RCM-T1–T10 remain unexecuted obligations.
+Implementation: pure `Rules.ComposedMapping.build/2` and validate/3 reconstruct
+closed source/environment claims, native scalar Bases and complete external
+Definitions. Independent input/hash vectors and focused mapping/schema tests cover
+this construction. Current Store facts, admission and dispatch remain planned;
+RCM-T1–T10 are not discharged as whole integration obligations.
 
 ## Result and boundaries
 
@@ -38,8 +40,8 @@ No generic valid Program is accepted by an old activation route as a new rule.
 
 Use the selected public Compiler, Registry, Basis, Unit, InputMapping and
 Input.binding_basis APIs, with the exact Profile/Limits in the composed profile
-contract. WoTEx `973fb32c` implements the inspected generic seams; Home still
-consumes routines `d1b2e87b`. No source pin is changed here.
+contract. Home consumes routines `5fc17f4a`, the consolidated continuation
+milestone containing the inspected generic seams. This mapping adds no pin change.
 
 Home's existing `Durable.Registry.decode_thing/1` and encode_thing/1 own exact
 retained Thing bytes. `Rules.ExternalInput.decode/1` parses historical input

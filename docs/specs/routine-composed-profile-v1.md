@@ -1,6 +1,6 @@
 # Composed routine profile v1
 
-Version: 0.1.4. Updated: 2026-10-16. Status: accepted target.
+Version: 0.1.5. Updated: 2026-10-16. Status: accepted target.
 Owner: WOH.20 H20-02/03/04/05/09; WOH.04 admission; WOH.07 correspondence.
 Implementation: fixed pure Profile/Limits selection, bounded source/closure compilation,
 complete current/retained-context regeneration, complete pending collection and
@@ -61,7 +61,7 @@ Before composed activation, the remaining Home contracts must freeze:
 
 | Contract deliverable | Required content and refusal until delivered |
 | --- | --- |
-| [Installed composition mappings](routine-composed-mappings-v1.md) | Accepted closed source/selectors, scalar/externally reviewed semantic matrix and exact Basis/Registry construction; implementation and current Store/admission joins remain planned. No arbitrary caller registry is installed. Unsupported outputs remain unavailable for execution. |
+| [Installed composition mappings](routine-composed-mappings-v1.md) | Accepted closed source/selectors, scalar/externally reviewed semantic matrix and exact Basis/Registry construction; pure construction/validation is implemented; current Store/admission joins remain planned. No arbitrary caller registry is installed. Unsupported outputs remain unavailable for execution. |
 | Complete active-set snapshot and clock custody | [Durable membership](routine-active-membership-v1.md) specifies the complete selected family and reviewed legacy replacement. [Independent clock bases](routine-clock-bases-v1.md) specify custody/Time@2. Complete current facts/pending work, validity and capacity encodings remain planned. Requested/provided-set receipts cannot substitute. |
 | Durable run/step/root journal | Exact immutable encodings, atomic reservation/receipt links, no-refund accounting, queue/claim/handoff guards, cancellation, retention, migration, Integrity and Backup joins. Legacy one-effect roots retain their meaning. |
 | Composed correspondence and admission | Exact supported proof scope, independent source/run/Store oracles and mutations, complete runtime identity and current activation guards. Existing single-effect correspondence and unsupported frozen models cannot admit this profile. |

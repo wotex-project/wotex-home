@@ -1,7 +1,7 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.44. Updated: 2026-10-16. Status: accepted target.
-Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context, original-first input install/revoke/status, durable input withdrawal and bounded current requested-scope collection and pure composed-profile calculation.
+Version: 0.1.45. Updated: 2026-10-16. Status: accepted target.
+Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context, original-first input install/revoke/status, durable input withdrawal and bounded current requested-scope collection and pure composed-profile calculation and installed mapping construction.
 Evidence: finite software subset; full acceptance cases remain open.
 
 ## Purpose, ownership and current subset
@@ -404,7 +404,10 @@ one installed Basis across different run durations so a complete Collection can
 compare them coherently. Current-state native snapshots use exclusive original
 receipt expiry; missing native continuity remains an explicit prerequisite for
 native edges. Readable compound values acquire no scalar execution semantics.
-RCM-T1–T10 are planned independent pure/Store obligations. Scalar mapping is not
+`Rules.ComposedMapping.build/2` and validate/3 implement pure construction and
+full regeneration, including shared-property Collection and real Boolean/enum
+external Definition reuse. Current Store/fact and admission portions of RCM-T1–T10
+remain planned. Scalar mapping is not
 scalar dispatch, current installation or composed admission; the corresponding
 execution/readback, active-set, journal, clock and proof contracts remain required.
 
