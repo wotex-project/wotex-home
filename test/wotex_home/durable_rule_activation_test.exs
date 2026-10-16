@@ -600,6 +600,51 @@ defmodule WotexHome.DurableRuleActivationTest do
     assert :ok = integrity(c.path)
   end
 
+  test "valid composed calculations cannot enter the legacy admission route or change charged history",
+       c do
+    {:ok, _} = admit(c, "admission:legacy", 3)
+    {:ok, _} = activate(c, "activation:legacy", 4, 4)
+    {:ok, retained} = invoke(c, "request:legacy", 1)
+    assert retained.disposition == :held
+    assert {:ok, revision} = Store.revision(c.store)
+
+    vector =
+      "test/fixtures/routines/composed-profile.json"
+      |> File.read!()
+      |> JSON.decode!()
+      |> Map.fetch!("cases")
+      |> hd()
+
+    assert {:ok, program} =
+             WotexHome.Rules.ComposedProfile.compile(vector["source"], vector["context"])
+
+    assert {:ok, selection} = WotexHome.Rules.ComposedProfile.new()
+    before = retained_admission_rows(c.path)
+
+    inputs = [
+      vector["source"],
+      [vector["source"]],
+      program,
+      program.data,
+      selection,
+      %{"profile" => "wotex-home.composed-profile@1", "program" => program.data}
+    ]
+
+    for {input, index} <- Enum.with_index(inputs) do
+      operation = "composed:#{index}"
+
+      assert {:error, _} =
+               Authority.admit_rule(c.authority, c.manager, 1, operation, revision, input)
+
+      assert :not_found = Authority.rule_operation_status(c.authority, c.manager, 1, operation)
+      assert {:ok, ^revision} = Store.revision(c.store)
+      assert retained_admission_rows(c.path) === before
+      assert {:ok, ^retained} = invoke(c, "request:legacy", 1)
+    end
+
+    assert :ok = integrity(c.path)
+  end
+
   test "live operator override blocks invocation without spending a root or changing revision",
        c do
     {:ok, _} = admit(c, "admission:1", 3)
@@ -800,6 +845,22 @@ defmodule WotexHome.DurableRuleActivationTest do
 
   defp invoke(c, id, generation),
     do: Authority.invoke_rule(c.authority, c.control, 1, id, generation, "rule:explicit")
+
+  defp retained_admission_rows(path) do
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    try do
+      Map.new(
+        ~w(rule_admissions rule_activations request_receipts request_journal request_execution request_causal_roots request_rule_origins),
+        fn table ->
+          {:ok, rows} = SQL.query(db, "SELECT * FROM #{table} ORDER BY rowid")
+          {table, rows}
+        end
+      )
+    after
+      Sqlite3.close(db)
+    end
+  end
 
   defp original_source(kind, id, revision),
     do: [

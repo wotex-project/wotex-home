@@ -46,7 +46,7 @@
   "wotex_binding_mqtt": {:git, "https://github.com/wotex-project/wotex.git", "687a5cd70267fa47dbfb36e28eccad6ef2964fdf", [ref: "687a5cd70267fa47dbfb36e28eccad6ef2964fdf", sparse: "packages/wotex-binding-mqtt"]},
   "wotex_continuum": {:git, "https://github.com/wotex-project/wotex.git", "687a5cd70267fa47dbfb36e28eccad6ef2964fdf", [ref: "687a5cd70267fa47dbfb36e28eccad6ef2964fdf", sparse: "packages/wotex-continuum"]},
   "wotex_profiles": {:git, "https://github.com/wotex-project/wotex.git", "687a5cd70267fa47dbfb36e28eccad6ef2964fdf", [ref: "687a5cd70267fa47dbfb36e28eccad6ef2964fdf", sparse: "packages/wotex-profiles"]},
-  "wotex_routines": {:git, "https://github.com/wotex-project/wotex.git", "d1b2e87bdc82bd0138887931a9f40a2236ff2fdc", [ref: "d1b2e87bdc82bd0138887931a9f40a2236ff2fdc", sparse: "packages/wotex-routines"]},
+  "wotex_routines": {:git, "https://github.com/wotex-project/wotex.git", "5fc17f4a8b36da9ca2b6f4dd19a6ee1a63bfdcaa", [ref: "5fc17f4a8b36da9ca2b6f4dd19a6ee1a63bfdcaa", sparse: "packages/wotex-routines"]},
   "wotex_runtime": {:git, "https://github.com/wotex-project/wotex.git", "687a5cd70267fa47dbfb36e28eccad6ef2964fdf", [ref: "687a5cd70267fa47dbfb36e28eccad6ef2964fdf", sparse: "packages/wotex-runtime"]},
   "wotex_udp": {:git, "https://github.com/wotex-project/wotex.git", "dde1837f03f88a847ba5a0ec4479711a5ff1cf96", [ref: "dde1837f03f88a847ba5a0ec4479711a5ff1cf96", sparse: "packages/wotex-udp"]},
   "xla": {:hex, :xla, "0.10.0", "41121e9f011456242d3a79b9289910ce43419be0b0e7ebe67cc1292c6b3f232f", [:make, :mix], [{:elixir_make, "~> 0.4", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm", "f57d91aea6e661b52bf12239316c598679e9170628122bbd941235f040122bc6"},

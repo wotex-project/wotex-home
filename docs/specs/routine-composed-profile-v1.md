@@ -1,9 +1,11 @@
 # Composed routine profile v1
 
-Version: 0.1.3. Updated: 2026-10-16. Status: accepted target.
+Version: 0.1.4. Updated: 2026-10-16. Status: accepted target.
 Owner: WOH.20 H20-02/03/04/05/09; WOH.04 admission; WOH.07 correspondence.
-Implementation: planned Home profile; the generic producer is separately implemented.
-Evidence: source reconciliation only; RCP-T1–T8 are unexecuted obligations.
+Implementation: fixed pure Profile/Limits selection, bounded source/closure compilation,
+complete current/retained-context regeneration, complete pending collection and
+whole-set arbitration before a fixed sixteen-group cut are implemented. Wider composed
+runtime/admission remains planned; full RCP-T1–T8 acceptance remains incomplete.
 
 ## Purpose and ownership
 
@@ -28,13 +30,16 @@ old activation route as an equivalent single-effect rule.
 
 ## Dependencies and entry state
 
-The inspected producer is WoTEx `973fb32c`; Home's consumed routines revision
-remains `d1b2e87b`. The producer's
+Home selects WoTEx `5fc17f4a` for these pure calculations and existing uses.
+That consolidated continuation commit has the exact file tree previously tested
+at `973fb32c`. The producer's
 `docs/packages/wotex-routines/specs/bounded-run-continuation-v1.md` owns explicit
 aggregate Limits, neutral resume, Time@2, Run@2, current-state satisfaction and
 complete pending Collection@2. Its bounded software milestone is recorded in
 `docs/packages/wotex-routines/provenance/bounded-continuation-2026-10.md`.
-This source review neither changes Home's lock nor establishes Home adoption.
+The selected lock supports the larger calculation limits. The newer independent
+Decision verifier is not selected by this pin; composed runtime adoption still
+requires its separate cut/journal/admission contracts.
 
 Required public operations are `Wotex.Routines.Profile.new/1`,
 `Wotex.Routines.Limits.new/1`, `Wotex.Routines.Source.new/3`,
@@ -300,3 +305,16 @@ nested calls with four total tree nodes. Delay consumes the same finite waiting
 budget as wait. Aggregate JSON capacity is independent of semantic activity
 capacity. These choices preserve WOH.20's complete-set and sixteen-effect
 obligations while closing previously implicit measurements.
+
+The implementation is `WotexHome.Rules.ComposedProfile`: `new/0` and `new/2`
+select/revalidate the exact bounds, `compile/2` accepts complete native source
+or bounded JSON with full context, and `current/2` and `to_map/1` revalidate the
+entire Program. The complete entry vectors are in
+`test/fixtures/routines/composed-profile.json`; focused tests cover expanded
+boundaries, exact raw source size, closure size, typed arguments, changed context
+and a real Authority/SQLite refusal that preserves legacy originals and charges.
+
+`collect/1` requires the explicit Collection@2 input and checks the entire supplied
+membership before returning pending work. `arbitrate/2` bounds its complete
+argument envelope and revalidates all contributors before the fixed sixteen-group
+cut. These pure APIs do not certify actual Store membership or current authority.

@@ -1,7 +1,7 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.43. Updated: 2026-10-16. Status: accepted target.
-Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context, original-first input install/revoke/status, durable input withdrawal and bounded current requested-scope collection.
+Version: 0.1.44. Updated: 2026-10-16. Status: accepted target.
+Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context, original-first input install/revoke/status, durable input withdrawal and bounded current requested-scope collection and pure composed-profile calculation.
 Evidence: finite software subset; full acceptance cases remain open.
 
 ## Purpose, ownership and current subset
