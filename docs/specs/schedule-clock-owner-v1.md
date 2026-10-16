@@ -1,6 +1,6 @@
 # Private temporal clock ownership v1
 
-Version: 0.1.1. Implemented host custody and actual Store binding, 2026-10-08.
+Version: 0.1.2. Updated: 2026-10-16. Implemented host custody and actual Store binding.
 WOH.04 owns temporal confidence; WOH.08/WOH.09/WOH.19 own actual host clock
 qualification. This slice installs no source by default, offers no public clock
 upload and creates no schedule activation, occurrence, intent or physical write.
@@ -70,6 +70,15 @@ on caller exit. Actual Store death stops the owner; a new Store boot gets a new
 boot epoch and challenge. Existing private files remain historical evidence,
 never restart authority. A source bound to another Store cannot attach even if
 it presents plausible synthetic identities. Owner status redacts private state.
+
+The [composed clock successor](routine-clock-bases-v1.md) adds Store-only
+`ClockOwner.routine_binding/2`, returning the original scope, exchange start and
+sample after repeated current checks, and `ClockOwner.withdraw/2`, consuming
+only a matching expected scope without provider/custody/runtime work. A stale
+well-formed scope leaves a replacement unchanged. Provider exceptions return
+payload-free unavailability and permanently expire confidence. Original legacy
+records and current/2 success/error vocabulary remain unchanged. The native
+lifecycle join and independent elapsed qualification remain separate obligations.
 
 Sixteen actual-file/Store/process cases cover default unqualified time, immutable
 accepted sample/retry, caller restrictions, invalid response consumption, policy/

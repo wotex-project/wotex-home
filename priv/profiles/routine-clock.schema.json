@@ -1,0 +1,451 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "binding": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_epoch": {
+          "maximum": 9223372036854775807,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "deployment_id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "elapsed_generation": {
+          "maximum": 9223372036854775807,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "monotonic_origin_ms": {
+          "maxLength": 20,
+          "pattern": "^(0|-?[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "owner_id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "runtime_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "store_boot_epoch": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "authority_epoch",
+        "deployment_id",
+        "elapsed_generation",
+        "monotonic_origin_ms",
+        "owner_id",
+        "runtime_digest",
+        "store_boot_epoch"
+      ],
+      "type": "object"
+    },
+    "observation": {
+      "additionalProperties": false,
+      "properties": {
+        "continuous_ms": {
+          "maximum": 9223372036854775807,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "lifecycle_generation": {
+          "maximum": 9223372036854775807,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "lifecycle_started_ms": {
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        "primary_lower_ms": {
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        "primary_upper_ms": {
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        "reference_epoch": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "reference_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "reference_started_ms": {
+          "maximum": 9223372036854775807,
+          "minimum": -9223372036854775808,
+          "type": "integer"
+        },
+        "source_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "source_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "continuous_ms",
+        "lifecycle_generation",
+        "lifecycle_started_ms",
+        "primary_lower_ms",
+        "primary_upper_ms",
+        "reference_epoch",
+        "reference_id",
+        "reference_started_ms",
+        "source_digest",
+        "source_id"
+      ],
+      "type": "object"
+    },
+    "policy": {
+      "additionalProperties": false,
+      "properties": {
+        "approval_timeout_ms": {
+          "maximum": 60000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "drift_ppm": {
+          "maximum": 1000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maximum_discontinuity_ms": {
+          "maximum": 1000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maximum_sample_ms": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "monotonic_policy": {
+          "const": "invalidate_on_discontinuity"
+        },
+        "procedure_ref": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "qualification_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "qualified_run_ms": {
+          "const": 86400000
+        },
+        "reference_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "runtime_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "source_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "source_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "suspend_policy": {
+          "const": "invalidate_on_lifecycle_change"
+        }
+      },
+      "required": [
+        "approval_timeout_ms",
+        "drift_ppm",
+        "maximum_discontinuity_ms",
+        "maximum_sample_ms",
+        "monotonic_policy",
+        "procedure_ref",
+        "qualification_digest",
+        "qualified_run_ms",
+        "reference_id",
+        "runtime_digest",
+        "source_digest",
+        "source_id",
+        "suspend_policy"
+      ],
+      "type": "object"
+    },
+    "policy_wire": {
+      "additionalItems": false,
+      "items": [
+        {
+          "const": "wotex-home.routine-elapsed-policy.v1"
+        },
+        {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "maximum": 60000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "maximum": 1000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "maximum": 1000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "const": 86400000
+        },
+        {
+          "const": "invalidate_on_discontinuity"
+        },
+        {
+          "const": "invalidate_on_lifecycle_change"
+        }
+      ],
+      "maxItems": 14,
+      "minItems": 14,
+      "type": "array"
+    },
+    "request": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_epoch": {
+          "maximum": 9223372036854775807,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "challenge_nonce": {
+          "pattern": "^[A-Za-z0-9_-]{43}$",
+          "type": "string"
+        },
+        "deployment_id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "elapsed_generation": {
+          "maximum": 9223372036854775807,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "lifecycle_generation": {
+          "maximum": 9223372036854775807,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "lifecycle_started_ms": {
+          "maxLength": 20,
+          "pattern": "^(0|-?[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "monotonic_origin_ms": {
+          "maxLength": 20,
+          "pattern": "^(0|-?[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "owner_id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "policy_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "reference_epoch": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "reference_started_ms": {
+          "maxLength": 20,
+          "pattern": "^(0|-?[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "runtime_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "source_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "store_boot_epoch": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "authority_epoch",
+        "challenge_nonce",
+        "deployment_id",
+        "elapsed_generation",
+        "lifecycle_generation",
+        "lifecycle_started_ms",
+        "monotonic_origin_ms",
+        "owner_id",
+        "policy_sha256",
+        "reference_epoch",
+        "reference_started_ms",
+        "runtime_digest",
+        "source_digest",
+        "store_boot_epoch"
+      ],
+      "type": "object"
+    },
+    "request_wire": {
+      "additionalItems": false,
+      "items": [
+        {
+          "const": "wotex-home.routine-elapsed-request.v1"
+        },
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "maximum": 9223372036854775807,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "maximum": 9223372036854775807,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "maxLength": 20,
+          "pattern": "^(0|-?[1-9][0-9]*)$",
+          "type": "string"
+        },
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        {
+          "maxLength": 20,
+          "pattern": "^(0|-?[1-9][0-9]*)$",
+          "type": "string"
+        },
+        {
+          "maximum": 9223372036854775807,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "maxLength": 20,
+          "pattern": "^(0|-?[1-9][0-9]*)$",
+          "type": "string"
+        },
+        {
+          "pattern": "^[A-Za-z0-9_-]{43}$",
+          "type": "string"
+        }
+      ],
+      "maxItems": 15,
+      "minItems": 15,
+      "type": "array"
+    },
+    "utc_scope": {
+      "additionalProperties": false,
+      "properties": {
+        "authority_epoch": {
+          "maximum": 9223372036854775807,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "clock_generation": {
+          "maximum": 9223372036854775807,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "deployment_id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "owner_id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "runtime_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "store_boot_epoch": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "authority_epoch",
+        "clock_generation",
+        "deployment_id",
+        "owner_id",
+        "runtime_digest",
+        "store_boot_epoch"
+      ],
+      "type": "object"
+    }
+  },
+  "title": "Pure routine clock claims; no current qualification"
+}

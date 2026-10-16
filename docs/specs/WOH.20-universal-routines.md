@@ -1,7 +1,7 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.45. Updated: 2026-10-16. Status: accepted target.
-Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context, original-first input install/revoke/status, durable input withdrawal and bounded current requested-scope collection and pure composed-profile calculation and installed mapping construction.
+Version: 0.1.46. Updated: 2026-10-16. Status: accepted target.
+Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context, original-first input install/revoke/status, durable input withdrawal and bounded current requested-scope collection and pure composed-profile calculation and installed mapping construction, plus pure independent clock values and continuity checks.
 Evidence: finite software subset; full acceptance cases remain open.
 
 ## Purpose, ownership and current subset
@@ -436,8 +436,11 @@ waits/deadlines unchanged. Native lifecycle/continuity loss withdraws the old
 elapsed incarnation; actual primary rollback requires a new receipt epoch so
 expired reports cannot become fresh again. Withdrawal remains irreversible
 through failed journal writes. Original UTC exchange and native lifecycle
-boundaries are joined explicitly. RCB-T1–T12 remain planned; installed/physical
-qualification and native backend/IPC contracts remain separate entry conditions.
+boundaries are joined explicitly. `Schedules.RoutineClockCodec` and
+`Schedules.RoutineClockMath` implement the bounded pure values, exact arithmetic
+and original-expiry checks. The signed UTC owner returns original witnesses and
+consumes only matching withdrawals. Elapsed owner/Store capture, native
+backend/IPC and installed/physical portions of RCB acceptance remain planned.
 Equal clock tokens do not establish that a previously calculated complete cut
 is still eligible. WoTEx now accepts the generic verified-decision contract at
 `docs/packages/wotex-routines/specs/verified-decision-v1.md` version 0.1.3.

@@ -1,22 +1,57 @@
 defmodule WotexHome.Schedules.ClockOwner do
   @moduledoc """
-  Owns private schedule-clock custody bound to one actual Store boot.
+  Owns private signed UTC custody bound to one actual Store boot.
 
-  Trusted composition supplies the operator, Store, private policy/root and
-  runtime sources. Only the operator may request and approve the original
-  signed challenge. Only the bound Store may obtain its binding or request a
-  current sample for an exact authority/boot/generation context.
+  Trusted host composition calls `WotexHome.Schedules.ClockOwner.start_link/1`
+  with the operator, Store, private policy/root and runtime sources. Only that
+  operator may use `WotexHome.Schedules.ClockOwner.request/1` and
+  `WotexHome.Schedules.ClockOwner.approve/3` to approve the original signed
+  challenge. Restart creates a new challenge rather than restoring a lease
+  from files.
 
-  The owner rechecks private custody, runtime and monotonic continuity. Expiry,
-  owner loss or scope drift withdraws current confidence; restart creates a new
-  challenge rather than restoring a lease from files. It owns neither SQLite
-  nor an operator bearer, and does not itself activate or dispatch schedules.
+  Legacy `WotexHome.Schedules.ClockOwner.binding/1` and
+  `WotexHome.Schedules.ClockOwner.current/2` remain bound-Store operations.
+  Current takes exactly the atom-keyed `%{scope: scope, now_ms: now}` context
+  and returns `{:ok, sample}` only for the accepted authority/boot/generation
+  scope after lease and custody checks. Coordinates are Store-relative elapsed
+  milliseconds. Existing schedule-clock results and errors retain their meaning.
+
+  `WotexHome.Schedules.ClockOwner.routine_binding/2` takes that same exact
+  atom-keyed context from the bound Store process, with a five-second call
+  timeout. It checks the full current lease, private custody, runtime and
+  anchored/rolling wall-versus-monotonic continuity, then repeats current
+  checks before returning `{:ok, witness}`. The witness has exactly string keys
+  `"scope"`, `"started_ms"` and `"sample"`: the accepted six-field UTC scope,
+  original exchange start in Store-relative milliseconds, and unchanged original
+  `WotexHome.Schedules.ClockSample` map. No processing timestamp renews them.
+
+  A malformed routine context returns `{:error, :invalid_routine_clock}`;
+  unavailable scope, lease or current checks return
+  `{:error, :routine_clock_unavailable}`. Both failures expire this owner.
+  A routine witness does not by itself qualify a native lifecycle boundary or
+  independent elapsed clock. `WotexHome.Durable.Store` must join it to the actual
+  native lifecycle, original exclusive expiry and its current clock basis before
+  composed use.
+
+  `WotexHome.Schedules.ClockOwner.withdraw/2` takes the expected complete
+  string-keyed UTC scope from the bound Store only. A matching scope
+  irreversibly expires this incarnation; repeated withdrawal or a valid stale
+  scope returns `:ok` without changing a replacement. Malformed scope returns
+  its `WotexHome.Schedules.RoutineClockCodec.utc_scope/1` error. Withdrawal has
+  a 1,000 ms synchronous call timeout and invokes no clock/provider, private
+  custody or runtime callbacks. Unauthorized routine-binding or withdrawal
+  callers receive `{:error, :routine_clock_forbidden}`.
+
+  Expiry, observed loss and scope drift withdraw current confidence. The owner
+  holds no SQLite connection or operator bearer and activates no schedule or
+  device effect. Host/Store composition owns current authority, lifecycle
+  qualification, durable admission and physical dispatch.
   """
 
   use GenServer
   alias WotexHome.Durable.Store
   alias WotexHome.Recovery.PrivateFile
-  alias WotexHome.Schedules.{ClockCodec, ClockLease, Codec}
+  alias WotexHome.Schedules.{ClockCodec, ClockLease, Codec, RoutineClockCodec}
   @domain "wotex-home.schedule-clock-runtime.v1"
   @maximum 9_223_372_036_854_775_807
 
@@ -32,6 +67,15 @@ defmodule WotexHome.Schedules.ClockOwner do
 
   def binding(server), do: GenServer.call(server, :binding)
   def current(server, context), do: GenServer.call(server, {:current, context}, 5_000)
+
+  @doc "Returns original UTC scope, exchange start and sample to the bound Store after current checks."
+  @spec routine_binding(GenServer.server(), term()) :: {:ok, map()} | {:error, atom()}
+  def routine_binding(server, context),
+    do: GenServer.call(server, {:routine_binding, context}, 5_000)
+
+  @doc "Consumes only the bound Store's matching expected scope, without clock or custody reads."
+  @spec withdraw(GenServer.server(), term()) :: :ok | {:error, atom()}
+  def withdraw(server, scope), do: GenServer.call(server, {:withdraw, scope}, 1_000)
 
   @impl true
   def init(options) do
@@ -182,6 +226,46 @@ defmodule WotexHome.Schedules.ClockOwner do
     {:reply, result, if(match?({:ok, _}, result), do: state, else: expire(state))}
   end
 
+  def handle_call({:routine_binding, context}, {caller, _}, %{store: caller} = state) do
+    if Codec.exact?(context, [:scope, :now_ms]) do
+      state = check(state)
+
+      with %{phase: :accepted} <- state,
+           true <- context.scope === state.binding.scope,
+           {:ok, sample, _} <- ClockLease.current(state.lease, context.scope, context.now_ms),
+           :ok <- custody(state),
+           %{phase: :accepted} = final <- check(state) do
+        witness = %{
+          "scope" => final.binding.scope,
+          "started_ms" => final.lease.started_monotonic_ms,
+          "sample" => sample
+        }
+
+        {:reply, {:ok, witness}, final}
+      else
+        _ -> {:reply, {:error, :routine_clock_unavailable}, expire(state)}
+      end
+    else
+      {:reply, {:error, :invalid_routine_clock}, expire(state)}
+    end
+  end
+
+  def handle_call({:withdraw, scope}, {caller, _}, %{store: caller} = state) do
+    case RoutineClockCodec.utc_scope(scope) do
+      {:ok, scope} ->
+        {:reply, :ok, if(scope === state.binding.scope, do: expire(state), else: state)}
+
+      error ->
+        {:reply, error, state}
+    end
+  end
+
+  def handle_call({:routine_binding, _}, _, state),
+    do: {:reply, {:error, :routine_clock_forbidden}, state}
+
+  def handle_call({:withdraw, _}, _, state),
+    do: {:reply, {:error, :routine_clock_forbidden}, state}
+
   def handle_call(_, _, state), do: {:reply, {:error, :schedule_clock_forbidden}, state}
 
   @impl true
@@ -255,6 +339,10 @@ defmodule WotexHome.Schedules.ClockOwner do
          true <- final_seal == state.root_seal,
          do: :ok,
          else: (_ -> {:error, :schedule_clock_custody_unavailable})
+  rescue
+    _ -> {:error, :schedule_clock_custody_unavailable}
+  catch
+    _, _ -> {:error, :schedule_clock_custody_unavailable}
   end
 
   defp observation(providers, origin) do

@@ -1,10 +1,14 @@
 # Independent composed clock bases v1
 
-Version: 0.1.2. Updated: 2026-10-16. Status: accepted target.
+Version: 0.1.3. Updated: 2026-10-16. Status: accepted target.
 Owner: WOH.20 H20-04/06/07/08; WOH.04 temporal confidence; WOH.14 fences;
 WOH.08/09/19 installed host/source qualification.
-Implementation: planned; legacy wire formats and successful behavior are preserved.
-Evidence: source reconciliation only; RCB-T1–T12 remain unexecuted obligations.
+Implementation: pure canonical policy/request codecs, independent basis tokens,
+exact receipt coordinates, anchored continuity and exclusive sample/UTC expiry
+checks and the signed UTC owner's original-witness/matching-withdrawal APIs are
+implemented. Native reference, private elapsed owner and Store capture remain planned.
+Evidence: independent pure vectors and bound-Store UTC owner tests; complete clock
+capture and installed RCB acceptance remain open. Legacy successful behavior is preserved.
 
 ## Result, ownership and compatibility
 
@@ -36,7 +40,8 @@ controls and producer-independent history reads keep their existing clock scope.
 Inspected Home 524e7383: Schedules.ClockCodec/ClockLease/ClockOwner/ClockSample,
 Durable.Store.ClockContext, Store's actual origin/boot and clock withdrawal;
 WoTEx 973fb32c: public Time, Kernel, Edge, Collection and temporal adapters.
-Home's consumed routines pin remains d1b2e87b; this target changes no lock.
+Home now consumes the consolidated continuation milestone 5fc17f4a; the clock
+implementation adds no dependency change.
 
 The [signed UTC source](schedule-clock-source-v1.md) and
 [private owner](schedule-clock-owner-v1.md) already supply UTC custody. Composed
@@ -78,6 +83,20 @@ retry. The complete snapshot returns {:ok, capture}. None returns a raw clock
 process state or private sealing descriptor. All failures are payload-free as
 specified below; redacted process status omits paths/origins/nonce/native handles.
 
+ClockOwner.routine_binding/2 retains the legacy native context's exact atom keys
+`:scope` and `:now_ms`; scope is the complete six-field string-keyed UTC scope.
+Its new witness has exactly string keys scope, started_ms and sample. It returns
+the actual immutable lease start and original sample, after current custody,
+scope and lease checks, never advanced bounds relabeled as an anchor. Wrong
+callers return routine_clock_forbidden without source work. A malformed bound
+Store context returns invalid_routine_clock; lost scope/lease/custody returns
+routine_clock_unavailable and permanently expires that owner. No later status
+can renew it. ClockOwner.withdraw/2 uses a 1000-ms call bound and validates only
+the closed expected scope; malformed input refuses unchanged. A matching scope
+consumes pending or accepted state; exact repeats and a different well-formed
+scope return :ok unchanged. Withdrawal performs no runtime, clock, custody or
+Store callback. The legacy current/2 route and its error vocabulary stay unchanged.
+
 Store-internal observed loss uses the actual owner/monitor/basis identity; a
 delayed notification must not withdraw a replacement owner. Host lifecycle
 integration must invalidate both affected current bases and qualify event/source
@@ -86,6 +105,43 @@ selection, native ABI/IPC and packaging belong to those host guides/contracts;
 an arbitrary process implementing this message shape is not an installed source.
 
 ## Time coordinates and trust
+
+The pure value layer has these native seams. All maps are complete plain
+string-keyed claims. They perform no Store, clock, file, process, runtime or
+custody measurement and cannot create the qualified capture scope. The owning
+processes must supply actual current inputs and permanently withdraw invalid
+incarnations under RCB-04/08.
+
+| API | Exact result and checks |
+| --- | --- |
+| Schedules.RoutineClockCodec.policy_document/1, decode_policy/1 | Canonical RCB-03 bytes or complete thirteen-field policy map |
+| Schedules.RoutineClockCodec.request_document/1, decode_request/1 | Canonical RCB-04 bytes or complete fourteen-field request map; signed raw fields remain decimal text |
+| Schedules.RoutineClockCodec.binding/1 | Exact seven-field RCB-06 binding with canonical signed origin |
+| Schedules.RoutineClockCodec.utc_scope/1, utc_sample/2 | Exact six-field supplied signed UTC scope and original qualified ClockSample under that scope |
+| Schedules.RoutineClockCodec.observation/2 | Complete RCB-02 native observation under the supplied policy; source/reference/digest, raw ordering and sample width agree |
+| Schedules.RoutineClockCodec.elapsed_token/1 | Reconstruct the full request, replace only its format with routine-elapsed-basis@1, then hash the canonical ordered array |
+| Schedules.RoutineClockCodec.utc_token/4 | Scope, original qualified ClockSample, actual exchange start and native observation produce exactly the RCB-06 UTC token; scope/boot/generation must agree |
+| Schedules.RoutineClockMath.coordinate/2 | Raw primary and raw origin are signed-64 integers; subtract exactly, returning a nonnegative signed-64 coordinate |
+| Schedules.RoutineClockMath.continuity/4 | Policy, initial anchor, previous successful observation and new observation; exact identity and initial/previous/new interval relations pass, returning :ok |
+| Schedules.RoutineClockMath.freshness/4 | Binding, policy, new native observation and final coordinate return exactly sampled_ms/expires_ms under exclusive RCB-05 expiry |
+| Schedules.RoutineClockMath.utc_interval/6 | Original sample, scope, exchange start, native lifecycle raw start, actual raw origin and final coordinate return the advanced {lower, upper}; preserve exclusive original expiry and the strict lifecycle join |
+
+All values return {:ok, result} except continuity's :ok. Private shape failures
+return invalid_routine_clock; exceeded byte/string/collection/depth or signed-64
+arithmetic bounds return routine_clock_limit. A structurally valid but different
+source/identity, negative elapsed result, nonqualified UTC, rollback, interval
+divergence or failed lifecycle join returns routine_clock_unavailable. Only a
+valid sample whose original expiry has been reached returns
+routine_clock_snapshot_stale. No value is clamped, renewed or partially returned.
+Native observation endpoint/start fields are integers; request/projection raw
+coordinates remain canonical signed text. Native structs and numeric floats
+refuse. The strict private decoder remains producer-independent.
+
+`priv/profiles/routine-clock.schema.json` closes the policy, request, binding and
+native observation shapes. `test/fixtures/routines/clock-bases.json` and its
+standalone Python generator freeze full canonical documents/tokens, exact
+coordinates and conservative interval arithmetic before production code. These
+entry values qualify no installed reference, custody or host lifecycle source.
 
 **RCB-01 — Keep the receipt coordinate exact.** The elapsed coordinate remains
 the Store's actual BEAM monotonic-millisecond reading minus its immutable

@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.45. Updated: 2026-10-16. Accepted build order; implementation and
+Version: 0.1.46. Updated: 2026-10-16. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -505,8 +505,13 @@ item 2's elapsed/UTC semantics, private owner/approval, native reference/lifecyc
 port and exact capture. UTC-only correction cannot expire elapsed work. Source
 loss consumes its old incarnation even if SQL fails; primary rollback requires
 a new receipt epoch. Lifecycle joining prevents an old signed UTC exchange
-from being stamped current after wake/source replacement. RCB-T1–T12 remain
-planned, including installed host/source and physical qualification.
+from being stamped current after wake/source replacement. The pure codec and
+arithmetic layer is implemented in `Schedules.RoutineClockCodec` and
+`Schedules.RoutineClockMath`, including anchored interval checks and exclusive
+original expiry. The signed UTC owner exports the original exchange witness
+and accepts matching withdrawal without callbacks. Native reference, private
+elapsed owner and Store capture follow; installed host/source and physical
+qualification remain open.
 
 WoTEx now accepts the generic decision contract at
 `docs/packages/wotex-routines/specs/verified-decision-v1.md` version 0.1.3.

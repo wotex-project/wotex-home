@@ -4,7 +4,7 @@ defmodule WotexHome.ScheduleClockOwnerTest do
   use ExUnit.Case
   alias WotexHome.Durable.Store
   alias WotexHome.Recovery.PrivateFile
-  alias WotexHome.Schedules.{ClockCodec, ClockOwner, ClockSample, Codec}
+  alias WotexHome.Schedules.{ClockCodec, ClockOwner, ClockSample, Codec, RoutineClockMath}
 
   setup do
     Process.flag(:trap_exit, true)
@@ -433,8 +433,238 @@ defmodule WotexHome.ScheduleClockOwnerTest do
     assert File.exists?(request.request_file)
   end
 
+  test "routine witness preserves the actual original exchange and never advances its anchor",
+       c do
+    owner = clock(c.options)
+    {:ok, request} = ClockOwner.request(owner)
+    {:ok, _} = ClockOwner.approve(owner, request.request_digest, response(c, request))
+    :ok = Store.attach_temporal_clock(c.store, owner)
+    original = :sys.get_state(owner)
+    assert {:error, :routine_clock_forbidden} = ClockOwner.routine_binding(owner, %{})
+    assert {:ok, first} = routine_binding(c.store, owner)
+    assert Enum.sort(Map.keys(first)) == ~w(sample scope started_ms)
+    assert first["scope"] === original.binding.scope
+    assert first["started_ms"] === original.lease.started_monotonic_ms
+    assert first["sample"] === original.lease.sample
+    assert {:ok, ^first} = routine_binding(c.store, owner)
+    assert :sys.get_state(owner).lease === original.lease
+    sample = first["sample"]
+
+    assert {:ok, _} =
+             RoutineClockMath.utc_interval(
+               sample,
+               first["scope"],
+               first["started_ms"],
+               original.binding.monotonic_origin + first["started_ms"] - 1,
+               original.binding.monotonic_origin,
+               sample["sampled_monotonic_ms"]
+             )
+
+    assert {:error, :routine_clock_snapshot_stale} =
+             RoutineClockMath.utc_interval(
+               sample,
+               first["scope"],
+               first["started_ms"],
+               original.binding.monotonic_origin + first["started_ms"] - 1,
+               original.binding.monotonic_origin,
+               sample["sampled_monotonic_ms"] + sample["maximum_age_ms"]
+             )
+
+    assert {:ok, 0} = Store.revision(c.store)
+  end
+
+  test "Store-only withdrawal consumes its exact scope without provider reads and repeats unchanged",
+       c do
+    owner = clock(c.options)
+    {:ok, request} = ClockOwner.request(owner)
+    {:ok, _} = ClockOwner.approve(owner, request.request_digest, response(c, request))
+    :ok = Store.attach_temporal_clock(c.store, owner)
+    scope = :sys.get_state(owner).binding.scope
+    assert {:error, :routine_clock_forbidden} = ClockOwner.withdraw(owner, scope)
+    assert :sys.get_state(owner).phase == :accepted
+    parent = self()
+
+    :sys.replace_state(owner, fn state ->
+      if state.timer, do: Process.cancel_timer(state.timer)
+
+      unread = fn ->
+        send(parent, :unexpected_clock_provider_read)
+        raise "private provider failure"
+      end
+
+      %{
+        state
+        | timer: nil,
+          timer_token: nil,
+          providers: %{monotonic: unread, wall: unread, runtime: unread}
+      }
+    end)
+
+    assert {:error, :invalid_routine_clock} =
+             as_store(c.store, fn _ ->
+               ClockOwner.withdraw(owner, Map.put(scope, "extra", true))
+             end)
+
+    assert :ok =
+             as_store(c.store, fn _ ->
+               ClockOwner.withdraw(owner, Map.update!(scope, "clock_generation", &(&1 + 1)))
+             end)
+
+    assert :sys.get_state(owner).phase == :accepted
+    File.rm!(c.policy_file)
+    assert :ok = as_store(c.store, fn _ -> ClockOwner.withdraw(owner, scope) end)
+    assert :ok = as_store(c.store, fn _ -> ClockOwner.withdraw(owner, scope) end)
+    assert :sys.get_state(owner).phase == :expired
+    assert :sys.get_state(owner).lease == nil
+    assert {:ok, %{state: :expired}} = ClockOwner.request(owner)
+    refute_received :unexpected_clock_provider_read
+    assert {:ok, %{interval: nil}} = Store.temporal_clock_snapshot(c.store)
+    assert {:ok, 0} = Store.revision(c.store)
+  end
+
+  test "delayed old-scope withdrawal cannot expire a replacement UTC owner", c do
+    old = clock(c.options)
+    {:ok, request} = ClockOwner.request(old)
+    {:ok, _} = ClockOwner.approve(old, request.request_digest, response(c, request))
+    :ok = Store.attach_temporal_clock(c.store, old)
+    old_scope = :sys.get_state(old).binding.scope
+    :ok = Store.invalidate_temporal_clock(c.store)
+
+    fresh =
+      start_supervised!(
+        Supervisor.child_spec({ClockOwner, c.options}, id: :fresh_clock, restart: :temporary)
+      )
+
+    {:ok, request} = ClockOwner.request(fresh)
+    {:ok, _} = ClockOwner.approve(fresh, request.request_digest, response(c, request))
+    :ok = Store.attach_temporal_clock(c.store, fresh)
+    assert :ok = as_store(c.store, fn _ -> ClockOwner.withdraw(fresh, old_scope) end)
+    assert {:ok, witness} = routine_binding(c.store, fresh)
+    assert witness["scope"]["clock_generation"] == old_scope["clock_generation"] + 1
+    assert :ok = as_store(c.store, fn _ -> ClockOwner.withdraw(old, old_scope) end)
+    assert {:ok, ^witness} = routine_binding(c.store, fresh)
+    assert {:ok, %{reason: nil}} = Store.temporal_clock_snapshot(c.store)
+  end
+
+  test "withdrawal consumes a pending challenge without allowing its later signed approval", c do
+    owner = clock(c.options)
+    {:ok, request} = ClockOwner.request(owner)
+    package = response(c, request)
+    scope = :sys.get_state(owner).binding.scope
+    assert :ok = as_store(c.store, fn _ -> ClockOwner.withdraw(owner, scope) end)
+    assert :ok = as_store(c.store, fn _ -> ClockOwner.withdraw(owner, scope) end)
+
+    assert {:error, :schedule_clock_expired} =
+             ClockOwner.approve(owner, request.request_digest, package)
+
+    assert {:error, :schedule_clock_unavailable} = Store.attach_temporal_clock(c.store, owner)
+    assert File.exists?(request.request_file)
+    assert {:ok, 0} = Store.revision(c.store)
+  end
+
+  test "routine endpoint expiry, malformed context and provider failure irreversibly consume the owner",
+       c do
+    for cause <- [:expiry, :context, :provider, :scope, :custody] do
+      owner = clock(c.options)
+      {:ok, request} = ClockOwner.request(owner)
+      {:ok, _} = ClockOwner.approve(owner, request.request_digest, response(c, request))
+      :ok = Store.attach_temporal_clock(c.store, owner)
+      original = :sys.get_state(owner)
+
+      case cause do
+        :expiry ->
+          now =
+            original.lease.sample["sampled_monotonic_ms"] +
+              original.lease.sample["maximum_age_ms"]
+
+          assert {:error, :routine_clock_unavailable} =
+                   as_store(c.store, fn _ ->
+                     ClockOwner.routine_binding(owner, %{
+                       scope: original.binding.scope,
+                       now_ms: now
+                     })
+                   end)
+
+        :context ->
+          assert {:error, :invalid_routine_clock} =
+                   as_store(c.store, fn _ -> ClockOwner.routine_binding(owner, %{}) end)
+
+        :provider ->
+          counter =
+            start_supervised!(
+              Supervisor.child_spec({Agent, fn -> 0 end}, id: :routine_runtime_calls)
+            )
+
+          :sys.replace_state(owner, fn state ->
+            if state.timer, do: Process.cancel_timer(state.timer)
+
+            %{
+              state
+              | timer: nil,
+                timer_token: nil,
+                providers:
+                  Map.put(state.providers, :runtime, fn ->
+                    call = Agent.get_and_update(counter, fn n -> {n, n + 1} end)
+                    if call == 0, do: {:ok, c.runtime}, else: throw(:private_provider_failure)
+                  end)
+            }
+          end)
+
+          assert {:error, :routine_clock_unavailable} = routine_binding(c.store, owner)
+          assert Agent.get(counter, & &1) == 2
+
+        :scope ->
+          assert {:error, :routine_clock_unavailable} =
+                   as_store(c.store, fn state ->
+                     ClockOwner.routine_binding(owner, %{
+                       scope: Map.put(original.binding.scope, "store_boot_epoch", "old:boot"),
+                       now_ms: System.monotonic_time(:millisecond) - state.clock_origin
+                     })
+                   end)
+
+        :custody ->
+          bytes = File.read!(c.policy_file)
+          File.rename!(c.policy_file, c.policy_file <> ".held")
+          :ok = PrivateFile.write(c.policy_file, bytes, 4096)
+          assert {:error, :routine_clock_unavailable} = routine_binding(c.store, owner)
+          File.rm!(c.policy_file)
+          File.rename!(c.policy_file <> ".held", c.policy_file)
+      end
+
+      assert Process.alive?(owner)
+      assert {:ok, %{state: :expired}} = ClockOwner.request(owner)
+      assert {:error, :routine_clock_unavailable} = routine_binding(c.store, owner)
+      assert {:ok, %{interval: nil}} = Store.temporal_clock_snapshot(c.store)
+      :ok = stop_supervised(ClockOwner)
+    end
+  end
+
   defp clock(options),
     do: start_supervised!(Supervisor.child_spec({ClockOwner, options}, restart: :temporary))
+
+  defp routine_binding(store, owner) do
+    {:ok, binding} = Store.temporal_clock_binding(store)
+
+    as_store(store, fn state ->
+      ClockOwner.routine_binding(owner, %{
+        scope: binding.scope,
+        now_ms: System.monotonic_time(:millisecond) - state.clock_origin
+      })
+    end)
+  end
+
+  defp as_store(store, callback) do
+    parent = self()
+    marker = make_ref()
+
+    :sys.replace_state(store, fn state ->
+      send(parent, {marker, callback.(state)})
+      state
+    end)
+
+    assert_receive {^marker, result}
+    result
+  end
 
   defp response(c, request) do
     {:ok, document} = PrivateFile.read(request.request_file, 4_096)
