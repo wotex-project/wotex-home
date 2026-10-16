@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.47. Status: accepted target.
+Version: 0.2.48. Status: accepted target.
 
 ## Rule language
 
@@ -264,3 +264,14 @@ well as current declarations/proof inputs. Selection or revocation suspends
 stale dependent rules; ending maintenance never reactivates them. Sharing
 artifact/history conventions does not make pure evaluation and physical effect
 retry interchangeable. Unsupported composed semantics remain inactive.
+
+## Composed clock qualification target
+
+The [independent composed clock contract](routine-clock-bases-v1.md) defines
+separate qualified elapsed and UTC identities, private source/lifecycle custody,
+exact Time@2 capture and irreversible loss. UTC-only correction leaves elapsed
+waits/deadlines valid. Primary rollback cannot reuse a receipt epoch to revive
+expired reports. A full-cut final-time validity/verifier contract in WoTEx is
+required before composed Store adoption; matching generation tokens alone is
+insufficient. These are accepted requirements with planned RCB-T1–T12 evidence,
+not current composed activation or installed-clock qualification.

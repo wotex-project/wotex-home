@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.31. Updated: 2026-10-16. Accepted build order; implementation and
+Version: 0.1.43. Updated: 2026-10-16. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -360,3 +360,172 @@ Preserve original registry order and immutable wire bytes. Historical decoding
 provides no current authority. Physical review, installed hosts and later effect
 execution remain unestablished. Use focused checks between logical commits and
 remove each owned temporary workspace on exit.
+
+## Composed continuation prerequisites
+
+The next producer target is WoTEx's generic
+`docs/packages/wotex-routines/specs/bounded-run-continuation-v1.md`, owned by
+WRO.01–04. It is specified before code; the complete successor remains incomplete. Home must not
+work around these gaps by forging repeated fact triggers, handoff receipts,
+clock generations or smaller active sets.
+
+Source review of the selected routines implementation at d1b2e87b identified:
+no neutral resume event for a retained edge-origin run; no qualified matching-
+state completion before dispatch; one clock generation shared by elapsed and
+UTC-window work; and a collection that reports only newly emitted proposals.
+The last gap can hide deferred unsent proposals after a batch cutoff. A pure
+complete-set capacity probe measured 16/32 members at 181198/437470 output bytes;
+64 small programs produced 637235 input bytes but exceeded the selected 1 MiB
+result ceiling. This is software evidence about these supplied values, not a
+proof that arbitrary maximum-sized definitions fit a larger aggregate.
+
+Deliver the generic explicit aggregate Limits/resume, Time@2/Run@2,
+current-state satisfaction and complete pending Collection@2/arbitration in
+that dependency order. Preserve v1 identities and explicit unsupported analysis
+scope. Independent schema/vector traces, focused native cases and two extracted
+consumers with assertion-only mutations precede the owning producer milestone.
+A newer producer checkout does not update Home's consumed pin.
+
+Before Home implementation, complete the owning Home successor requirements for
+one Store-owned active-set snapshot, immutable run/step/root journal encodings,
+nonrefundable 16-effect root reservations, complete proposal arbitration before
+a 16-group cutoff, bounded resume/receipt queueing, separate elapsed/UTC clock
+custody and current no-send satisfaction. Define the full composed admission
+profile and physical qualification obligations before widening activation;
+the current single-effect proof and physical dispatch guard remain in force.
+Do not reserve a migration number or claim these Home entry artifacts exist
+until their complete encodings and acceptance cases have been written.
+
+The generic producer now implements explicit aggregate Limits, neutral resume,
+Time@2, elapsed Edge@2, Run@2 and grammar-bound
+scalar/calendar/civil projection. Fourteen new clock/adapter cases join a
+137-case affected caller run. Shared-clock traces preserve elapsed work across
+UTC correction/loss, expire UTC-window work under its own basis, retain originals
+and refuse cross-grammar cursor/event reuse. Concrete Witness frames preserve
+the full checked Time. These are native software/control-flow checks; real
+producer continuation archives and installed clock qualification remain separate.
+
+Generic current-state satisfaction and exact Run@1 promotion are implemented
+at producer commit 41b75d1c. Eighteen native satisfaction cases cover typed and
+exact-unit matches, current root/invocation conditions, fixed paths, sequence/
+parallel progress, held-spend coherence, duplicate history, expiry and concrete
+Witness/schema replay. Two late-receipt regressions preserve evidence and held
+charges while preventing expired-step continuation. The affected 157-case
+producer caller run passes. These values create no physical handoff or grant;
+a requested satisfaction environment remains unsupported by frozen staged
+models.
+
+Complete pending Collection@2 and retained-set arbitration are implemented at
+producer commit a6de5861. Sixteen native collection cases retain all 1,024 pending
+effects from 64 sixteen-effect members across repeated cuts before a 16-group
+cutoff, reject a 1,023 pending bound, preserve reserved contributors/charges and
+check conflicts across the full supplied set. Current conditions remove/restore
+pending work with unchanged originals; missing live continuation and rehashed
+proposal/state forgeries refuse. Shared Time@2 traces exercise both Collection
+formats. All 173 affected producer caller tests pass; a requested complete-pending
+model environment remains explicitly unsupported by frozen staged models.
+
+The bounded producer software milestone is now verified and recorded at WoTEx
+commit 973fb32c in
+`docs/packages/wotex-routines/provenance/bounded-continuation-2026-10.md`.
+All 15 owning checks pass: 241 tests, 95.5% coverage and clean package Dialyzer,
+audits, documentation, boundaries and archive checks. Both independent extracted
+source/journal consumers pass five cases; each catches all five isolated root,
+clock, handoff, refund and pending-omission mutations through assertions with zero
+harness errors. Real ExBooking calendar/civil archives pass 21 cases, including
+separate UTC/elapsed grammar binding; civil query without application startup
+also passes. The exact runtime, consumers, archives, locks and cleanup evidence
+are recorded separately from broader producer and physical obligations.
+
+Next complete Home's owning active-set/run/step/root journal and composed
+admission contracts before implementation or dependency adoption. Home's lock
+and production runtime selection remain unchanged. These producer checks supply
+no Home activation, durable journal migration or physical qualification; the
+current dispatch guard and single-effect admission boundary remain in force.
+
+## Home composed contract sequence
+
+The [composed profile](../specs/routine-composed-profile-v1.md) now fixes the
+first Home calculation envelope and its measurements. It selects 64 expanded
+nodes, 64 expanded predicate nodes, four nested invoke calls, four branches per
+parallel node, sixteen possible effects, sixteen combined wait/delay nodes,
+64 active definitions/runs and 1024 pending effects before a sixteen-group cut.
+Its explicit aggregate JSON limits count every embedded copy. RCP-T1–T8 remain
+unexecuted; no runtime source or dependency changes with this specification.
+
+Complete this contract sequence before composed implementation:
+
+1. [Installed mappings](../specs/routine-composed-mappings-v1.md): accepted source
+   selectors and exact scalar/externally reviewed Mapping/Basis construction.
+   Entry fixtures and implementation remain planned. Readable unsupported values
+   stay distinct from executable and proof-qualified ones.
+2. [Durable membership](../specs/routine-active-membership-v1.md) now specifies
+   reviewed legacy-family replacement and the complete selected set. Complete
+   current fact/clock snapshots and prospective capacity remain to be specified.
+   [Independent clock custody](../specs/routine-clock-bases-v1.md) now defines
+   elapsed/UTC semantics; native host/source delivery remains planned.
+3. Exact run/step/root journal, receipt joins, monotonic reservations, queues,
+   current/final handoff guards, cancellation, retention and recovery invariants.
+4. Wider independent correspondence/proof scope, current admission and all-member
+   runtime identity. Frozen models that omit continuation or satisfaction refuse.
+5. Authenticated native use cases, closed client framing and bounded host owner
+   delivery, with honest partial/unknown outcomes and separate qualification.
+
+Only then select a coherent reviewed producer revision, author entry vectors,
+implement the profile/mapping foundations and advance through the Store work.
+Do not migrate legacy one-effect roots into sixteen-effect authorization or
+activate a composed definition using the initial-proposal Boolean proof.
+
+The [installed mapping contract](../specs/routine-composed-mappings-v1.md) now
+freezes item 1's authoring selectors, scalar/externally reviewed meaning and pure
+projection boundary. It binds full external Definition identity, rejects unequal
+same-id Registry closure and keeps native installed deadlines independent of a
+routine's shorter inherited deadline. Shared-property members therefore retain
+Collection coherence across different run durations. Native snapshot freshness
+is exclusive for WRO use while
+legacy previews retain their existing boundary. Native edges still require an
+owned reconnect/replay witness; brightness/Kelvin still need actual execution/
+readback qualification. RCM-T1–T10 are unexecuted. Complete items 2–5 and the
+native evidence/execution successors before activating their supported profiles.
+
+The [durable membership contract](../specs/routine-active-membership-v1.md) now
+closes the selected-family and legacy compatibility portion of item 2. Entry
+requires an explicit reviewed whole-family fence and new composed admissions;
+legacy multi-original requests keep their original budgets/history. The review
+includes pending ordinary work affected by that existing global fence. Composed
+member-only changes preserve unrelated ordinary requests and unchanged members,
+including their original activating principal and authorization lineage.
+Automatic withdrawals are producer-independent, retain no-repeat history and
+cannot depend on a free user-operation slot. RAM-T1–T12 are planned. The complete
+current fact/clock snapshot, capacity encodings and independent qualified elapsed/
+UTC custody still need their own contracts before the journal/proof/client work.
+
+The [independent clock contract](../specs/routine-clock-bases-v1.md) now freezes
+item 2's elapsed/UTC semantics, private owner/approval, native reference/lifecycle
+port and exact capture. UTC-only correction cannot expire elapsed work. Source
+loss consumes its old incarnation even if SQL fails; primary rollback requires
+a new receipt epoch. Lifecycle joining prevents an old signed UTC exchange
+from being stamped current after wake/source replacement. RCB-T1–T12 remain
+planned, including installed host/source and physical qualification.
+
+WoTEx now accepts the generic decision contract at
+`docs/packages/wotex-routines/specs/verified-decision-v1.md` version 0.1.3.
+The contract commit is `152d2971`, closed entry/schema vectors are `187175c8`,
+the internal canonical time-cell foundation is `9896eb2d` and public direct
+point verification is `83055631`. The point corpus passes 113 affected tests,
+checking 1,152 full transitions and 72 edge relations with all eight forbidden
+forward seams disabled during proof. Six isolated native mutants fail through
+assertions with zero harness errors. This is inspected producer evidence;
+Home's selected routine revision remains unchanged.
+
+Complete Collection@2/Decision and independent arbitration verification, then
+both extracted consumers and the producer milestone before adoption.
+Collection regeneration and Witness replay do not supply the final validity
+guard. A delayed negative member can become conflicting with equal clock tokens.
+Home's next cut/journal contract must authenticate inert point retention, preserve
+original delay starts, compare actual complete current inputs/time and require a
+fresh valid cut before effects. It cannot call the hidden producer component or
+calculate Kernel transitions inside the Store writer. Current snapshot/journal/
+proof joins and native clock backend/IPC/qualification contracts remain required
+before their consuming code; no new dependency, migration or qualification is
+selected by this status update.

@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.37. Updated: 2026-10-16. Status: accepted target.
+Version: 0.1.43. Updated: 2026-10-16. Status: accepted target.
 Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context, original-first input install/revoke/status, durable input withdrawal and bounded current requested-scope collection.
 Evidence: finite software subset; full acceptance cases remain open.
 
@@ -64,8 +64,9 @@ Store revalidates the complete proposal basis inside the committing transaction.
 evaluation and model projection. Existing v1 formats reject new constructs.
 The successor names its supported semantic profile; unsupported features never
 compile to no-ops. Home's first composed target has at most 64 expanded nodes,
-four nested routine levels, four parallel branches, sixteen possible effects,
-sixteen waits and a run duration of at most 24 hours. Count expansion after
+four nested invoke calls (root depth zero), four branches in each parallel
+node, sixteen possible effects, sixteen combined wait/delay nodes and a run
+duration of at most 24 hours. Count expansion after
 version-pinned parameter binding; recursive invocation and dynamic target
 discovery reject. The global active set remains at most 64
 rules/schedules/routines and batches at most sixteen arbitrated effect groups.
@@ -378,3 +379,72 @@ assertion-only identity/coordinate/clock/qualification mutants and eight isolate
 context/collector runtime-group probes. The integrated 79-case software milestone
 passes. Complete EI-T1–T9, active-set/composed, installed-host and physical
 acceptance remain open.
+
+## Composed profile and counting successor
+
+The [composed profile contract](routine-composed-profile-v1.md) fixes Home's
+complete twelve-member semantic Profile and six-member aggregate JSON Limits
+before implementation. It defines expanded step/predicate counting, local
+parallel width, nested invocation depth, child-closure versus active membership,
+and combined wait/delay accounting. Both conditional arms and repeated child
+copies count before current conditions, satisfaction or arbitration remove work.
+RCP-T1–T8 remain planned independent pure/Store cases. This accepted contract
+supplies no composed activation or new dependency selection. Installed mappings,
+complete current active sets and clock custody, durable run/step/root journals,
+positive composed correspondence and client/host delivery still require their
+own complete contracts before their code.
+
+## Installed composed mappings successor
+
+The [installed mapping contract](routine-composed-mappings-v1.md) defines the
+closed Home source bundle, at most 32 exact binding selectors, supplied inert
+environment, native Boolean/ppm/Kelvin/enum Basis templates, complete external
+Definition reuse and compiler/mapping identities. Shared native properties keep
+one installed Basis across different run durations so a complete Collection can
+compare them coherently. Current-state native snapshots use exclusive original
+receipt expiry; missing native continuity remains an explicit prerequisite for
+native edges. Readable compound values acquire no scalar execution semantics.
+RCM-T1–T10 are planned independent pure/Store obligations. Scalar mapping is not
+scalar dispatch, current installation or composed admission; the corresponding
+execution/readback, active-set, journal, clock and proof contracts remain required.
+
+## Durable membership and legacy compatibility successor
+
+The [durable membership contract](routine-active-membership-v1.md) defines one
+complete Store-owned composed selection with at most 64 manual/edge/temporal
+members. An explicit reviewed family transition fences the legacy singleton
+and all affected pending requests, including ordinary requests under the existing
+global fence policy. Old admissions, request originals, single-effect charges
+and uncertain domain exclusions remain history; no composed Run is invented
+for a legacy multi-original rule. New members require current composed admission.
+Ordinary new controls remain available in both families. Empty composed
+membership does not restore a legacy selection. Producer-independent withdrawal,
+exact-original recovery, unchanged-member activation lineage and continuity,
+and retained no-repeat watermarks are specified; RAM-T1–T12 remain planned.
+Complete fact/clock snapshots, run/step/root persistence, proof and client
+delivery are subsequent owners.
+
+## Independent composed clock successor
+
+The [independent clock contract](routine-clock-bases-v1.md) defines a private
+qualified elapsed owner, native continuous-reference/lifecycle port, separate
+UTC/elapsed identities and exact Time@2 capture. UTC-only loss keeps elapsed
+waits/deadlines unchanged. Native lifecycle/continuity loss withdraws the old
+elapsed incarnation; actual primary rollback requires a new receipt epoch so
+expired reports cannot become fresh again. Withdrawal remains irreversible
+through failed journal writes. Original UTC exchange and native lifecycle
+boundaries are joined explicitly. RCB-T1–T12 remain planned; installed/physical
+qualification and native backend/IPC contracts remain separate entry conditions.
+Equal clock tokens do not establish that a previously calculated complete cut
+is still eligible. WoTEx now accepts the generic verified-decision contract at
+`docs/packages/wotex-routines/specs/verified-decision-v1.md` version 0.1.3.
+Inspected source `83055631` implements public direct point verification: 113
+affected tests check 1,152 complete transitions and 72 edge relations with all
+eight forbidden forward seams disabled during proof; six native mutants fail
+through assertions with zero harness errors. Complete Collection@2/Decision,
+independent arbitration verification and full archive evidence remain
+prerequisites before that Home commit boundary. Home cannot call the hidden
+component as a substitute. The journal must distinguish authenticated inert
+point retention from fresh current effect admission, preserving original starts.
+Current snapshot, journal, wider proof and client delivery remain open. Home's
+selected producer revisions and runtime behavior are unchanged.

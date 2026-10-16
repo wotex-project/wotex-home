@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.140. Status: accepted target.
+Version: 0.1.141. Status: accepted target.
 
 The [bounded remote generation adapter](openai-generation-adapter-v1.md) now
 supplies an explicitly selected authenticated endpoint, private credential, finite
@@ -814,3 +814,15 @@ journal. Independent vectors, actual CAS/restart and twelve competing-process
 checks pass. Older local originals remain unchanged; actual local recovery
 refuses paired rows before credential or socket activity. Remote capture/recovery
 and installed custody remain successors.
+
+## Composed clock withdrawal target
+
+The [independent clock contract](routine-clock-bases-v1.md) requires actual
+owner confidence to stay withdrawn when a clock-loss journal transaction fails.
+The new Store/owner withdrawal seam consumes that exact incarnation before
+recording producer-independent run fences, retaining charges and uncertainty.
+Actual primary rollback/origin mutation requires a new receipt epoch to prevent
+report lifetime renewal. Existing legacy wire formats and successful controls
+retain their scope. Full clock-loss/run encodings, Integrity/Backup joins and
+RCB-T1–T12 remain planned before implementation; a failed write cannot restore
+physical permission or become a resend instruction.
