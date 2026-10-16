@@ -1,15 +1,43 @@
-/_build/
-/deps/
-/doc/
-/.elixir_ls/
-/erl_crash.dump
+# Mix builds, dependencies, documentation and local analysis caches.
+_build/
+deps/
+doc/
+cover/
+.elixir_ls/
+.lexical/
+.cache/
+/.fetch
+/tmp/
+erl_crash.dump
+mix.lock.bak
 *.beam
+*.plt
+*.plt.hash
+*.ez
+/wotex_home-*.tar
+/wotex_home_firmware-*.tar
+
+# Python helpers and Finder metadata.
 __pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.DS_Store
 
 # Temporary review and audit notes belong outside version control.
 /docs/research/
 /native/macos/WotexHome.xcodeproj/
 /native/macos/Info.plist
+/native/macos/.build/
+/native/macos/.swiftpm/
+/native/macos/build/
+/native/macos/DerivedData/
+/native/macos/**/*.xcresult/
+/native/macos/**/*.xcarchive/
+/native/macos/**/*.dSYM/
+xcuserdata/
+*.xcuserstate
+/native/components/**/target/
 
 # Operator-provisioned vendor metadata is pinned at runtime, not redistributed in Git.
 /priv/lifx/products.json
