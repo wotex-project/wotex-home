@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.21. Updated: 2026-10-15. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host delivery remain.
+Version: 0.2.1. Updated: 2026-10-15. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring, fenced byte transfer and host delivery remain.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -13,6 +13,34 @@ remain the original v1 lifecycle/delivery track. New schemas, selectors and
 semantic meanings cannot be enabled by relaxing v1 or copying its narrow
 qualification to another device. The [new research](local-controller-research.md)
 records current sibling source disposition without revising historical evidence.
+
+## Generic reader and consumer-owned definitions
+
+The successor uses public WoTEx WPF.01–03 public reading/interpretation and
+authoring mechanics. Home owns its model/semantic templates in priv/profiles
+and generated/installation drafts in private custody, with independently
+supplied immutable closure; no separate definitions repo is required and no catalogue moves into
+WoTEx. Home's v2 adapter translates its consumer envelope into that producer
+protocol, rechecks current accepted meanings and retains raw/projection/closure
+identities through existing trust/selection/recovery. Do not duplicate the generic
+compiler/unit reader in Home or loosen implemented v1. New quantities can be
+external data when existing mechanical contracts support them; new protocol,
+operator, behavior or privileged code needs its own reviewed implementation.
+
+The [authoring contract](../specs/profile-authoring-v1.md) orders the new work:
+
+| Stage | Deliverable | Exit evidence |
+| --- | --- | --- |
+| PA0 producer cohort | Exact WPF archive/schema/rule/binding contract; Home envelope/source/receipt/storage encodings | No missing prerequisite or local validator substitute; new source objects do not weaken v1 parsing |
+| PA1 manual authoring | Contract export, private draft/source retention, pure finalize/validate and safe diagnostics | H18-T13/T14 parity, exact hash/closure and independent wrong-mapping fixtures |
+| PA2 review/admission | Source evidence, consumer envelope join and existing Authority/Store current-basis review | H18-T16/T18 stale/revocation/offline import cases; approval is local |
+| PA3 optional generation | Explicit configured provider/local capability, permitted input projection and bounded repair | H18-T15/T17 injection, timeout, cancellation, quota, original retry and recovery |
+| PA4 milestone | Changed-owner archive/docs/software gates and exact device lab obligations | Required software cases pass; physical qualification remains separately recorded |
+
+Manual authoring precedes provider integration. A provider's structural-output
+support never substitutes for semantic/binding/source validation. Full suites
+belong to stable changed-owner milestones; this specification work adopts no
+dependencies, schema number, runtime provider or hardware qualification.
 
 ## Executed authoring components
 

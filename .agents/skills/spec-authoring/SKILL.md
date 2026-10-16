@@ -60,3 +60,16 @@ mechanisms. Run the catalogue check, reference/metadata checks and Git whitespac
 check appropriate to documentation. Report actual results and remaining entry
 conditions. When implementation is authorized, finish this review before code,
 then update only the evidence established by the implemented slice.
+
+## External profile and stream owners
+
+Use generic WoTEx WPF profile-reading/authoring and WST protocol-stream contracts
+when selected; device/model/semantic data stays consumer-owned by default.
+Public templates ship with the consumer; private drafts/source evidence remain
+in its custody. A shared definitions repository is not a prerequisite. Manual/AI
+authors use the same producer contract/finalizer/validator; source review and
+current consumer admission cannot be replaced by schema success or confidence.
+Home owns accepted meanings, policy, custody, canonical state and current grants.
+Do not duplicate a generic reader or place a full playback/surveillance engine
+inside a protocol package. Keep component requirements independently readable,
+with explicit source allocation before code; preserve implemented v1 evidence.

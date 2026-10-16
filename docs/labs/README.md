@@ -9,6 +9,7 @@ Lab procedures describe work to execute, not passed tests. The [hardware ledger]
 | [Hue local bridge](hue-local.md) | Local enrollment/resources/events |
 | [Shelly local devices](shelly-local.md) | Exact-generation local APIs and load policy |
 | [Universal Light](universal-light.md) | Unchanged semantic consumer across independent protocols |
+| [Apartment music](audio-synchronization.md) | Exact mixed speaker/host cohorts, independent acoustic skew and capture/reconnect lifecycle |
 | [WAN cut](wan-cut.md) | Offline cold boot and interruption recovery |
 | [macOS host](macos-host.md) | Background service, native custody and lifecycle |
 | [Nerves host](nerves-host.md) | Appliance parity and real recovery |

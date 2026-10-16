@@ -1,6 +1,6 @@
 # Local device behaviour successors v1
 
-Version: 0.1.0. Updated: 2026-10-13. Status: accepted target.
+Version: 0.1.2. Updated: 2026-10-13. Status: accepted target.
 Owner: WOH.01 semantics and WOH.03 mappings, H03-T8; WOH.20 integration.
 Implementation: planned. Evidence: missing.
 
@@ -44,6 +44,19 @@ title as a stream URI. Local player and remote content availability have separat
 failures. Subscription loss requires refresh/new baseline. Partial scenes retain
 completed light/cover receipts when media fails, without automatic compensation
 or resend. AirPlay/grouping capabilities require exact independent support.
+
+[WOH.21](WOH.21-apartment-music.md) owns multiroom music, source capture,
+group/member controls, current authorization and synchronization qualification.
+The selected independent/consumer component MAU.01–04 owns the Rust engine,
+media values, DSP/timeline, finite adapters and native host. WoTEx WST.01–02
+own protocol streams, WPF.01–02 read external definitions; model/cohort profiles
+remain consumer/publisher data. Volume uses normalized `volume_fraction_ppm`
+0–1000000 with installed hardware-step/software-gain vectors, not equal loudness.
+Clocked/calibrated/best_effort/unavailable grades retain actual timing evidence;
+they never promote an ACK into audibility. The confirmed WONDERBOOM 2 candidate
+uses host Bluetooth audio, with standby/reconnect and tail calibration; HomePod,
+Cast, PLAY:1 and TV routes retain independent cohort gates. Foreground music
+requires no routine kernel, voice, AI or Matter export.
 
 **LDB-03 — Loads and channels.** A writable relay requires reviewed attached-load
 class and qualified power-restoration/actuation policy; Switch branding does not

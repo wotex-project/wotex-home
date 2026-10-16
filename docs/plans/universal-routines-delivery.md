@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.46. Updated: 2026-10-16. Accepted build order; implementation and
+Version: 0.1.48. Updated: 2026-10-16. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -38,7 +38,7 @@ dependency or scheduler adapter; later temporal selection is recorded below.
 | Repository | Contract / artifact | Boundary |
 | --- | --- | --- |
 | ExBooking | SP.08, `docs/specs/SP.08-occurrence-enumeration.md`; SP.01/02/06/07 and task list | Pure original recurrence enumeration; no scheduler, authority, storage, device or consumer vocabulary |
-| WoTEx | WRO.01–04, `docs/packages/wotex-routines/specs/`; completion plan | TD/TM/Continuum-compatible behaviour basis, bounded source/IR, host seam and scoped model projection |
+| WoTEx | WRO.01–05 plus prospective WPF/WST, `docs/packages/wotex-routines/specs/`; completion plan | TD/TM/Continuum-compatible behaviour basis, bounded source/IR, host seam and scoped model projection |
 | Home | [WOH.20](../specs/WOH.20-universal-routines.md), [v2 mappings](../specs/device-profile-mappings-v2.md), [timer ownership](../specs/device-schedule-ownership-v1.md) | Household policy, grants, Store, exact device cohorts and honest presentation |
 
 The optional nineteenth WoTEx package is now registered. WRO.01 has closed
@@ -89,6 +89,19 @@ new temporal admission from this evidence. WRO.04's frozen-time proposal runner
 also passes its native cohort, with only inconclusive admission; wider models
 remain open.
 
+## Generic profile and streaming allocation
+
+WoTEx WPF.01–02 specify reading explicitly supplied external sensor/model and
+semantic descriptors. Consumer/publisher collections own those definitions;
+Home selects, retains and qualifies its own exact closure under WOH.18. No
+worldwide sensor catalogue or closed family SensorType enum belongs in WoTEx.
+Its first WRO.01 representation is not the full sensor universe; WRO.05 requires
+exact qualified projection or an honest unsupported routine input. Readers
+remain usable without routine execution. WST.01–02 own streaming protocols,
+while DSP/capture/playback/surveillance components remain separately selected.
+The v2 mapping consumer join must use the public WPF reader, not duplicate it
+inside Home; current v1 import/selection and restricted activation remain unchanged.
+
 ## Ordered additions
 
 | Stage | Owner and deliverable | Completion required before next dependent stage |
@@ -125,6 +138,7 @@ commission devices or perform host installation.
 | P12 Motionblinds | Home local-device behaviour contract; `open_fraction_ppm` 0 closed/1000000 open, exact inversion vectors, independent read/move/stop evidence; timer editing separate |
 | P13 Shelly/Hue/LIFX | WOH.03/v2; model/API-cohort mappings and qualified events/writes. SHCB-1 is RGBW bulb, SHMOS-02 uses Gen1 surface; preserve Hue TLS and LIFX readback |
 | P14 Sonos | Home local-device behaviour contract; enrolled source/favourite/session/volume/stop, private metadata, local command vs remote content failures |
+| P14 music expansion | WOH.21 and selected playback component MAU.01–04, with WoTEx WST protocol joins; own Rust/native engine, qualified multiroom groups, computer/Spotify capture and WONDERBOOM 2 Bluetooth; see the independent [music plan](apartment-music-delivery.md) |
 | P15 Matter | WOH.10 and upstream exposed-server contract; legitimate light/cover types, stable endpoints, restricted fabrics and loop prevention |
 | P16 entertainment/voice | Separate optional Home contracts after exact TV/speaker/capture identity; no unsupported microphones, Art APIs or console controls |
 | P17 authoring UX | WOH.20/08/15; source/diff, owner/next/missed, simulation, overrides and original step receipts |
@@ -133,6 +147,13 @@ commission devices or perform host installation.
 P10–P16 name later contract entry requirements rather than invented supported
 protocols. Their packet/API/host specifications must precede their code; stage 1
 does not claim those future vendor features are build-ready.
+
+The separate [whole-apartment music contract](../specs/WOH.21-apartment-music.md)
+now specifies the music portion of P14/P16. Its generic engine and ordinary
+foreground playback are independent of the routine critical path and voice/Matter.
+Later routine media steps consume qualified admitted controls; no kernel, device
+or physical evidence is promoted by these audio contracts. The playback engine is allocated outside WoTEx; prospective WST.01–02 own
+protocol-stream mechanics. No dependency is selected by this plan.
 
 ## Drift checks and qualification
 

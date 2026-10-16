@@ -2,7 +2,8 @@
 
 WOH.00–WOH.13 are target contracts at 0.2.x; WOH.14–WOH.20 cover durability,
 API/authority, release/recovery, optional component extensions and portable
-profile admission, the optional shared server and reusable routines at 0.1.x. Exact versions and
+profile admission, the optional shared server and reusable routines at 0.1.x.
+WOH.21 covers multiroom music at 0.2.x. Exact versions and
 implementation/evidence status
 live in the catalogue. No runtime implementation is implied by a target contract.
 
@@ -29,6 +30,7 @@ live in the catalogue. No runtime implementation is implied by a target contract
 | [WOH.18](WOH.18-portable-profile-admission.md) | Portable data identity, trust, target selection and retained lifecycle |
 | [WOH.19](WOH.19-shared-server-host.md) | Optional Linux service, shared resources and controller location |
 | [WOH.20](WOH.20-universal-routines.md) | Reusable routine kernel consumption, composition and Home authority |
+| [WOH.21](WOH.21-apartment-music.md) | Whole-apartment music, source capture, speaker groups and measured synchronization |
 
 Owned successor profiles: [controller connections](controller-connections-v1.md)
 under WOH.15, [autonomous scheduling](local-scheduler-v1.md) under WOH.04 and
@@ -39,7 +41,27 @@ controller/device/external execution and staged migration. The
 [local device behaviour target](local-device-behaviours-v1.md) defines planned
 cover, media, load and remote integration boundaries. The
 [universal delivery plan](../plans/universal-routines-delivery.md) connects the
-generic WoTEx and ExBooking producer contracts to Home. Use the
+generic WoTEx and ExBooking producer contracts to Home.
+
+The [music delivery plan](../plans/apartment-music-delivery.md) and
+[pinned audio research](../plans/apartment-music-research.md) connect WOH.21 to
+the separately selected playback component MAU.01–04. The
+[audio lab](../labs/audio-synchronization.md) defines independent acoustic and
+installed lifecycle acceptance. These targets claim no current hardware support.
+
+Generic profile reading and protocol streaming are WoTEx WPF/WST targets;
+sensor/model/semantic definitions remain consumer templates/private data.
+[Manual and optional AI authoring](profile-authoring-v1.md) uses WPF.03 contract
+export/finalization/shared validation before local review/admission; no shared
+definitions repository or AI service is required.
+[The v2 consumer envelope](device-profile-mappings-v2.md) owns Home's accepted
+selection and authority. [Playback component contracts](audio-engine/MAU.01-media-session-values.md)
+and [their build order](../plans/audio-engine-delivery.md) retain DSP/capture/
+render requirements outside WoTEx. Current WRO routine representations require the
+exact external-input join; a reader-supported value is not automatic
+routine support.
+
+Use the
 [specification template](spec-template.md) when authoring new contracts.
 The [delivery plan](../plans/local-controller-delivery.md) and
 [research](../plans/local-controller-research.md) connect these contracts to

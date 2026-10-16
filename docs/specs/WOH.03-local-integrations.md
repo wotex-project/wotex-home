@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.64. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.66. Status: accepted target. Each implementation advertises only its qualified subset.
 
 The [private MQTT source installation](private-mqtt-installation-v1.md) now
 composes the local publisher from immutable operator profile/capture/policy and
@@ -26,6 +26,12 @@ semantics through current Home authority. Planned BLE WBL.08 supplies explicit
 write modes and independent native Mac lifecycle. These targets broaden no
 current mapping, grant or physical qualification.
 
+[WOH.21](WOH.21-apartment-music.md) separately owns planned whole-apartment
+music sources/groups, bounded native audio custody and measured synchronization.
+Its WONDERBOOM 2 path is host Bluetooth audio, not the BLE/GATT actuator profile.
+Music remains independent of voice/Matter and the routine kernel; candidate
+devices acquire no route or physical qualification from this reference.
+
 **H03-05 — Extensible binding boundary.** These vendor paths are reference
 cohorts, not an exhaustive device catalogue. The
 [v2 profile mapping target](device-profile-mappings-v2.md) moves supported
@@ -35,6 +41,12 @@ contracts; each installed binding records exact operations, security,
 resource ownership, bounds and qualification. A codec-only, simulated or
 upstream software-peer result cannot be advertised as Home physical support.
 Unknown protocols need a reviewed binding, not a generic raw-packet escape.
+
+Selected WoTEx WPF.01–02 interpret externally supplied device/semantic
+definitions; Home owns their accepted meaning, selected closure and actual
+qualification. WoTEx WST.01–02 own optional protocol streams; DSP, native
+capture/output, recording and surveillance processing are separate components.
+No model catalogue or full playback engine is made a protocol dependency.
 
 H03-T7: exercise an independently authored standard sensor mapping through
 an installed public binding, with identity/correlation, missing/retained data,

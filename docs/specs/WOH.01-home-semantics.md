@@ -1,6 +1,6 @@
 # WOH.01 — Home Things, capabilities and units
 
-Version: 0.2.7. Status: accepted target.
+Version: 0.2.8. Status: accepted target.
 
 ## Semantic boundary
 
@@ -53,14 +53,19 @@ H01-T1: equivalent Light operations through two protocols need no vendor branch 
 ## Portable semantic selections
 
 [WOH.18](WOH.18-portable-profile-admission.md) permits independently delivered
-data to select supported host bindings, never define new capability meanings,
-units, risk or operations. Home derives the declaration; WoTEx retains TD/TM
-interpretation. Unknown semantics require a reviewed host release. Existing
+data to select supported host bindings. The implemented v1 cannot define new
+capability meanings, units, risk or operations. In the v2 target, an external
+definition may declare a new readable quantity using installed generic mechanics
+without adding a sensor/model enum to WoTEx. Home independently accepts that
+meaning, range, quality, risk and grant scope before deriving its declaration;
+unsupported operations/schema/conversion mechanics still need reviewed code.
+WoTEx WPF.01–02 own parsing/interpretation; no descriptor establishes truth or
+authority. Existing v1 unsupported semantics still require a reviewed host release. Existing
 rules and grants cannot silently acquire wider operations from a profile update.
 
 ## Capability-first sensor expansion
 
-The generic installed behaviour basis is owned by prospective WoTEx WRO.01;
+The current installed routine behaviour basis is owned by WoTEx WRO.01;
 [WOH.20](WOH.20-universal-routines.md) owns Home consumption. It carries exact
 types/units, source continuity, effect domains and evidence thresholds. Home
 retains instance enrollment, reviewed risk/freshness policy and current grants.
@@ -80,6 +85,13 @@ H01-T6: two different sensor models share the same typed channels and native
 rendering without vendor branches; invalid/scaled/stale values and counter
 resets preserve unknown/provenance semantics, and unsupported required
 capabilities never become inferred controls.
+
+The v2 quantities listed above are Home's initial normalized consumer contracts,
+not a planetary sensor list. Other externally described read-only values can
+use an installed supported schema/renderer after explicit review; unknown required
+behavior, physical meaning or risk refuses active use. WRO.05 only projects
+inputs its selected execution profile supports. No added channel silently widens
+existing grants, installs a routine or turns telemetry into a writable control.
 
 ## Retained generic read representation
 

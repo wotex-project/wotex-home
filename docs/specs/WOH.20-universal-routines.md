@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.46. Updated: 2026-10-16. Status: accepted target.
+Version: 0.1.47. Updated: 2026-10-16. Status: accepted target.
 Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context, original-first input install/revoke/status, durable input withdrawal and bounded current requested-scope collection and pure composed-profile calculation and installed mapping construction, plus pure independent clock values and continuity checks.
 Evidence: finite software subset; full acceptance cases remain open.
 
@@ -14,7 +14,7 @@ durable execution of that exact revision; a step proposes a bounded transition
 or effect. A schedule defines temporal triggering, not the routine itself.
 
 WoTEx owns the generic capability/behaviour basis, source/IR and deterministic
-kernel under planned WRO.01–WRO.04. ExBooking owns generic recurrence enumeration
+kernel under WRO.01–WRO.05 targets and their separately recorded implemented subsets. ExBooking owns generic recurrence enumeration
 under SP.08. Home owns enrollment, authors/grants, policies, Store transactions,
 clock trust, supervision, dispatch, API and presentation. These producer
 contracts do not give a library a database, device channel or credentials.
@@ -30,7 +30,7 @@ changed by this target. Refpath and booking wrappers are outside this build trac
 
 | Owner | Behavior consumed | Required failure behavior |
 | --- | --- | --- |
-| WRO.01, WoTEx prospective routines package | Typed installed behaviour, observation and effect-domain basis; TD/TM and Continuum reuse | Unknown required semantics reject; description supplies no authority |
+| WRO.01, optional WoTEx routines package | Typed installed behaviour, observation and effect-domain basis; TD/TM and Continuum reuse | Unknown required semantics reject; description supplies no authority |
 | WRO.02 | Closed source, complete canonical IR, bounded pure transition decisions | Unsupported construct, invalid native value or exceeded bound returns a typed refusal |
 | WRO.03 and ExBooking SP.08 | Original recurrence occurrences and consumer-host temporal seam | Missing producer or changed time-zone basis blocks that temporal profile |
 | WRO.04 and WOH.07 | Model scope, independent correspondence and separate result axes | Unsupported/inconclusive analysis cannot admit work requiring proof |
@@ -41,6 +41,19 @@ The producer paths are `wotex/docs/packages/wotex-routines/specs/` and
 `ex_booking/docs/specs/SP.08-occurrence-enumeration.md`. Their catalogues/task
 list identify current implementation. Home consumes documented public APIs from
 one coherent selected revision set; it does not call a sibling's hidden module.
+
+## External semantic inputs
+
+WPF.01–02 read caller-supplied external device/semantic definitions;
+Home owns their current accepted meaning, custody, enrollment and observations.
+WRO.05 requires an exact qualified join into the selected executable routine
+representation. Current WRO.01's bounded dimensions/types are a first profile,
+not the global list of sensors. Unsupported values/operators remain readable
+outside routines when their reader/binding supports them; they cannot be coerced
+into an unrelated unit, zero/false or an executable no-op. New execution/analysis
+profiles require their own schema/correspondence before code. Profile reading
+works without routines. Media/surveillance processing is a selected component;
+WoTEx WST targets own only the separately qualified protocol stream joins.
 
 ## Requirements
 

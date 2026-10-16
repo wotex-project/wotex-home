@@ -14,10 +14,10 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.01"
-    version: "0.2.7"
+    version: "0.2.8"
     file: "WOH.01-home-semantics.md"
     owns: "home semantics and capability units"
-    requires: ["WOH.00", "wotex:TD-TM"]
+    requires: ["WOH.00", "wotex:TD-TM", "wotex:WPF.01", "wotex:WPF.02"]
     required_cases: ["H01-T1", "H01-T2", "H01-T3", "H01-T4", "H01-T5", "H01-T6"]
     implementation_status: "partial"
     evidence_status: "missing"
@@ -30,10 +30,10 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.03"
-    version: "0.2.64"
+    version: "0.2.66"
     file: "WOH.03-local-integrations.md"
     owns: "device-family protocol mappings"
-    requires: ["WOH.01", "WOH.02", "wotex:Runtime", "wotex:WUD", "wotex:WZG", "wotex:WPF.02", "wotex:MQTT.JSONProjection"]
+    requires: ["WOH.01", "WOH.02", "wotex:Runtime", "wotex:WUD", "wotex:WZG", "wotex:WPF.02", "wotex:WST.01", "wotex:WST.02", "wotex:MQTT.JSONProjection"]
     required_cases: ["H03-T1", "H03-T2", "H03-T3", "H03-T4", "H03-T5", "H03-T6", "H03-T7", "H03-T8"]
     implementation_status: "partial"
     evidence_status: "missing"
@@ -166,22 +166,36 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.20"
-    version: "0.1.46"
+    version: "0.1.47"
     file: "WOH.20-universal-routines.md"
     owns: "consumer-hosted reusable routines and Home integration"
-    requires: ["WOH.00", "WOH.01", "WOH.03", "WOH.04", "WOH.05", "WOH.07", "WOH.11", "WOH.14", "WOH.15", "WOH.16", "WOH.18", "wotex:WRO.02", "wotex:WRO.05", "wotex:WRO.03", "ex_booking:SP.09"]
+    requires: ["WOH.00", "WOH.01", "WOH.03", "WOH.04", "WOH.05", "WOH.07", "WOH.11", "WOH.14", "WOH.15", "WOH.16", "WOH.18", "wotex:WRO.02", "wotex:WRO.05", "wotex:WPF.02", "wotex:WRO.03", "ex_booking:SP.09"]
     required_cases: ["H20-T1", "H20-T2", "H20-T3", "H20-T4", "H20-T5", "H20-T6", "H20-T7", "H20-T8", "H20-T9", "H20-T10"]
     implementation_status: "partial"
     evidence_status: "missing"
+  - id: "WOH.21"
+    version: "0.2.0"
+    file: "WOH.21-apartment-music.md"
+    owns: "whole-apartment music sources, speaker groups, current authority and measured synchronization"
+    requires: ["WOH.00", "WOH.01", "WOH.02", "WOH.03", "WOH.05", "WOH.08", "WOH.11", "WOH.14", "WOH.15", "WOH.16", "WOH.18", "audio-engine:MAU.01", "audio-engine:MAU.02", "audio-engine:MAU.03", "audio-engine:MAU.04", "wotex:WST.01", "wotex:WST.02"]
+    required_cases: ["H21-T1", "H21-T2", "H21-T3", "H21-T4", "H21-T5", "H21-T6", "H21-T7", "H21-T8", "H21-T9", "H21-T10"]
+    implementation_status: "planned"
+    evidence_status: "missing"
 external_contracts:
   "wotex:WRO.02": "Selected routine source is 5fc17f4a for pure composed calculation and existing uses; the newer Decision verifier remains unselected. Verified-decision 0.1.3 target/entry and internal time-cell foundation are accepted; inspected 83055631 public direct point verification passes 113 affected tests, 1,152 full transitions, 72 edge relations and six assertion-only native mutants with all eight forbidden forward seams disabled during proof. Complete Collection@2/Decision, independent arbitration and archive verification remain prerequisites, not consumed Home support"
-  "wotex:WRO.05": "Bounded execution join retained under selected 5fc17f4a; Home inert projection passes 13 focused native/schema cases, five extracted archive cases and identity/original-coordinate mutants. Home native requested-scope collection passes a 79-case software milestone and six cases with those exact extracted archives, plus four assertion-only mutants; complete acceptance, composition and broader admission remain open"
   "wotex:WRO.03": "Civil code retained under selected 5fc17f4a; 28 native cohort/profile/kernel/calendar cases and 14 renewed civil archive cases pass. Earlier f3e77a43 73-case durable milestone retains its recorded scope; installed clocks and physical qualification remain separate"
   "ex_booking:SP.09": "Complete bounded civil labels pinned at 3fa614c; Home current v4 inventory, retained-history matrix and bounded durable software milestone passed; installed-host and physical qualification remain separate"
   "wotex:MQTT.JSONProjection": "Exact 687a5cd7 pure selector/exact-JSON projection consumed; Home owns the one local EMQTT connection and report lifecycle"
   "wotex:WPF.01": "Exact current source 687a5cd7 consumed; bounded reader and historical producer-independent decoding exercised"
   "wotex:WPF.02": "Exact current public compiler/interpreter/units consumed; actual reviewed Store target and MQTT observation admission exercised"
   "wotex:WPF.03": "Pinned public authoring APIs consumed; durable and paired-native authoring slices implemented, installed delivery remains partial"
+  "wotex:WST.01": "prospective neutral stream values, bounded ports and lifecycle; no media-processing engine"
+  "wotex:WST.02": "planned exact streaming-protocol allocations; conformance and rendering/physical evidence distinct"
+  "wotex:WRO.05": "Bounded execution join retained under selected 5fc17f4a; Home inert projection passes 13 focused native/schema cases, five extracted archive cases and identity/original-coordinate mutants. Home native requested-scope collection passes a 79-case software milestone and six cases with those exact extracted archives, plus four assertion-only mutants; complete acceptance, composition and broader admission remain open"
+  "audio-engine:MAU.01": "selected independent/consumer playback component; closed media/source/group values and explicit host port"
+  "audio-engine:MAU.02": "planned Rust timeline, bounded clock/drift/buffer policy and measured synchronization grades"
+  "audio-engine:MAU.03": "planned finite Sendspin/AirPlay/Cast/native-group/host-output profiles; no brand-wide physical support"
+  "audio-engine:MAU.04": "planned explicitly supervised native engine, macOS process capture and private bounded IPC"
   "wotex:TD-TM": "upstream TD 1.1 and Thing Model values; pin exact package revision"
   "wotex:Runtime": "upstream public ConsumedThing/ExposedThing ports"
   "wotex:WUD": "Git-pinned bounded UDP owner at dde1837f; Home derives endpoint roles from the selected prefix, covers every discovery prefix by limited broadcast and preserves wider-prefix .255 unicast destinations through an explicit compatibility endpoint"
