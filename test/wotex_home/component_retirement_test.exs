@@ -275,7 +275,8 @@ defmodule WotexHome.ComponentRetirementTest do
     with open('worker.pid','w') as f: f.write(str(os.getpid()))
     def retire():
         byte=sys.stdin.buffer.read(1)
-        with open('cancelled','w') as f: f.write(byte.hex())
+        with open('cancelled.pending','x') as f: f.write(byte.hex())
+        os.rename('cancelled.pending', 'cancelled')
         while not os.path.exists('release'): time.sleep(0.005)
         if mode=='late-delayed':
             sys.stdout.buffer.write(b'\\x00\\x00\\x00\\x03\\x01\\x00\\x00');sys.stdout.buffer.flush()
@@ -295,7 +296,8 @@ defmodule WotexHome.ComponentRetirementTest do
   end
 
   defp reset(root) do
-    for name <- ~w(worker.pid launches cancelled release), do: File.rm(Path.join(root, name))
+    for name <- ~w(worker.pid launches cancelled cancelled.pending release),
+        do: File.rm(Path.join(root, name))
   end
 
   defp launches(root),
