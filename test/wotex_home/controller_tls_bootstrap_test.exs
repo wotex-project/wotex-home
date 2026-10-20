@@ -16,6 +16,45 @@ defmodule WotexHome.ControllerTLSBootstrapTest do
     %{fixture: Peer.create(root)}
   end
 
+  test "synthetic CA extensions are independent of host OpenSSL defaults", %{fixture: fixture} do
+    config = Path.join(fixture.directory, "host-defaults.cnf")
+
+    File.write!(config, """
+    [req]
+    distinguished_name=subject
+    x509_extensions=host_extensions
+    [subject]
+    [host_extensions]
+    basicConstraints=critical,CA:TRUE
+    keyUsage=critical,keyCertSign,cRLSign
+    1.2.3.4=critical,DER:01:01:FF
+    """)
+
+    previous = System.get_env("OPENSSL_CONF")
+    System.put_env("OPENSSL_CONF", config)
+
+    try do
+      isolated = Peer.create(Path.join(fixture.directory, "host-config-independent"))
+
+      {description, 0} =
+        System.cmd("openssl", [
+          "x509",
+          "-in",
+          Path.join(isolated.directory, "ca.pem"),
+          "-text",
+          "-noout"
+        ])
+
+      assert length(Regex.scan(~r/X509v3 Basic Constraints:/, description)) == 1
+      assert length(Regex.scan(~r/X509v3 Key Usage:/, description)) == 1
+      refute description =~ "1.2.3.4"
+    after
+      if previous,
+        do: System.put_env("OPENSSL_CONF", previous),
+        else: System.delete_env("OPENSSL_CONF")
+    end
+  end
+
   for identity <- [
         ["dns", "home.example"],
         ["ipv4", "127.0.0.1"],
