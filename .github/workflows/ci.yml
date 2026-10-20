@@ -86,9 +86,16 @@ jobs:
           mix woh.maude.payload.stage _build/maude-assets/Maude-3.5.1-macos-arm64.zip
       - run: mix woh.lifx.registry.fetch
       - run: mix test test/macos_app_inventory_test.exs test/macos_app_spdx_test.exs test/macos_native_deps_check_test.exs
+      - run: mix woh.native.health.smoke
+      - run: mix woh.native.controller.scope.smoke
+      - run: mix woh.native.controller.pairing.wire.smoke
+      - run: mix woh.native.controller.associations.smoke
+      - run: mix woh.native.paired.keychain.policy.smoke
+      - run: mix woh.native.paired.session.smoke
       - name: Repeat the complete paired recovery cohort with bounded diagnostics
         run: |
           for attempt in 1 2 3; do
+            printf 'Complete paired recovery cohort %s\n' "$attempt"
             mix woh.native.paired.recovery.smoke
           done
 

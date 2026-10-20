@@ -44,12 +44,18 @@ private final class AuthoringTransportProbe: NativeDomainTransport, @unchecked S
         catch {
             let category: String
             if let failure = error as? NativeControllerTLSError { category = failure.rawValue }
+            else if case LocalHealthError.server(let reason) = error {
+                let known = ["authoring_upload_required", "outcome_unknown", "request_timeout", "operation_unavailable"]
+                category = known.contains(reason) ? "server_" + reason : "server_other"
+            }
             else if case LocalHealthError.transport = error { category = "local_transport" }
             else if case LocalHealthError.invalidResponse = error { category = "invalid_response" }
             else if case LocalHealthError.nativeGuardConflict = error { category = "native_guard_conflict" }
             else { category = String(reflecting: type(of: error)) }
             let elapsed = max(0, min(60000, Int(Date().timeIntervalSince(started) * 1000)))
-            let label = mutation ? request["operation"] as! String : "read"
+            let publicOperations = ["authoring_upload_begin", "authoring_upload_chunk", "authoring_upload_status", "authoring_upload_cancel", "authoring_review_status", "authoring_candidate_status", "authoring_object_status"]
+            let operation = request["operation"] as! String
+            let label = mutation || publicOperations.contains(operation) ? operation : "read"
             FileHandle.standardError.write(Data("paired transport op=\(label) failure=\(category) elapsed_ms=\(elapsed)\n".utf8))
             throw error
         }
