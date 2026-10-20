@@ -325,12 +325,15 @@ defmodule WotexHome.GenerationInstallationTest do
     assert {:error, :generation_configuration_changed} =
              GenerationConfiguration.check(original, c.directory)
 
+    # Retain a distinct replacement identity across the missing-file check.
+    replacement = write(c.directory, "replacement.json", bytes)
+    refute File.stat!(replacement).inode == File.stat!(target).inode
     File.rm!(target)
 
     assert {:error, :generation_configuration_changed} =
              GenerationConfiguration.check(original, c.directory)
 
-    write(c.directory, GenerationConfiguration.filename(), bytes)
+    File.rename!(replacement, target)
 
     assert {:error, :generation_configuration_changed} =
              GenerationConfiguration.check(original, c.directory)

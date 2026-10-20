@@ -146,8 +146,10 @@ defmodule WotexHome.PrivateProfileConfigurationTest do
     File.chmod!(target, 0o600)
     File.write!(target, bytes)
     File.chmod!(target, 0o400)
-    File.rm!(target)
-    write(c.root, ProfileConfiguration.filename(), bytes)
+    # Allocate before replacement so an unlinked inode cannot be reused.
+    replacement = write(c.root, "replacement.json", bytes)
+    refute File.stat!(replacement).inode == File.stat!(target).inode
+    File.rename!(replacement, target)
     assert {:error, :profile_configuration_changed} = ProfileConfiguration.check(snapshot, c.root)
 
     for mode <- [0o600, 0o440, 0o644] do
