@@ -98,12 +98,24 @@ struct NativeSchedulePanelSmoke {
             await model.refreshCurrent(); try check(model.error == nil && model.currentDetail.contains("Active"))
             return
         }
-        if mode == "reload-calendar-seed" { model.draft.kind = .daily; model.draft.zone = "Fixture/Stockholm"; model.draft.localDate = "2040-10-28"; model.draft.localTime = "02:30:00" }
+        if mode == "reload-calendar-seed" {
+            model.draft.kind = .daily; model.draft.zone = "Fixture/Stockholm"
+            model.draft.localDate = "2040-10-28"; model.draft.localTime = "02:30:00"
+            try calendarWindow(model, from: "2040-10-27T00:00:00Z", until: "2040-11-04T00:00:00Z")
+        }
         if mode.hasPrefix("once") || mode.hasPrefix("daily") || mode.hasPrefix("weekdays") || mode == "utc-lifecycle" {
             model.draft.kind = mode.hasPrefix("once") ? .once : mode.hasPrefix("daily") ? .daily : .weekdays
             model.draft.zone = "Fixture/Stockholm"; model.draft.localDate = mode == "daily-gap" ? "2026-03-29" : "2040-10-28"
             model.draft.localTime = "02:30:00"
             if mode == "utc-lifecycle" { model.draft.kind = .daily; model.draft.zone = "Etc/UTC" }
+        }
+        // Gap/fold UI cases select explicit dates; the domain suite owns full-horizon correspondence.
+        if mode == "daily-gap" {
+            try calendarWindow(model, from: "2026-03-28T00:00:00Z", until: "2026-04-02T00:00:00Z")
+        }
+        if mode == "weekdays-fold" {
+            model.draft.weekdays = [7]
+            try calendarWindow(model, from: "2040-10-27T00:00:00Z", until: "2040-11-04T00:00:00Z")
         }
         if mode == "once-fold" {
             await model.prepare(.admit)
@@ -185,6 +197,15 @@ struct NativeSchedulePanelSmoke {
         }
         if mode == "weekdays-fold" { try await preview(model, journal: journal, path: CommandLine.arguments[4].replacingOccurrences(of: ".png", with: "-weekdays.png"), width: 900) }
     }
+    @MainActor private static func calendarWindow(_ model: NativeScheduleViewModel, from: String, until: String) throws {
+        let formatter = ISO8601DateFormatter()
+        guard let start = formatter.date(from: from), let end = formatter.date(from: until), start < end else {
+            throw SchedulePanelSmokeError.assertion(#line)
+        }
+        model.draft.boundedStart = true; model.draft.start = start
+        model.draft.boundedEnd = true; model.draft.end = end
+    }
+
     @MainActor private static func preview(_ model: NativeScheduleViewModel, journal: NativePendingCoordinator, path: String, width: CGFloat) async throws {
         _ = NSApplication.shared; NSApp.setActivationPolicy(.prohibited)
         let content = ScrollView { VStack(alignment: .leading, spacing: 16) { NativeSchedulePanel(schedules: model); Divider(); NativePendingPanel(journal: journal, recoveryAllowed: true) } }
