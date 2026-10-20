@@ -892,8 +892,8 @@ struct NativePairedRecoverySmoke {
                     try require(probe.observation.mutations == 0)
                     return result
                 } catch {
-                    if dropCommitted {
-                        try require(probe.observation.dropped && probe.observation.mutations == 1)
+                    if dropCommitted && probe.observation.dropped {
+                        try require(probe.observation.mutations == 1)
                         throw PairedRecoverySmokeError.droppedReply
                     }
                     throw error
