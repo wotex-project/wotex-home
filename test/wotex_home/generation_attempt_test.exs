@@ -752,8 +752,16 @@ defmodule WotexHome.GenerationAttemptTest do
         )
     end)
 
+    # Drain Store after the result channel closes before lifting the SQL fault.
+    [runner] =
+      :sys.get_state(ctx.store).generation_jobs |> Map.values() |> Enum.map(& &1.worker)
+
+    monitor = Process.monitor(runner)
     GenServer.reply(from, {:ok, fixture("authoring-mechanics")["temperature"]["draft_bytes"]})
-    row = await_private_result(ctx, "attempt:fixture", 30)
+    assert_receive {:DOWN, ^monitor, :process, ^runner, _}, 1_000
+    assert {:ok, revision} = Store.revision(ctx.store)
+    assert revision == receipt["revision"]
+    row = await_private_result(ctx, "attempt:fixture", 0)
     assert row["result"] == nil
 
     db(ctx, fn db ->
