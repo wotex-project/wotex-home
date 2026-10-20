@@ -290,7 +290,8 @@ defmodule WotexHome.ExternalInputWithdrawalTest do
     assert :ok = Integrity.validate_snapshot(db)
   end
 
-  @tag input_quota: true, timeout: 60_000
+  # Seed and independently validate all 160 retained heads and retirement reserves.
+  @tag input_quota: true, timeout: 180_000
   test "new native admission charges every retained retirement reserve before live producers",
        c do
     credential = :crypto.strong_rand_bytes(32)

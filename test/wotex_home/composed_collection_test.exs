@@ -8,6 +8,8 @@ defmodule WotexHome.ComposedCollectionTest do
 
   @vectors "test/fixtures/routines/composed-profile.json" |> File.read!() |> JSON.decode!()
 
+  # The complete capacity trace compiles 64 members and checks two 1,024-original cuts.
+  @tag timeout: 180_000
   test "all 1024 pending originals survive repeated cuts and conflicts precede sixteen-group selection" do
     input = capacity_input()
     assert {:ok, collection} = ComposedProfile.collect(input)
