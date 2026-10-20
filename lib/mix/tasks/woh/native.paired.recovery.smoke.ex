@@ -577,8 +577,10 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
   defp transport(executable, input) do
     body = JSON.encode!(input)
 
+    # Authoring scenarios make several separately bounded exchanges. Give the
+    # complete scenario the same harness budget, including restart checks.
     timeout =
-      if input["mode"] in ~w(authoring-stage authoring-workspace authoring-workspace-repair authoring-workspace-selectors),
+      if String.starts_with?(input["mode"], "authoring-"),
         do: 45_000,
         else: 20_000
 

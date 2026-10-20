@@ -38,7 +38,13 @@ private final class AuthoringTransportProbe: NativeDomainTransport, @unchecked S
         let request = try JSONSerialization.jsonObject(with: body) as! [String: Any]
         let mutation = ["authoring_object_import", "authoring_candidate_assess", "authoring_candidate_review", "authoring_generation_prepare", "authoring_generation_start"].contains(request["operation"] as! String)
         if mutation { lock.lock(); mutationCount += 1; lock.unlock() }
-        let response = try base.request(body: body, allowNotFound: allowNotFound)
+        let started = Date()
+        let response: Data
+        do { response = try base.request(body: body, allowNotFound: allowNotFound) }
+        catch {
+            if mutation { report(error, operation: request["operation"] as! String, started: started) }
+            throw error
+        }
         if mutation && dropCommitted {
             let result = try JSONSerialization.jsonObject(with: response) as! [String: Any]
             if result["outcome"] as? String == "ok" {
@@ -47,6 +53,22 @@ private final class AuthoringTransportProbe: NativeDomainTransport, @unchecked S
             }
         }
         return response
+    }
+
+    // Keep diagnostics to closed failure codes; requests and replies can hold credentials.
+    private func report(_ error: any Error, operation: String, started: Date) {
+        if case LocalHealthError.server("authoring_upload_required") = error { return }
+        let category: String
+        if let failure = error as? NativeControllerTLSError { category = failure.rawValue }
+        else if case LocalHealthError.server(let reason) = error {
+            let known = ["outcome_unknown", "request_timeout", "operation_unavailable"]
+            category = known.contains(reason) ? "server_" + reason : "server_other"
+        } else if case LocalHealthError.invalidResponse = error { category = "invalid_response" }
+        else if case LocalHealthError.nativeGuardConflict = error { category = "native_guard_conflict" }
+        else if case LocalHealthError.transport = error { category = "local_transport" }
+        else { category = "unclassified" }
+        let elapsed = Int(max(0, min(60, Date().timeIntervalSince(started))) * 1000)
+        FileHandle.standardError.write(Data("paired transport failure op=\(operation) code=\(category) elapsed_ms=\(elapsed)\n".utf8))
     }
 }
 
