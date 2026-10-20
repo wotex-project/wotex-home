@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   core:
-    if: ${{ false }}
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
@@ -86,10 +86,14 @@ jobs:
           mix woh.maude.payload.stage _build/maude-assets/Maude-3.5.1-macos-arm64.zip
       - run: mix woh.lifx.registry.fetch
       - run: mix test test/macos_app_inventory_test.exs test/macos_app_spdx_test.exs test/macos_native_deps_check_test.exs
-      - run: mix woh.native.paired.recovery.smoke
+      - name: Repeat the complete paired recovery cohort with bounded diagnostics
+        run: |
+          for attempt in 1 2 3; do
+            mix woh.native.paired.recovery.smoke
+          done
 
   nerves_host:
-    if: ${{ false }}
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     defaults:

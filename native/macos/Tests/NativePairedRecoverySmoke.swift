@@ -38,7 +38,28 @@ private final class AuthoringTransportProbe: NativeDomainTransport, @unchecked S
         let request = try JSONSerialization.jsonObject(with: body) as! [String: Any]
         let mutation = ["authoring_object_import", "authoring_candidate_assess", "authoring_candidate_review", "authoring_generation_prepare", "authoring_generation_start"].contains(request["operation"] as! String)
         if mutation { lock.lock(); mutationCount += 1; lock.unlock() }
-        let response = try base.request(body: body, allowNotFound: allowNotFound)
+        let started = Date()
+        let response: Data
+        do { response = try base.request(body: body, allowNotFound: allowNotFound) }
+        catch {
+            let category: String
+            if let failure = error as? NativeControllerTLSError { category = failure.rawValue }
+            else if case LocalHealthError.transport = error { category = "local_transport" }
+            else if case LocalHealthError.invalidResponse = error { category = "invalid_response" }
+            else if case LocalHealthError.nativeGuardConflict = error { category = "native_guard_conflict" }
+            else { category = String(reflecting: type(of: error)) }
+            let elapsed = max(0, min(60000, Int(Date().timeIntervalSince(started) * 1000)))
+            let label = mutation ? request["operation"] as! String : "read"
+            FileHandle.standardError.write(Data("paired transport op=\(label) failure=\(category) elapsed_ms=\(elapsed)\n".utf8))
+            throw error
+        }
+        if mutation {
+            let result = try JSONSerialization.jsonObject(with: response) as! [String: Any]
+            let outcome = result["outcome"] as? String == "ok" ? "ok" : "refused"
+            let reason = result["reason"] as? String == "outcome_unknown" ? "outcome_unknown" : "other"
+            let elapsed = max(0, min(60000, Int(Date().timeIntervalSince(started) * 1000)))
+            FileHandle.standardError.write(Data("paired transport op=\(request["operation"] as! String) reply=\(outcome) reason=\(reason) elapsed_ms=\(elapsed)\n".utf8))
+        }
         if mutation && dropCommitted {
             let result = try JSONSerialization.jsonObject(with: response) as! [String: Any]
             if result["outcome"] as? String == "ok" {

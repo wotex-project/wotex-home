@@ -590,8 +590,16 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
            <<byte_size(body)::32, body::binary>>
          ) do
       {:ok, output} ->
-        unless String.trim(output) == "native original paired transport case passed",
-          do: Mix.raise("native original paired transport fixture did not complete")
+        {diagnostics, records} =
+          output
+          |> String.split("\n")
+          |> Enum.split_with(&String.starts_with?(&1, "paired transport op="))
+
+        Enum.each(diagnostics, &IO.puts/1)
+
+        unless String.trim(Enum.join(records, "\n")) ==
+                 "native original paired transport case passed",
+               do: Mix.raise("native original paired transport fixture did not complete")
 
       {:error, reason} ->
         Mix.raise("native original paired #{input["mode"]} fixture failed: #{reason}")
