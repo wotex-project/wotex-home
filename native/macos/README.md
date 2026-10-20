@@ -538,7 +538,11 @@ Seed failures retain the workflow name and report only fixed public failure
 codes; raw credential-bearing fixture output is never included in diagnostics.
 The separate pending-storage fixture has only fixed public documents and no
 credential/API activity. Its bounded diagnostics identify the failing mode and
-child. The race barrier permits the parent's complete six-second readiness window.
+child. Authoring upgrades from each legacy version, typed vectors, refusals,
+maximum-size codec and maximum-size file custody run in separate bounded
+subprocesses. Both capacity checks retain sixteen complete 262144-byte imports;
+they each have a 45-second harness bound, while the smaller cohorts retain
+15-second bounds. The race barrier permits the parent's complete six-second readiness window.
 The 45-second outer runner covers the optional eight-second seed, readiness,
 two eight-second child collections and two five-second cleanup waits, with
 launcher overhead. These fixture bounds do not

@@ -27,7 +27,15 @@ struct NativePendingStorageSmoke {
             let schedules = directory.appendingPathComponent("schedules", isDirectory: true)
             try FileManager.default.createDirectory(at: schedules, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
             try versionedSchedules(schedules)
-        case "authoring-suite": try versionedAuthoring(directory)
+        case "authoring-upgrade-v1": try authoringUpgrade(directory, version: .v1)
+        case "authoring-upgrade-v2": try authoringUpgrade(directory, version: .v2)
+        case "authoring-upgrade-v3": try authoringUpgrade(directory, version: .v3)
+        case "authoring-upgrade-v4": try authoringUpgrade(directory, version: .v4)
+        case "authoring-upgrade-v5": try authoringUpgrade(directory, version: .v5)
+        case "authoring-vectors": try authoringVectors()
+        case "authoring-refusals": try authoringRefusals()
+        case "authoring-capacity-codec": try authoringCapacityCodec()
+        case "authoring-capacity-storage": try authoringCapacityStorage(directory)
         case "generation-suite": try versionedGeneration(directory)
         case "paired-authoring-suite": try pairedAuthoringSuite(directory)
         case "paired-authoring-race": try race(directory, upgrade: true, pairedAuthoring: true)
@@ -422,29 +430,31 @@ struct NativePendingStorageSmoke {
         let input = try NativeAuthoringOriginalWire.encode(fields, kind: .import)
         return NativePendingEntry(context: context, custody: original.custody, input: .authoring(input, payload), phase: .pending)
     }
-    private static func versionedAuthoring(_ directory: URL) throws {
+    // Each cohort keeps its own subprocess deadline. The maximum-size codec
+    // and storage paths still retain all sixteen complete original payloads.
+    private static func authoringUpgrade(_ directory: URL, version: NativePendingVersion) throws {
         let file = directory.appendingPathComponent("native-pending-v1.json")
         let importEntry = try authoringImport()
-        for version in [NativePendingVersion.v1, .v2, .v3, .v4, .v5] {
-            let bytes = try NativePendingDocument(revision: 1, entries: [original], version: version).encoded()
-            try write(file.path, bytes)
-            let before = try NativePendingStorage.load(directory: directory)
-            try check(before.document.version == version && Data(contentsOf: file) == bytes)
-            let after = try NativePendingStorage.retaining(importEntry, directory: directory, expected: before)
-            try check(after.document.version == .v6 && after.document.revision == 2 && after.document.entries.contains(original))
-            let published = try Data(contentsOf: file)
-            try check(published.count > 65_536 && NativePendingDocument.decode(published) == after.document)
-            try check(try importEntry.authoringOperation().1 == Data(repeating: 255, count: 262_144))
-            try check(try NativePendingStorage.retaining(importEntry, directory: directory, expected: after) == after && Data(contentsOf: file) == published)
-            try expected(.conflict) { _ = try NativePendingStorage.resolving(original, directory: directory, expected: before) }
-            let empty = try NativePendingStorage.resolving(original, directory: directory,
-                expected: NativePendingStorage.resolving(importEntry, directory: directory, expected: after))
-            try check(empty.document.version == .v6 && empty.document.entries.isEmpty)
-            let later = try NativePendingStorage.retaining(original, directory: directory, expected: empty)
-            try check(later.document.version == .v6)
-            let older = Data(String(decoding: published, as: UTF8.self).replacingOccurrences(of: "wotex-home.native-pending.v6", with: version.rawValue).utf8)
-            try refused { _ = try NativePendingDocument.decode(older) }
-        }
+        let bytes = try NativePendingDocument(revision: 1, entries: [original], version: version).encoded()
+        try write(file.path, bytes)
+        let before = try NativePendingStorage.load(directory: directory)
+        try check(before.document.version == version && Data(contentsOf: file) == bytes)
+        let after = try NativePendingStorage.retaining(importEntry, directory: directory, expected: before)
+        try check(after.document.version == .v6 && after.document.revision == 2 && after.document.entries.contains(original))
+        let published = try Data(contentsOf: file)
+        try check(published.count > 65_536 && NativePendingDocument.decode(published) == after.document)
+        try check(try importEntry.authoringOperation().1 == Data(repeating: 255, count: 262_144))
+        try check(try NativePendingStorage.retaining(importEntry, directory: directory, expected: after) == after && Data(contentsOf: file) == published)
+        try expected(.conflict) { _ = try NativePendingStorage.resolving(original, directory: directory, expected: before) }
+        let empty = try NativePendingStorage.resolving(original, directory: directory,
+            expected: NativePendingStorage.resolving(importEntry, directory: directory, expected: after))
+        try check(empty.document.version == .v6 && empty.document.entries.isEmpty)
+        let later = try NativePendingStorage.retaining(original, directory: directory, expected: empty)
+        try check(later.document.version == .v6)
+        let older = Data(String(decoding: published, as: UTF8.self).replacingOccurrences(of: "wotex-home.native-pending.v6", with: version.rawValue).utf8)
+        try refused { _ = try NativePendingDocument.decode(older) }
+    }
+    private static func authoringVectors() throws {
         for (kind, name) in [(HomeAuthoringOriginalKind.candidate, "authoring-candidate"), (.review, "authoring-review")] {
             let vector = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: "test/fixtures/profiles/" + name + ".json"))) as! [String: Any]
             let value = try NativeAuthoringOriginalWire.nativeJSON(JSONSerialization.data(withJSONObject: vector["input"]!), kind: kind)
@@ -464,6 +474,9 @@ struct NativePendingStorageSmoke {
                 try check(try NativePendingDocument.decode(document.encoded()) == document)
             }
         }
+    }
+    private static func authoringRefusals() throws {
+        let importEntry = try authoringImport()
         try refused { _ = try NativePendingDocument(revision: 1, entries: [NativePendingEntry(context: context, custody: original.custody, input: importEntry.input, phase: .review(token: "review:one", digest: String(repeating: "d", count: 64)))]).encoded() }
         if case .authoring(let value, _) = importEntry.input {
             for payload in [Data(), Data([255]), Data(repeating: 0, count: 262_144)] {
@@ -480,15 +493,27 @@ struct NativePendingStorageSmoke {
             let paired = NativePendingContext(deployment: context.deployment, owner: context.owner, epoch: 7, principal: "paired-controller-v1:7:" + String(repeating: "d", count: 64))
             try refused { _ = try NativePendingDocument(revision: 1, entries: [NativePendingEntry(context: paired, custody: .paired(association: String(repeating: "e", count: 64), controller: String(repeating: "f", count: 64), creationRevision: 3, verifier: String(repeating: "c", count: 64)), input: importEntry.input, phase: .pending)], version: .v6).encoded() }
         }
+    }
+    private static func fullAuthoringDocument(_ importEntry: NativePendingEntry) -> NativePendingDocument {
         let entries = (0..<16).map { n in NativePendingEntry(context: NativePendingContext(deployment: context.deployment, owner: String(format: "%064x", n), epoch: 7, principal: context.principal), custody: original.custody, input: importEntry.input, phase: .pending) }
         let full = NativePendingDocument(revision: 1, entries: NativePendingDocument.sorted(entries))
+        return full
+    }
+    private static func authoringCapacityCodec() throws {
+        let importEntry = try authoringImport()
+        let full = fullAuthoringDocument(importEntry)
         let fullBytes = try full.encoded()
         try check(fullBytes.count > 5_000_000 && fullBytes.count < 8_388_608 && NativePendingDocument.decode(fullBytes) == full)
+        try check(Mirror(reflecting: importEntry.input).children.isEmpty && NativePendingRecoveryAction.lookup.permits(importEntry) && NativePendingRecoveryAction.retry.permits(importEntry) && !NativePendingRecoveryAction.cancelReview.permits(importEntry))
+    }
+    private static func authoringCapacityStorage(_ directory: URL) throws {
+        let file = directory.appendingPathComponent("native-pending-v1.json")
+        let importEntry = try authoringImport()
+        let fullBytes = try fullAuthoringDocument(importEntry).encoded()
         try write(file.path, fullBytes)
         let snapshot = try NativePendingStorage.load(directory: directory)
         try expected(.capacity) { _ = try NativePendingStorage.retaining(importEntry, directory: directory, expected: snapshot) }
         try check(try Data(contentsOf: file) == fullBytes)
-        try check(Mirror(reflecting: importEntry.input).children.isEmpty && NativePendingRecoveryAction.lookup.permits(importEntry) && NativePendingRecoveryAction.retry.permits(importEntry) && !NativePendingRecoveryAction.cancelReview.permits(importEntry))
     }
     private static func generationVectors() throws -> [[String: Any]] {
         let data = try Data(contentsOf: URL(fileURLWithPath: "test/fixtures/profiles/native-pending-generation.json"))

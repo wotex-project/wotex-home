@@ -131,12 +131,7 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
 
   defp legacy_checks(executable, directory, :all) do
     with :ok <- run_fixture(executable, private_directory(directory, "suite"), "suite"),
-         :ok <-
-           run_fixture(
-             executable,
-             private_directory(directory, "authoring-suite"),
-             "authoring-suite"
-           ),
+         :ok <- authoring_checks(executable, directory),
          :ok <- restart(executable, private_directory(directory, "restart")),
          :ok <- authoring_restart(executable, private_directory(directory, "authoring-restart")),
          :ok <- race(executable, private_directory(directory, "race"), false),
@@ -147,6 +142,18 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
          :ok <-
            race(executable, private_directory(directory, "authoring-upgrade-race"), :authoring),
          do: :ok
+  end
+
+  defp authoring_checks(executable, directory) do
+    modes =
+      ~w(authoring-upgrade-v1 authoring-upgrade-v2 authoring-upgrade-v3 authoring-upgrade-v4 authoring-upgrade-v5 authoring-vectors authoring-refusals authoring-capacity-codec authoring-capacity-storage)
+
+    Enum.reduce_while(modes, :ok, fn mode, :ok ->
+      case run_fixture(executable, private_directory(directory, mode), mode) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
   end
 
   defp restart(executable, root) do
@@ -263,12 +270,17 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
   defp run_fixture(executable, root, mode) do
     # These inert fixtures contain only fixed public identities/digests and
     # never capture credentials or contact Home. Bounded diagnostics are safe.
-    budget = if mode == "authoring-suite", do: 45_000, else: 15_000
+    # Maximum-size codec and file checks each exercise sixteen full imports.
+    # Legacy upgrades and refusal vectors have separate ordinary fixture bounds.
+    budget =
+      if mode in ["authoring-capacity-codec", "authoring-capacity-storage"],
+        do: 45_000,
+        else: 15_000
 
     case Command.run_diagnostic(executable, [root, mode], 16_384, budget) do
       {:ok, output} ->
         if String.contains?(output, "native pending storage #{mode} passed"),
-          do: :ok,
+          do: Mix.shell().info("native pending storage #{mode} passed"),
           else: {:error, "native journal fixture did not complete"}
 
       {:error, reason} ->
