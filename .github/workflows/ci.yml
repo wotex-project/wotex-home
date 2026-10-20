@@ -14,14 +14,29 @@ concurrency:
 
 jobs:
   core:
+    needs: core_tests
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require all core test partitions
+        run: test '${{ needs.core_tests.result }}' = 'success'
+
+  core_tests:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [1, 2, 3]
     env:
+      MIX_TEST_PARTITION: ${{ matrix.partition }}
       MIX_ENV: test
+      ERL_FLAGS: "+S 2:2"
       EX_MAUDE_BUILD_CNODE: "0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
         with:
@@ -57,7 +72,7 @@ jobs:
       - run: mix compile --warnings-as-errors
       - run: mix woh.spec.check
       - run: mix woh.lifx.registry.fetch
-      - run: mix test
+      - run: mix test --partitions 3 --max-cases 2
 
   macos_app:
     runs-on: macos-15
