@@ -95,12 +95,15 @@ defmodule WotexHome.MQTTPublisherTest do
   end
 
   defp status(c, count) do
-    wait(fn ->
-      case Publisher.status(c.publisher) do
-        {:ok, %{received: ^count, pending_frames: 0} = status} -> status
-        _ -> false
-      end
-    end)
+    wait(
+      fn ->
+        case Publisher.status(c.publisher) do
+          {:ok, %{received: ^count, pending_frames: 0} = status} -> status
+          _ -> false
+        end
+      end,
+      600
+    )
   end
 
   test "actual broker report reaches the current reviewed Store target with exact units", c do
@@ -145,8 +148,18 @@ defmodule WotexHome.MQTTPublisherTest do
 
     assert Enum.map(reports, & &1["sequence"]) == ["1", "1"]
     assert reports |> Enum.map(& &1["receipt_time"]) |> Enum.uniq() |> length() == 1
-    :ok = :sys.resume(c.store)
-    assert %{accepted: 2, refused: 0} = status(c, 1)
+    # Delay the Store reply within the publisher's five-second admission budget.
+    resume =
+      Task.async(fn ->
+        Process.sleep(1_250)
+        :ok = :sys.resume(c.store)
+      end)
+
+    try do
+      assert %{accepted: 2, refused: 0} = status(c, 1)
+    after
+      Task.await(resume, 5_000)
+    end
 
     for {channel, expected} <- [{"sample", "25000"}, {"second", "26000"}] do
       assert {:ok, preview} =
