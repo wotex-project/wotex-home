@@ -119,6 +119,8 @@ struct NativePairedRecoverySmoke {
             FileHandle.standardError.write(Data("native original paired fixture rejected a response\n".utf8)); exit(1)
         } catch LocalHealthError.invalidProfileRequest {
             FileHandle.standardError.write(Data("native original paired fixture rejected an authoring input\n".utf8)); exit(1)
+        } catch let error as NativeControllerTLSError {
+            FileHandle.standardError.write(Data("native original paired TLS boundary failed: \(error.rawValue)\n".utf8)); exit(1)
         } catch {
             FileHandle.standardError.write(Data("native original paired fixture failed: \(String(reflecting: type(of: error)))\n".utf8)); exit(1)
         }
@@ -707,8 +709,8 @@ struct NativePairedRecoverySmoke {
                     try require(expectMutation ? probe.observation.mutations > 0 : probe.observation.mutations == 0)
                     return outcome
                 } catch {
-                    if dropCommitted {
-                        try require(probe.observation.dropped && probe.observation.mutations > 0)
+                    if dropCommitted && probe.observation.dropped {
+                        try require(probe.observation.mutations > 0)
                         throw PairedRecoverySmokeError.droppedReply
                     }
                     throw error
