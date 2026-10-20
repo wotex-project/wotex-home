@@ -441,7 +441,8 @@ defmodule WotexHome.DurableScheduleAdmissionTest do
 
     bytes = legacy <> binary_part(original_bytes, 54, byte_size(original_bytes) - 54)
     {:ok, zone} = Tzif.decode(record["name"], bytes)
-    changes = %{"trigger" => ["daily", zone.name, zone.digest, "02:30:00", 0, nil]}
+    # This quota case retains complete bytes with a single-day calendar window.
+    changes = %{"trigger" => ["daily", zone.name, zone.digest, "02:30:00", 0, 86_400_000]}
     first = original("admit", "schedule:first", 3, changes)
     {:ok, receipt} = Store.retain_schedule_content(c.store, c.manager, first, zone)
     {count, revision} = with_db(c.path, &fill_history(&1, 1_024, 8_388_608))
