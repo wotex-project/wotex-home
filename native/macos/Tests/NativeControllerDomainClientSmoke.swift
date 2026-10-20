@@ -145,7 +145,9 @@ struct NativeControllerDomainClientSmoke {
                 guard childOutcome == (mode == "outliving" ? "invalidRecord" : "outcomeUnknown") else { throw DomainFixtureError.failed }
             }
             let elapsed = started.duration(to: .now).components.seconds
-            guard actual == expected, elapsed < 17,
+            // Authority runs 32 independently bounded SDK/UDS comparisons.
+            let maximumElapsed: Int64 = mode == "authority" ? 32 * 25 : 17
+            guard actual == expected, elapsed < maximumElapsed,
                   !["slow-clock", "late-decode"].contains(mode) || elapsed >= 9 else {
                 FileHandle.standardError.write(Data("domain outcome mismatch: \(mode): \(actual)\n".utf8))
                 throw DomainFixtureError.failed
@@ -178,6 +180,7 @@ struct NativeControllerDomainClientSmoke {
         clock: @escaping @Sendable () throws -> NativeControllerCertificateClock, socket: String,
         line: Int = #line,
         _ operation: @escaping @Sendable (String) throws -> Value) async throws -> Value {
+        let started = ContinuousClock.now
         let remote: Value
         let probe = DomainGuardProbe()
         let exchangeGuard = NativeControllerExchangeGuard { try probe.check($0, mode: "guard-pass", marker: nil) }
@@ -190,6 +193,7 @@ struct NativeControllerDomainClientSmoke {
             FileHandle.standardError.write(Data("typed remote check failed at fixture line \(line)\n".utf8))
             throw error
         }
+        guard started.duration(to: .now).components.seconds < 17 else { throw DomainFixtureError.failed }
         let phases = probe.seen()
         let exchanges = Array(phases.dropLast())
         guard phases.last == "decoded", exchanges.count >= 3, exchanges.count % 3 == 0,

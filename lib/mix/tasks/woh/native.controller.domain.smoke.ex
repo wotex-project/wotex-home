@@ -372,6 +372,10 @@ defmodule Mix.Tasks.Woh.Native.Controller.Domain.Smoke do
   end
 
   defp check(executable, invitation, mode, expected, opts \\ []) do
+    # Authority compares 32 separately bounded SDK/UDS operations. The outer
+    # tool budget covers the cohort; each operation retains its own deadline.
+    timeout = if mode == "authority", do: 32 * 25_000 + 10_000, else: 25_000
+
     body =
       JSON.encode!(%{
         "invitation" => peer().invitation_body(invitation),
@@ -388,7 +392,7 @@ defmodule Mix.Tasks.Woh.Native.Controller.Domain.Smoke do
            executable,
            [],
            4096,
-           25_000,
+           timeout,
            <<byte_size(body)::32, body::binary>>
          ) do
       {:ok, output} ->
