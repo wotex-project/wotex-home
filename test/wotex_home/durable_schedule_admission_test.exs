@@ -203,7 +203,7 @@ defmodule WotexHome.DurableScheduleAdmissionTest do
 
     original =
       original("admit", "schedule:daily", 3, %{
-        "trigger" => ["daily", zone.name, zone.digest, "02:30:00", 0, nil]
+        "trigger" => ["daily", zone.name, zone.digest, "02:30:00", 0, 86_400_000]
       })
 
     assert {:error, :unsupported_schedule_admission} =

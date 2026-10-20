@@ -199,7 +199,7 @@ defmodule WotexHome.LocalAPIScheduleTest do
 
   test "calendar creation reads the pinned installed bytes; exact recovery needs no current zone or gate",
        c do
-    trigger = ["daily", c.zone.name, c.zone.digest, "02:30:00", 0, nil]
+    trigger = ["daily", c.zone.name, c.zone.digest, "02:30:00", 0, 86_400_000]
     original = original("admit", "schedule:daily", 3, %{"trigger" => trigger})
     request = request("schedule_admit", c.manager, original)
     assert %{"schedule_receipt" => receipt} = framed(c.authority, request)
@@ -218,7 +218,7 @@ defmodule WotexHome.LocalAPIScheduleTest do
   test "missing or replaced installed calendar data cannot admit a successor", c do
     original =
       original("admit", "schedule:daily", 3, %{
-        "trigger" => ["daily", c.zone.name, c.zone.digest, "02:30:00", 0, nil]
+        "trigger" => ["daily", c.zone.name, c.zone.digest, "02:30:00", 0, 86_400_000]
       })
 
     request = request("schedule_admit", c.manager, original)
@@ -700,7 +700,7 @@ defmodule WotexHome.LocalAPIScheduleTest do
        c do
     document =
       original("admit", "schedule:source:calendar", 3, %{
-        "trigger" => ["daily", c.zone.name, c.zone.digest, "02:30:00", 0, nil]
+        "trigger" => ["daily", c.zone.name, c.zone.digest, "02:30:00", 0, 86_400_000]
       })
 
     assert {:ok, receipt} =

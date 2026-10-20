@@ -111,7 +111,7 @@ defmodule WotexHome.DurableScheduleCalendarTracesTest do
        c do
     record = Enum.find(@zones, &(&1["name"] == "Fixture/Stockholm"))
     {:ok, zone} = Tzif.decode(record["name"], Base.decode64!(record["data_base64"]))
-    trigger = ["daily", zone.name, zone.digest, "02:30:00", 0, nil]
+    trigger = ["daily", zone.name, zone.digest, "02:30:00", 0, 86_400_000]
 
     assert {:ok, %{revision: 3}} =
              Store.retain_schedule_content(c.store, c.credential, admission(trigger), zone)
