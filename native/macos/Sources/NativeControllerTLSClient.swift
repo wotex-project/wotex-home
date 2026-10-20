@@ -375,6 +375,7 @@ private final class ControllerTLSExchange<Response: Sendable>: @unchecked Sendab
          diagnostics: NativeControllerTLSDiagnostics?,
          exchangeGuard: NativeControllerExchangeGuard? = nil,
          validate: @escaping @Sendable (Data) throws -> Response) {
+        let diagnostics = diagnostics ?? NativeControllerTLSDiagnostics()
         verifier = .init(peer: peer, clock: clock, diagnostics: diagnostics)
         endpoint = peer.endpoint; identity = peer.identity; port = peer.port
         self.frame = frame; self.clock = clock; self.maximumResponse = maximumResponse
@@ -554,7 +555,12 @@ private final class ControllerTLSExchange<Response: Sendable>: @unchecked Sendab
         let callback = continuation; continuation = nil
         switch result {
         case .success(let value): callback?.resume(returning: value)
-        case .failure(let error): callback?.resume(throwing: error)
+        case .failure(let error):
+            if let diagnostics {
+                let (stage, status) = diagnostics.snapshot()
+                FileHandle.standardError.write(Data("fixture TLS failure: \(error.rawValue) stage=\(stage.rawValue) status=\(status.map(String.init) ?? "none")\n".utf8))
+            }
+            callback?.resume(throwing: error)
         }
     }
 }

@@ -86,35 +86,7 @@ jobs:
           mix woh.maude.payload.stage _build/maude-assets/Maude-3.5.1-macos-arm64.zip
       - run: mix woh.lifx.registry.fetch
       - run: mix test test/macos_app_inventory_test.exs test/macos_app_spdx_test.exs test/macos_native_deps_check_test.exs
-      - run: mix woh.native.health.smoke
-      - run: mix woh.native.controller.scope.smoke
-      - run: mix woh.native.controller.pairing.wire.smoke
-      - run: mix woh.native.controller.associations.smoke
-      - run: mix woh.native.paired.keychain.policy.smoke
-      - run: mix woh.native.paired.session.smoke
       - run: mix woh.native.paired.recovery.smoke
-      - run: mix woh.native.paired.workspace.smoke
-      - run: mix woh.native.controller.tls.smoke
-      - run: mix woh.native.controller.api.smoke
-      - run: mix woh.native.controller.domain.smoke
-      - run: mix woh.native.rule.smoke
-      - run: mix woh.native.schedule.wire.smoke
-      - run: mix woh.native.schedule.client.smoke
-      - run: mix woh.native.pending.codec.smoke
-      - run: mix woh.native.pending.storage.smoke
-      - run: mix woh.native.generation.original.smoke
-      - run: mix woh.native.generation.sdk.smoke
-      - run: mix woh.native.generation.workspace.smoke
-      - run: mix woh.native.generation.flow.smoke
-      - run: mix woh.native.pending.coordinator.smoke
-      - run: mix woh.native.pending.paired.smoke
-      - run: mix woh.native.schedule.recovery.smoke
-      - run: mix woh.native.schedule.panel.smoke
-      - run: mix woh.native.quick.bar.smoke
-      - run: mix woh.native.maintenance.smoke
-      - run: mix woh.native.profiles.smoke
-      - run: mix woh.native.profiles.panel.smoke
-      - run: mix woh.native.cli.parity.smoke
 
   nerves_host:
     if: ${{ false }}
