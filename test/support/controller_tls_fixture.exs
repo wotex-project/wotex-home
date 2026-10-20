@@ -19,6 +19,8 @@ defmodule WotexHome.TestSupport.ControllerTLSFixture do
       "ec",
       "-pkeyopt",
       "ec_paramgen_curve:P-256",
+      "-pkeyopt",
+      "ec_param_enc:named_curve",
       "-nodes",
       "-keyout",
       key,
@@ -140,13 +142,21 @@ defmodule WotexHome.TestSupport.ControllerTLSFixture do
   end
 
   defp root(cert, key) do
+    # Host defaults can append duplicate CA extensions to the explicit fixture set.
+    config = cert <> ".cnf"
+    File.write!(config, "[req]\ndistinguished_name=subject\n[subject]\n")
+
     command([
       "req",
+      "-config",
+      config,
       "-x509",
       "-newkey",
       "ec",
       "-pkeyopt",
       "ec_paramgen_curve:P-256",
+      "-pkeyopt",
+      "ec_param_enc:named_curve",
       "-nodes",
       "-keyout",
       key,
