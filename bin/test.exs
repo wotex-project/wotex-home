@@ -1,4 +1,5 @@
-# Run with: elixir bin/test.exs [--socket-free] [--firmware-host] [test/path_test.exs ...]
+# Run with: elixir bin/test.exs [--socket-free] [--firmware-host]
+#   [--partitions N --partition I] [--max-cases N] [test/path_test.exs ...]
 # This uses already-built test dependencies, without Mix's TCP PubSub launcher.
 defmodule WotexHome.TestRunner do
   @moduledoc false
@@ -6,7 +7,13 @@ defmodule WotexHome.TestRunner do
   def run(args) do
     {options, paths, invalid} =
       OptionParser.parse(args,
-        strict: [socket_free: :boolean, firmware_host: :boolean]
+        strict: [
+          socket_free: :boolean,
+          firmware_host: :boolean,
+          partitions: :integer,
+          partition: :integer,
+          max_cases: :integer
+        ]
       )
 
     if invalid != [], do: raise(ArgumentError, "unknown test runner options: #{inspect(invalid)}")
@@ -84,6 +91,11 @@ defmodule WotexHome.TestRunner do
       {:ok, _} = Application.ensure_all_started(:wotex_home)
       ExUnit.start(autorun: false)
 
+      if cases = options[:max_cases] do
+        unless cases > 0, do: raise(ArgumentError, "max-cases must be positive")
+        ExUnit.configure(max_cases: cases)
+      end
+
       if options[:socket_free] do
         IO.puts(
           "Socket-free run: requires_socket tests are explicitly excluded; OS integration is NOT verified."
@@ -115,10 +127,37 @@ defmodule WotexHome.TestRunner do
         Code.require_file(Path.expand(path))
       end)
 
+      configure_partition(options)
       %{failures: failures} = ExUnit.run()
       if failures == 0, do: 0, else: 1
     after
       File.rm_rf!(temporary)
+    end
+  end
+
+  defp configure_partition(options) do
+    total = options[:partitions] || 1
+    index = options[:partition] || 1
+
+    unless total > 0 and index in 1..total,
+      do: raise(ArgumentError, "partition must be between 1 and the positive partition count")
+
+    if total > 1 do
+      ids =
+        for {module, _} <- :code.all_loaded(),
+            function_exported?(module, :__ex_unit__, 0),
+            test <- module.__ex_unit__().tests do
+          {module, test.name}
+        end
+        |> Enum.uniq()
+        |> Enum.sort()
+
+      selected =
+        for {id, offset} <- Enum.with_index(ids), rem(offset, total) == index - 1, do: id
+
+      if selected == [], do: raise(ArgumentError, "selected test partition is empty")
+      ExUnit.configure(only_test_ids: MapSet.new(selected))
+      IO.puts("Test partition #{index}/#{total}: #{length(selected)}/#{length(ids)} selected")
     end
   end
 

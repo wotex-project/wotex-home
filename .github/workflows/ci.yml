@@ -27,7 +27,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        partition: [1, 2, 3]
+        suite: [core, enrollment]
+        partition: [1, 2]
     env:
       MIX_TEST_PARTITION: ${{ matrix.partition }}
       MIX_ENV: test
@@ -72,7 +73,12 @@ jobs:
       - run: mix compile --warnings-as-errors
       - run: mix woh.spec.check
       - run: mix woh.lifx.registry.fetch
-      - run: mix test --partitions 3 --max-cases 2
+      - name: Run core tests outside enrollment
+        if: matrix.suite == 'core'
+        run: mix test --partitions 2 --max-cases 2 --exclude enrollment
+      - name: Run enrollment tests across individual test partitions
+        if: matrix.suite == 'enrollment'
+        run: elixir bin/test.exs --partitions 2 --partition "$MIX_TEST_PARTITION" --max-cases 2 test/wotex_home/durable_enrollment_test.exs
 
   macos_app:
     runs-on: macos-15

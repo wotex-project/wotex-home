@@ -7,6 +7,7 @@ defmodule WotexHome.DurableEnrollmentTest do
   @moduledoc false
 
   use ExUnit.Case
+  @moduletag :enrollment
 
   # Private software clock peer for the actual Store call. It owns no Store
   # reference, DB handle, bearer or transport, and establishes no host trust.
