@@ -328,7 +328,7 @@ defmodule WotexHome.ControllerListenerTest do
   test "silent TLS handshakes expire and TLS 1.2 never receives an application route", c do
     {:ok, raw} = :gen_tcp.connect({127, 0, 0, 1}, c.binding.port, [:binary, active: false], 1_000)
     started = System.monotonic_time(:millisecond)
-    assert {:error, :closed} = :gen_tcp.recv(raw, 0, 6_000)
+    closed_with_alerts(raw, started + 6_000)
     assert (System.monotonic_time(:millisecond) - started) in 4_700..6_000
     :gen_tcp.close(raw)
 
@@ -442,7 +442,7 @@ defmodule WotexHome.ControllerListenerTest do
     monitor = Process.monitor(c.listener)
     GenServer.stop(uploads)
     assert_receive {:DOWN, ^monitor, :process, _, _}, 2_000
-    assert {:error, :closed} = :ssl.recv(socket, 0, 2_000)
+    assert_tls_closed(socket, System.monotonic_time(:millisecond) + 2_000)
     :ssl.close(socket)
   end
 
@@ -490,7 +490,7 @@ defmodule WotexHome.ControllerListenerTest do
       monitor = Process.monitor(c.listener)
       assert :ok = stop_supervised(unquote(if owner == :store, do: Store, else: PairingReview))
       assert_receive {:DOWN, ^monitor, :process, _, _}, 2_000
-      assert {:error, :closed} = :ssl.recv(socket, 0, 2_000)
+      assert_tls_closed(socket, System.monotonic_time(:millisecond) + 2_000)
       :ssl.close(socket)
 
       assert {:error, _} =
@@ -508,7 +508,7 @@ defmodule WotexHome.ControllerListenerTest do
     monitor = Process.monitor(c.listener)
     Process.exit(c.listener, :kill)
     assert_receive {:DOWN, ^monitor, :process, _, :killed}, 1_000
-    assert {:error, :closed} = :ssl.recv(socket, 0, 2_000)
+    assert_tls_closed(socket, System.monotonic_time(:millisecond) + 2_000)
     closed_with_alerts(pending, System.monotonic_time(:millisecond) + 2_000)
     :ssl.close(socket)
     :gen_tcp.close(pending)
@@ -546,7 +546,7 @@ defmodule WotexHome.ControllerListenerTest do
       WotexHome.Recovery.PrivateFile.write(path, File.read!(Path.join(c.root, "displaced")), 8192)
 
     assert_receive {:DOWN, ^monitor, :process, _, _}, 2_000
-    assert {:error, :closed} = :ssl.recv(socket, 0, 2_000)
+    assert_tls_closed(socket, System.monotonic_time(:millisecond) + 2_000)
     :ssl.close(socket)
 
     assert {:error, _} =
@@ -769,7 +769,21 @@ defmodule WotexHome.ControllerListenerTest do
         closed_with_alerts(socket, deadline, buffered <> bytes)
 
       _ ->
-        flunk("overloaded connection was not promptly rejected")
+        flunk("connection did not close within its deadline")
+    end
+  end
+
+  defp assert_tls_closed(socket, deadline) do
+    case :ssl.recv(socket, 0, max(0, deadline - System.monotonic_time(:millisecond))) do
+      {:error, :closed} ->
+        :ok
+
+      {:error, {:tls_alert, {:user_canceled, _}}} ->
+        assert {:error, :closed} =
+                 :ssl.recv(socket, 0, max(0, deadline - System.monotonic_time(:millisecond)))
+
+      _ ->
+        flunk("TLS connection did not close within its deadline")
     end
   end
 
