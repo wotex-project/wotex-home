@@ -82,3 +82,10 @@ target belongs to this repository's canonical skills.
 Keep shared repository policy in this file and focused workflows in `.agents`.
 Client settings stay local and ignored; shared guidance needs no hooks,
 session markers or setup helpers.
+
+For authoring/review, target/grant changes and framed original-operation replay,
+select `authority-journey`; for final evidence selection, use
+`delivery-verification`. These workflows distinguish semantic Authority/Store
+proof from native shell, artifact and physical-cohort results. The `bin/test.exs`
+fallback freshly compiles Home even with existing dependencies, so guidance-only
+or no-build work must not treat it as a source-only checker.

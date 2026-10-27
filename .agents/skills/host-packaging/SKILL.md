@@ -63,3 +63,13 @@ inputs from artifact authenticity, redistribution clearance and physical
 qualification. Report exactly which source, cache, host checks and environment
 were used; do not launch unrelated hosts or provision a real controller merely
 to validate a packaging edit.
+
+For a changed native request or review flow, select
+[authority journey](../authority-journey/SKILL.md) before claiming shell behavior:
+prove the exact typed operation/result, current Store guards and lost-reply replay
+against one owned foreground Store, then inspect the affected native window or
+artifact. A screenshot, IPC frame or assembly success cannot replace that semantic
+path. Use [delivery verification](../delivery-verification/SKILL.md) to retain
+source/lock/artifact identity and separate socket, installed-lifecycle and physical
+cohort evidence. Track newly built outputs without clearing retained releases,
+shared dependency caches or user custody to obtain disk space.

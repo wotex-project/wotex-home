@@ -60,3 +60,12 @@ For a changed external route, also exercise its framed adapter with the same
 typed result and original identity. Inspect failures, rejected operations and
 historical receipts as well as the successful path. Software restart/rollback
 tests establish software behavior, not target-storage power-loss survival.
+
+For reviewed authoring, input installation or original-operation recovery, use
+[authority journey](../authority-journey/SKILL.md). Carry the exact reviewed
+subject/version, payload/session, principal/epoch and target into Store's current
+grant/artifact/freshness checks. A cached review or inert inspection snapshot
+cannot authorize the commit. `durable_causal_roots_test.exs` exercises actual
+SQLite history and spent roots across replay/restart/migration; retained receipts
+must not be relabeled, refunded or minted anew during recovery. Keep this
+application's supported SQLite upgrades distinct from a greenfield Cloud baseline.

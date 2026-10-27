@@ -73,3 +73,13 @@ Home owns accepted meanings, policy, custody, canonical state and current grants
 Do not duplicate a generic reader or place a full playback/surveillance engine
 inside a protocol package. Keep component requirements independently readable,
 with explicit source allocation before code; preserve implemented v1 evidence.
+
+For each affected acceptance case, identify the public stimulus, enforcing owner,
+exact reviewed/current basis, forbidden effect and independent proving assertion.
+Walk original-operation replay/status and changed/revoked authority as distinct
+paths through Authority and Store when reached. Use
+[authority journey](../authority-journey/SKILL.md) for that mechanism and
+[delivery verification](../delivery-verification/SKILL.md) to select the actual
+software, framed/native or cohort evidence. Keep source/allocation, generated or
+wire correspondence, artifact assembly and physical qualification independently
+readable; no aggregate passing suite cancels an unproved current-authority guard.
