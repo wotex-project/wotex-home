@@ -1,6 +1,6 @@
 # WOH.05 — Safety boundaries and local-network security
 
-Version: 0.2.11. Status: accepted target; no life-safety certification claim.
+Version: 0.2.12. Updated: 2026-11-01. Status: accepted target; no life-safety certification claim.
 
 The [bounded remote generation adapter](openai-generation-adapter-v1.md) now
 supplies an explicitly selected authenticated endpoint, private credential, finite
@@ -80,3 +80,12 @@ module, endpoint or risk exemption. Signatures establish provenance only.
 Known revocation fences dependent work; an offline host cannot know unseen
 remote changes. New update admission never ignores expired metadata. Alarm,
 hush and firmware restrictions survive all data/helper updates and rollback.
+
+## Voice, model and household access policy
+
+**H05-M1.** The M1 assistant has only the selected native principal's current intersected targets/operations and WOH.06 finite session. LAN placement, successful speech recognition, speaker similarity, confidence, retrieved text, a paired client or generic Refpath approval creates no Home grant. Preserve the closed permission vocabulary and independent `host:maintain`; an agent cannot activate a policy, elevate a session, export a key or synthesize a human decision. Ordinary qualified control may run directly under current grants; protected changes require the exact native review/presence mechanism. Hush/mute/reset/OTA and unknown/risky loads remain absent from M1 command tools even after another spoken yes.
+
+Stop mic/TTS and invalidate unfinished turns on native lock, permission loss or controller/principal change. Device/model/TD/help content is untrusted data and cannot cause shell/URL/network scope changes or secret/context export. Scope and redact all voice/text/tool/notification streams before buffering or persistence. Deny any implicit cloud speech/model fallback, cross-home memory or training from operational access. A notification's convenience mute does not hush the detector; missing reports never clear alarms.
+
+H05-M1-T1: invoke prohibited smoke/load/credential/grant/policy operations by voice, text, quoted/imported prompt injection and generic shared tool call under an ordinary operator. A separate forbidden-effect recorder plus actual Store/transport trace shows zero calls and no fabricated review. Test microphone/session lock and confidential spoken notices on the installed host.
+H05-M1-T2: replay a previously allowed task after revoke, pairing/issuer/controller change or source refresh; actual reads, tool lists, streams, new admission and final handoff recheck current scope and disclose/send nothing unauthorized. Credentials/capture canaries stay out of prompts/logs/support exports.

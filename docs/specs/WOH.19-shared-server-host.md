@@ -1,6 +1,6 @@
 # WOH.19 — Optional shared server host
 
-Version: 0.1.0. Status: accepted target; partial development implementation, installed-host and physical evidence missing.
+Version: 0.1.1. Updated: 2026-11-01. Status: accepted target; partial development implementation, installed-host and physical evidence missing.
 
 ## Product and host choices
 
@@ -167,3 +167,9 @@ independent bootstrap, inert systemd profile and
 subset. Updates, hard durable-state disk containment, paired LAN setup, amd64
 delivery and actual installed/coexistence/physical qualification remain missing.
 Accepting this target does not establish those gates or widen physical dispatch.
+
+## Optional server and local voice location
+
+**H19-M1.** The first M1 installed cohort is standalone Mac plus an authenticated paired LAN client, not a mandatory Linux/Pi server. A later selected shared Linux profile may host Home or the separately admitted local Refpath compute service with explicit TLS/peer/custody/resource and data-location evidence. Controller, microphone client, model/speech service and physical transport location are separate facts. Moving compute does not move Store authority; moving Home requires the existing fenced transfer. No automatic LAN discovery of an assistant, external relay or second active controller.
+
+H19-M1-T1: before offering a shared-server voice/control profile, demonstrate its installed headless lifecycle, current principal/peer/target boundaries, capacity/no-egress and disconnect/original recovery on the named host. Mac/fixture evidence cannot qualify it, and no server-only core feature is introduced.

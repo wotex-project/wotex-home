@@ -1,6 +1,6 @@
 # WOH.09 — Nerves appliance parity and recovery
 
-Version: 0.2.19. Status: accepted target, partial implementation; no board is qualified by this document.
+Version: 0.2.20. Updated: 2026-11-01. Status: accepted target, partial implementation; no board is qualified by this document.
 
 ## Shared domain, explicit host
 
@@ -97,3 +97,9 @@ Compiled operation remains independently guarded; these restarts never activate
 profiles, restore qualification or send work. Development fixtures exercise
 creation ordering, malformed roots, exact immutable bytes and restart ownership;
 installed storage/custody and physical qualification remain separate gates.
+
+## Assistant scope on optional appliance hosts
+
+**H09-M1.** English voice M1 first qualifies the Mac controller and paired LAN client under WOH.06/08/15. This does not qualify Nerves audio hardware, local model capacity, installed storage/radio or power-loss survival. A future appliance may consume the separately admitted local/LAN assistant profile while Home's single Store/authority stays on its chosen owner; no voice client starts a second controller or requires cloud inference. Missing speech/compute resources show an explicit limit and preserve qualified native core control.
+
+H09-M1-T1: a future appliance claim supplies its exact board, storage/radio/audio/assistant and installed lifecycle evidence; Mac/fixture success alone cannot promote it. A paired assistant has no Store/credential channel beyond its current native grant.

@@ -1,6 +1,6 @@
 # WOH.00 — Local authority and product scope
 
-Version: 0.2.4. Status: accepted target; implementation and physical evidence are not claimed.
+Version: 0.2.5. Updated: 2026-11-01. Status: accepted target; implementation and physical evidence are not claimed.
 
 ## Purpose
 
@@ -66,3 +66,12 @@ integration architecture, not a claim of universal physical compatibility.
 H00-T6: the same supported core workflows work with no server, on a shared
 server and on a dedicated appliance; missing host resources produce specific
 capability limits. Closing a client never becomes implicit owner transfer.
+
+## English voice M1 product boundary
+
+**H00-M1.** WOH.06 now owns the primary English voice/text experience, its C01–C20 dispositions, J01–J10 and U/A/P receiving families. M1 completes one actual standalone Mac home and paired LAN client: qualified lighting/scenes, read-only detector reporting, admitted routines/schedules, finite overrides, private diagnostics and original-outcome recovery with WAN blocked after provisioning. This is broader than the existing ten-command classifier. Typed/native control and admitted autonomous routines retain their independent availability when speech/Refpath fails.
+
+Refpath supplies a separately selected qualified local execution service. Home remains one application and one physical Authority/Store; a shared generic run is neither a Home permission nor another device dispatcher. The earlier H00-06 portable routine/profile extraction track still excludes agent/booking wrappers; the separate WOH.06 consumer join does not move those pure mechanics or Home semantics into Refpath. Standalone features require no server, cloud account or subscription. Optional Linux/Nerves, Matter, media and manufactured hardware retain their own gates.
+
+H00-M1-T1: execute J01–J10 through the actual installed native/shared profile with WAN/DNS blocked; every required family is usable and every unavailable/later capability has an honest disposition. A scripted model/device, text-only substitute for voice, or one raw packet is not acceptance.
+H00-M1-T2: stop speech/model/Refpath independently during a queued and a handed-off operation; native controls, current receipts and applicable admitted routines remain available, without duplicate effects or changed authority.

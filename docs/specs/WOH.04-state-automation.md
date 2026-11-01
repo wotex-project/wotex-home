@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.48. Status: accepted target.
+Version: 0.2.49. Updated: 2026-11-01. Status: accepted target.
 
 ## Rule language
 
@@ -275,3 +275,12 @@ expired reports. A full-cut final-time validity/verifier contract in WoTEx is
 required before composed Store adoption; matching generation tokens alone is
 insufficient. These are accepted requirements with planned RCB-T1–T12 evidence,
 not current composed activation or installed-clock qualification.
+
+## Agent-assisted automation has the same native lifecycle
+
+**H04-M1.** WOH.06 C06–C08 produce closed source and explanations, not active rules. M1 includes the complete native editor/preview, validation, supported positive admission/correspondence, isolated shadow, exact-subject human review, admission, activation, runtime observation, finite override, revision and retirement journey. It must implement the required restricted profile and reject unsupported composed semantics; neither a model confidence, no-counterexample result nor an empty shadow run admits a rule. Shadow uses provenance-labelled observations and no production effect/financial channel.
+
+Current complete active-set membership and whole-Thing arbitration are checked at activation and dispatch. The provided-proposal-set arbiter cannot establish that all competing rules were considered. Ordinary operator override leases retain precedence, expiry and current permissions; equal-authority incompatible goals conflict instead of picking arrival order. Manual/assistant/routine requests share native effect domains and causal/rate guards. Calendar/countdown/time-zone behavior uses WOH.20 and the existing selected ExBooking/WoTEx contracts. Background goals become bounded admitted native routines with current author, targets, lifetime, trigger/occurrence, catch-up policy and revocation, never a second agent scheduler.
+
+H04-M1-T1: take an English routine through actual source editing, isolated shadow, positive restricted admission, protected review, activation and one observed occurrence. Independent source/clock/arbitration expectations and real SQLite traces prove the active revision; all rejected/inconclusive/unsupported branches leave it unchanged and send nothing.
+H04-M1-T2: race a second rule/member change, manual override/expiry, revoked author, clock loss and restart across activation/queue/claim/handoff. Complete native guards prevent stale undispatched work and preserve original in-flight/unknown receipts without causal-root refunds.

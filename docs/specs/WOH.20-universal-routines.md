@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.47. Updated: 2026-10-16. Status: accepted target.
+Version: 0.1.48. Updated: 2026-11-01. Status: accepted target.
 Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context, original-first input install/revoke/status, durable input withdrawal and bounded current requested-scope collection and pure composed-profile calculation and installed mapping construction, plus pure independent clock values and continuity checks.
 Evidence: finite software subset; full acceptance cases remain open.
 
@@ -467,3 +467,12 @@ component as a substitute. The journal must distinguish authenticated inert
 point retention from fresh current effect admission, preserving original starts.
 Current snapshot, journal, wider proof and client delivery remain open. Home's
 selected producer revisions and runtime behavior are unchanged.
+
+## Conversational routines consume the existing kernel
+
+**H20-M1.** WOH.06 prepares/explains a routine through this owner's public selected WoTEx/ExBooking calculation, source, decision, clock and occurrence contracts. No Home/Refpath clone of a generic scheduler, calendar solver, routine kernel or verifier. Current selected source is not proof of a newer sibling Decision/Collection API; missing producer semantics are delivered/qualified before dependent Home adoption. Keep source/schema, public pure calculation, complete current inventory, independent correspondence, native durable admission and installed/physical qualification separate.
+
+M1 completes the actually offered restricted routine/schedule journey and current active membership/whole-Thing arbitration. Provided-set proof, inert input projection, date calculation or a passed countdown corpus alone cannot activate autonomous/composed control. Bound each occurrence/goal by current author/grant, exact inputs/profile, clock/freshness, duration/lateness/catch-up, causal root, override and revocation; Home checks the actual current basis at consideration/admission/claim/handoff. A conversation/session expiry does not rewrite a separately admitted routine's lifetime, and a model outage cannot create a new occurrence.
+
+H20-M1-T1: independently authored English routine source produces expected interval/calendar/countdown originals through actual selected producers and Authority/Store, then shadow/review/admission/activation and one qualified occurrence. Current complete membership and semantic correspondence are proven independently of model/schema assertions.
+H20-M1-T2: DST/fold/missed window, Store/clock/source loss, changed input/profile/active rule, overridden target, revoked author and restart preserve the native fail-closed and original-occurrence contract. Unavailable/unselected producer work cannot be simulated into admission or routed through an unbounded agent loop.

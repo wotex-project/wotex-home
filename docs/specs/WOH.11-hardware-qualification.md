@@ -1,6 +1,6 @@
 # WOH.11 — Qualification and evidence programme
 
-Version: 0.2.14. Status: accepted target, partial implementation.
+Version: 0.2.15. Updated: 2026-11-01. Status: accepted target, partial implementation.
 
 ## Evidence is multidimensional
 
@@ -72,3 +72,12 @@ durable implementation is planned. Synthetic claims exercise trust mechanics and
 cannot fill hardware obligations. The programme creates no mutating capability
 or physical dispatch permission. [Entry evidence](../provenance/routine-external-inputs-2026-10.md)
 keeps these levels separate.
+
+## Complete M1 reference qualification
+
+**H11-M1.** Freeze a private exact-cohort manifest for at least two owned LIFX lights used by the scene journey, the purchased Aqara detector/coordinator, the Mac controller and paired LAN client, and the selected local English recognition/model/voice profile. Record supported actual lighting capabilities and any approved exclusions; do not inherit colour/fade proof from the current immediate-power tuple. The detector's retail/fingerprint/coordinator facts must be observed, not guessed from a photograph or another model. Each electrical/radio/firmware/model/host/runtime/source change reopens its affected evidence.
+
+M1 joins actual spoken intent, current native authority, durable original/handoff, correlated readback and independently recorded physical observation. Keep those evidence levels separate and retain limitations for unauthenticated local reports, scene partiality, latency/noise, host sleep and independent alarms. WAN cut, restart/crash, stale/revoked scope, saturation and recovery require their actual environments. No agent/plugin/model/fixture/signature can certify a cohort. Only the existing trusted qualification path can admit it; default dispatch stays disabled until then.
+
+H11-M1-T1: retain independent exact-device read/write/transition/readback, multi-light scene and English audio/installed task evidence, plus actual detector/report and manufacturer-prescribed standalone-alarm checks. All unmet fields remain explicitly missing and cannot be replaced by successful synthetic claims.
+H11-M1-T2: repeat negative/uncertain journeys under WAN loss, device/worker/host interruption, changed firmware/runtime and clock/custody loss. Release matrix names exact passed/failed/not-run subjects; no green aggregate hides a missing mandatory physical/installed case.

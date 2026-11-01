@@ -1,6 +1,6 @@
 # WOH.21 — Whole-apartment music and qualified speaker groups
 
-Version: 0.2.0. Updated: 2026-10-13. Status: accepted target.
+Version: 0.2.1. Updated: 2026-11-01. Status: accepted target.
 Implementation: planned. Evidence: missing.
 
 ## Purpose and scope
@@ -337,3 +337,9 @@ Every case is an obligation. [Research](../plans/apartment-music-research.md),
 [delivery order](../plans/apartment-music-delivery.md) and the
 [physical procedure](../labs/audio-synchronization.md) retain scope and evidence
 without relying on this conversation.
+
+## Later conversational media consumption
+
+**H21-M1.** WOH.06 C16 explicitly leaves multiroom music outside the English voice-control M1 release. This accepted playback target and MAU component obligations remain intact. A future voice request for source/group/volume maps only into the actually selected qualified playback component and current Home Authority/Store; comprehension, TTS output and generic WoT streams are not a music engine, audible/synchronization evidence or system-audio capture consent. Ordinary foreground music remains independent of an AI model.
+
+H21-M1-T1: M1 voice/UI/help accurately marks unqualified multiroom/media operations unavailable. A later voice/media claim needs the actual MAU source/host/permission/device/synchronization profile and repeats current-authority, original recovery and consent withdrawal; no generic Home playback substitute closes it.

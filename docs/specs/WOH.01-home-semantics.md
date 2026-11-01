@@ -1,6 +1,6 @@
 # WOH.01 — Home Things, capabilities and units
 
-Version: 0.2.8. Status: accepted target.
+Version: 0.2.9. Updated: 2026-11-01. Status: accepted target.
 
 ## Semantic boundary
 
@@ -103,3 +103,12 @@ historical decoding grants no source truth, report freshness or qualification.
 Generic current use fails closed until durable external target selection and
 observation admission exist; existing Light/SmokeDetector values and writes
 keep their original formats. H01-T6 remains incomplete beyond this representation.
+
+## Conversational membership and scene scope
+
+**H01-M1.** WOH.06 C03–C05 consume this semantic owner. Resolve names/pronouns/all into an exact currently visible Thing/member set, declared capabilities, units and resource/profile revisions. Store-owned room/group/scene composition is attributable and revisioned; a presentation alias or assistant memory cannot rename, merge or transfer a physical identity. A membership edit is a separately permitted native composition change and cannot widen grants.
+
+Lighting changes remain absolute typed state requests. Qualify brightness, colour/white temperature and transition semantics independently from direct power. Coupled power/level/colour remain one whole-Thing effect domain; concurrent per-property agents are not independent writers. A scene is at most sixteen exact members under WOH.06, with one approved absolute effect per domain and a native original per accepted member. If preflight finds an unavailable/restricted required member, do not silently execute the remainder or split a larger scene; obtain an explicitly narrowed intention. Physical completion is not atomic; retain partial/unknown member results and never invent blanket rollback or all-off evidence.
+
+H01-M1-T1: voice/text scene creation and run over at least two real qualified lights preserves reviewed membership and each native original. Change a member/profile/grant before admission: independent expected-scope assertions prove zero unauthorized sends, not success for a partial subset.
+H01-M1-T2: lose one member's reply after handoff and apply a newer manual change to another. Show partial/unknown with original reconciliation; no automatic compensation overwrites the newer change and no aggregate all-reported-match is claimed.

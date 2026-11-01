@@ -1,6 +1,6 @@
 # WOH.02 — Discovery, enrollment and profile admission
 
-Version: 0.2.20. Status: accepted target.
+Version: 0.2.21. Updated: 2026-11-01. Status: accepted target.
 
 ## Discovery is not trust
 
@@ -89,3 +89,12 @@ new enrollment identity. Old qualification stays revoked and historical. Startup
 and encrypted recovery validate both v1 and v2 reviews without inventing current
 capture freshness. Production host/operator routes and actual hardware evidence
 remain unfinished; synthetic scripted discovery is software evidence only.
+
+## Assisted discovery is not enrollment authority
+
+**H02-M1.** WOH.06 C11 can request bounded discovery on the operator-selected interface and explain safe candidate/profile summaries. It cannot choose a new interface, probe arbitrary endpoints, supply an interview body, auto-enroll the most similar candidate, approve a publisher/profile or mint qualification. Native host-held observation, current operator review, immutable identity/firmware/profile basis, target selection, hardware qualification and grant remain distinct decisions. Voice or imported instructions cannot replace them.
+
+The M1 A02 journey includes no-match/ambiguous/offline, manual/imported authoring, stale capture, changed firmware and replacement. Refresh/review does not renew source age. A profile or model update invalidates the affected selection/qualification/routine basis under its actual owner; a friendly-name match never carries permissions to a replacement.
+
+H02-M1-T1: a real native discovery/import task reaches the actual protected review receiver; inject a forged/replayed interview, ambiguous candidate and expired host capture through the agent path. Store refuses with no enrollment/grant/effect.
+H02-M1-T2: replace or update the reference Thing while a conversation and rule preview retain the old name. Only fresh exact native review can establish the new basis; old qualification and unsent work are invalidated, and handed-off originals remain unknown/history.

@@ -1,16 +1,224 @@
 # Implementation order and release gates
 
-Version: 0.2.174. This plan separates executable slices from external acceptance gates.
+Version: 0.2.175. Updated: 2026-11-01. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
+## English voice and conversational M1
+
+Accepted 2026-11-01. Scope: specifications/catalogue and this existing tracker
+only. The user requires **voice in M1, English only**. WOH.06 is the primary
+interaction owner; Home Authority and the single SQLite Store remain the
+physical/domain authority. Ordinary qualified voice/text actions execute under
+current scoped grants without a visual click on every command. Protected
+native review and unavailable high-impact operations remain separate paths.
+
+WOH.06 inventories twenty capability dispositions (C01–C20), ten branching
+journeys (J01–J10), eight everyday native families (U01–U08), six protected
+native families (A01–A06) and six public release/help families (P01–P06).
+The twelve packages below retain **all remaining M1 implementation and
+qualification**, including pre-existing native, device and routine gaps. They
+are open work, not estimates or completion claims. The earlier detailed
+checkpoint/history and physical critical path remain valid foundations.
+The catalogue's aggregate contract cases also contain later/demo obligations;
+M1 does not require every future target or classifier experiment to be complete.
+
+### Required product outcome and first receiving path
+
+An authorized person installs the Mac app, explicitly configures local
+controller/network/custody/assistant/microphone, enrolls and qualifies the
+actual home cohort, then uses English push-to-talk or text for current facts,
+lighting, scenes, routines, schedules, overrides, diagnostics and original
+recovery. The actual local English recognizer/agent/synthesizer and current
+Home facade complete the task with the WAN/DNS blocked after provisioning.
+Native controls and applicable admitted routines remain usable without the
+assistant. A paired native LAN client completes the same current-authority
+path. A server, Matter, a Home Assistant instance or an always-listening device
+is not a prerequisite.
+
+Establish the public receiving path early: selected local assistant profile →
+closed Home consumer facade → existing authenticated Authority → current Store
+read/decision/original → existing qualified worker → correlated report → native
+Activity/voice/text result. Start with an authorized read and a denied ordinary
+request before any real dispatch. No private worker/Store/raw-device API is
+exported. Task-to-native-original recovery must exist before effects can become
+uncertain; a nice transcript or mock recognizer cannot close this path.
+
+### Scope decisions fixed for this milestone
+
+| Decision | Accepted contract |
+| --- | --- |
+| D01 Language/input | English-only voice and text. Push-to-talk with visible mic/permission/stop; no wake-word/ambient capture or language-support inference. |
+| D02 Shared execution | Qualified local Refpath agent/conversation/model/speech/tool services, Home-specific narrow consumer. No duplicate generic runtime, router, speech coordinator, task/approval store or pricing engine. |
+| D03 Physical truth | Home Authority/Store owns current principal/targets, semantics, safety, originals and device effects. A model, generic grant, LAN peer or recognized voice is not that authority. |
+| D04 Review classes | Ordinary qualified request may execute directly; enrollment/profile/credential/grant/routine/restore changes use current exact native review; C18 remains unavailable. |
+| D05 Speech repair | Final complete utterance only; negation/ambiguity/unsupported/clipped speech clarifies/refuses. Partial transcription and spoken yes cannot authorize sensitive work. |
+| D06 Operations | Exact native original per accepted effect; scene parent aggregates members. No physical transaction/blanket rollback, blind uncertain resend or refunded causal root. |
+| D07 Automation | Existing source/compiler/proof/shadow/review/admission/activation/runtime and current full active-set arbitration. Generic reasoning does not create a new scheduler or positive proof. |
+| D08 Local data | No runtime speech/model download or cloud fallback. Seven-day bounded private text default may be disabled/shortened; raw audio is ephemeral. No default training or cross-home context. |
+| D09 Native product | Reuse Things/Rules/Activity/Setup and shared session/custody/pending models; first launch remains explicit Setup, primary normal use is conversation. |
+| D10 Hosts | Qualify standalone Mac and paired LAN native client first. Linux/shared compute, Nerves and manufactured hub remain independent optional profiles. |
+| D11 Devices | Private exact-cohort manifest for at least two owned LIFX scene lights plus the purchased read-only Aqara/coordinator; support is per actual capability/model/firmware, not brand. Colour/fade cannot inherit direct-power proof. |
+| D12 Later profiles | C16–C19 music/MAU, Matter/satellites/full-duplex/wake word, high-impact control and extra appliance cohorts stay separately gated; their existing contracts remain intact. |
+| D13 Release boundaries | Existing public release/help material, accurate support matrix, declared Home/model/dependency redistribution rights. No hosted subscription/account/anonymous control surface is introduced. |
+
+The reference manifest, exact selected Refpath export/model/voice source,
+installed host/custody evidence, hardware fingerprint/coordinator and licensing
+are explicit engineering/release entry work below. They are not fabricated
+pins, default approvals, hidden substitutes or evidence supplied by this plan.
+
+### Everything remaining to build and qualify
+
+| Package / state | Required implementation and receiving owner | Dependency and discriminating completion |
+| --- | --- | --- |
+| B01 — Open: selected shared profile | Select/freeze exact Refpath source/public contract/export/ABI, configuration/storage/custody, local English ASR/model/TTS artifacts/licences, provider installation/retirement, no-egress/resource and finite shared-run limits. Deliver missing generic primitives at their existing Refpath owner. | WOH.06 H06-06/11/16/17, H06-T18/T21/T24; G01/G02/G09. Inspected sibling/source or existing native plugin tests are not an installed Home consumer. Home Assistant connector is not Home. |
+| B02 — Open: complete English voice/conversation | Real push-to-talk, local conversion/recognition, final transcript/English semantics, repair/multi-turn, local spoken output/interrupt/quiet/privacy, selected devices and private scoped context/progress. Reuse B01 shared execution and storage. | B01 plus B03's authenticated read/scope/original interface; WOH.06 C01/C02/C14/C15 and H06-T7–T10/T17–T20/T23. Actual audio/English cohort, not text-only/model-stub success. |
+| B03 — Open: Home-scoped tool/authority join | Closed schemas, current principal/controller/epoch/target/revision binding outside prompts, typed read/control/scene/preparation/override/status/cancel allow-list; protected native review receiver and persistent task-to-original association. No raw/admin tool export, credential forwarding or duplicate effect ledger. | Native WOH.14/15 foundations and B01's public interface; can begin with scoped reads and refusals independently of physical/model readiness. H05/H14/H15-M1 cases, H06-T11–T13/T16/T24; G03. |
+| B04 — Open: real lighting path | Complete actual supported power/dimming/colour/white/transition intent, profile/unit/gamut/coupling/timing, Store admission/claim/handoff, worker and independent report/physical observation. Freeze exact supported hardware/runtime before extending code. | WOH.01/03/05/11/14, B10 installed custody before live use; H03/H11-M1 cases; G04. Continue native qualification independently of B01. Existing immediate-power/fixture signatures cannot qualify broader writes. |
+| B05 — Open: rooms/groups/scenes | Native current composition records/editor, exact membership/risk/review, whole-Thing plan, per-member originals and partial/unknown recovery. Wire U02/U04 and agent/native execution to one owner. | B03/B04; H01/H14-M1 cases and H06-T14/T24; G05. Two real lights, membership/grant race and lost member reply prove honest aggregate state; no hidden chunking/rollback. |
+| B06 — Open: routine lifecycle | Complete closed source/manual/generated editor, semantic validation/correspondence, isolated shadow, supported positive restricted proof, exact native review/admission/activation, complete current active-set arbitration, observation/revision/retirement. | WOH.04/07/20; producer entries below, B03 and required device profile. H04/H07/H20-M1 cases and H06-T15; G05/G06. Existing provided-set/inert/counterexample-only work cannot activate control. |
+| B07 — Open: schedules and overrides | Current author/target, selected calendar/countdown/time-zone/clock basis, original occurrence, late/missed/catch-up/expiry, override precedence, pause/revoke and restart. Join native scheduler, not an agent polling loop. | B06's supported admission plus actual selected WoTEx/ExBooking semantics; H20/H04-M1 cases; G06. Clock/source loss, DST/fold, conflicting active work and revoked author have real Store refusals/outcomes. |
+| B08 — Open: detector and sensor visibility | Record exact Aqara retail/fingerprint/coordinator; finish qualified local read-only transport/profile/observations/unknown/fault/test/alarm and local scoped notices. Reuse reviewed generic mappings for supported extra channels; no inferred writable/unsafe capability. | WOH.01/02/03/05/11/18, actual upstream radio/profile entry as needed. H05/H11-M1 cases and H06-T23; G04. Manufacturer-defined alarm independence and radio reports are separate physical evidence. |
+| B09 — Open: all receiving/public families | Implement/connect U01–U08/A01–A06 over the existing native app/menu/session models, actual protected decision paths and current outcomes. Deliver P01–P06 through existing public release/help structure. | Feature owners B02–B08/B10/B11; H08-M1, H06-T20/T22; G07/G10. Actual keyboard/VoiceOver, adaptive layout/focus/draft/review/original continuity, realistic English errors and accurate public compatibility. |
+| B10 — Open: installed Mac and paired LAN | Signed installed service/registration/lifecycle, actual private credential/mic/network custody, certificate clock/TLS/association, limited paired client, scope changes/revocation, sleep/logout/restart and truthful availability. No second controller. | Existing WOH.08/14/15/16 foundations; H08/H15-M1 cases; G07. Existing unsigned refusal, private pipes or mounted views do not prove positive signed installed custody/paired success. |
+| B11 — Open: diagnostics/privacy/recovery | Bounded current refresh/health/support, capacity isolation, selected shared conversation retention/disposal/derived lineage, audio retirement, protected exports, maintenance/update/backup/restore/transfer and task-to-original continuity. Preserve unknown obligations/spent roots; quarantine stale restored scopes/context. | WOH.03/05/14/15/16/18 plus actual B01 shared storage; H14/H16/H18-M1 and H06-T17/T19/T25; G08/G09. Inspect real data/canaries and exercised recovery, not queued-cleanup or DB-only success. |
+| B12 — Open: whole M1 release | Join J01–J10/C01–C15/C20 to actual English speech, native/paired receivers, current shared/native owners and exact hardware; independently review measured task quality, operational failure and public/licence claims. | Requires B01–B11 and G01–G10. Retain exact subject/evidence per owner; no fabricated/mock/default-excluded criterion or missing mandatory installed/physical case closes M1. |
+
+### Shared source allocation and concrete producer entry work
+
+| Owner | Reused responsibility / work required before dependent consumption |
+| --- | --- |
+| Refpath public execution/conversation | Selected local agent/turn/task/routing/tool/funding/cancellation and private persistence contracts; CV.01/CV.04, IN.23/IN.38 scoped transport/identity and IN.44 voice contracts. Qualify current Home peer/principal association, admitted export, executable ABI/provider install/retirement, finite scopes/resource controls and original-task recovery. Missing shared limits/lifecycle extend that producer; no Home clone. |
+| Refpath speech/provider | Qualify actual English local ASR/TTS/model, private audio artifact/lease/format conversion, offline assets/rights, installed hardware/latency and failures. Current whisper.cpp native/fake-executable conformance is not real audio/ABI/installed Home proof. Existing generic voice connector proposals do not supply a WoTEx Home endpoint. |
+| WoTEx TD/TM/WPF/runtime/UDP | Existing generic parser/interpreter/units, public consumption and protocol mechanics. Home owns accepted meanings/target/risk/trust/report policy. New schema/operation/radio needs its generic owner plus exact Home profile/correspondence and hardware evidence. Do not create a second parser/protocol runtime from agent output. |
+| WoTEx routines / ExBooking | Reuse selected public calculation/source/occurrence/civil/clock interfaces; complete the actual Decision/Collection/composed semantics required by the offered profile, independent correspondence and active membership before Home admission. Newer sibling proof is not the consumed pin. No parallel calendar/scheduler/kernel. |
+| ExMaude | Existing bounded result/receipt/checker, no generic positive safety certificate. Complete missing Home semantic correspondence/restricted admission at its native owner; composed work stays gated until its actual proof profile exists. |
+| Home | Native domain/Store originals, current grant/custody/clock/qualifications, device and scene/routine policy, consumer-only facade, native audio permission/presentation, installed local/paired lifecycle and physical evidence. Device workers never receive Store handles/operator bearers. |
+
+Entry source `3dadb1d11a8048b9d5098d2c8d636dd748d09414` was clean. Existing
+Mix source/lock selections are unchanged: WoTEx UDP
+`dde1837f03f88a847ba5a0ec4479711a5ff1cf96`, WoTEx profiles/runtime
+`687a5cd70267fa47dbfb36e28eccad6ef2964fdf`, routines
+`5fc17f4a8b36da9ca2b6f4dd19a6ee1a63bfdcaa`, ExBooking
+`3fa614cd3cf106aba7161e17015969634afc3730` and ExMaude Hex `0.5.0`.
+Refpath `ea4eb256d453ef828cae5214948d819f9e7d3b94` was inspected during planning;
+it is **not** a selected/installed Home dependency. No source pin is upgraded
+by accepting this target. Generic producer work remains at its existing repo
+owner; the present authorization writes Home specs/tracker only.
+
+### Required qualification gates
+
+These gates select evidence for the owning spec cases, not new acceptance
+semantics or a second progress ledger. All are open.
+
+| Gate | Required evidence and refusal |
+| --- | --- |
+| G01 Shared consumption | Exact sources/licences, public contracts/export/ABI/configuration, storage/custody and actual Home receiving path. Missing admin/raw/protected producer ability is refused, not assumed. |
+| G02 English local voice | Complete installed local ASR/agent/TTS/artifacts and audio endpoints, actual independent English utterance/repair corpus, WAN-cut, latency/resource and permission/output lifecycle. English-only; no text-only or fake-audio substitution. |
+| G03 Current authority | Actual local/paired/tool/native read and mutation paths with current principal/peer/controller/grants, revocation/expiry/changed basis and protected exact-subject review. Voice/model/ReviewGate capacity is not approval. |
+| G04 Real cohort | Exact lights/capabilities and read-only detector/coordinator; physical read/write/readback/transition, independent observation, alarm independence, WAN-cut and drift/interruption. No inherited brand/signature/fixture qualification. |
+| G05 Scenes and rule safety | Exact member/active-set scope, partiality, whole-Thing arbitration, isolated shadow, supported positive admission and current review/activation. Unknown/inconclusive/conflict fails closed. |
+| G06 Temporal execution | Actual selected producer/clock/input/civil contracts, occurrence identity, lateness/catch-up, overrides, current author/grants and restart/clock loss. No unselected kernel or autonomous profile inferred from pure calculation. |
+| G07 Installed native/paired tasks | Signed actual service/custody/certificate-clock/audio, native and paired tasks, keyboard/VoiceOver/reflow/focus/review/original continuity and sleep/lock/disconnect. Mounted/unsigned-only evidence is insufficient. |
+| G08 Privacy/disposal/restore | Scoped canaries across conversation/audio/derived data/logs/export/backup, real retention/disposal and suppressed stale restore, native unresolved originals/spent roots retained and single owner fenced. |
+| G09 Operational boundedness | Actual model/speech/storage/capture/tool caps, overload/noisy-neighbor, cancelled/dead workers, observations/alarms responsiveness, device/host/power/restart recovery and no duplicate effect. Report measured supported conditions, not a universal safety/performance promise. |
+| G10 Whole release | Independently review J01–J10 and C/U/A/P traceability, consented English quality evidence, precise public support/help/release claims, accountable licensing and exact retained evidence for every mandatory owner case. Documentation checks cannot close installed/physical or legal/safety qualification. |
+
+### Documentation delivery and validation handoff
+
+The approved target is written at the existing semantic owners and their three
+native/paired receiving contracts, the canonical index/catalogue and this
+tracker. Existing implementation/evidence axes remain unchanged. Original
+requirement/case IDs and historical test/host/physical limitations remain;
+new voice and M1 cases are open. The local-controller mechanism plan links here
+without creating another M1 ledger. No runtime, migration, fixture, dependency,
+model, firmware, app or producer code is implemented by these changes.
+
+The initial native catalogue check passed all 22 canonical contracts using the
+actual `Mix.Tasks.Woh.Spec.Check.check/1`. Final checks, review findings and
+session-owned cleanup are recorded below before handoff. The first engineering
+work remains B01/B03's exact public read/refusal/original contract alongside
+B04/B10's existing real cohort and installed-custody critical path; do not start
+live dispatch or broad agent tools to work around missing prerequisites.
+
+### Executed documentation verification — 2026-11-01
+
+The documentation delivery covers 26 existing files: nineteen canonical owners,
+three native/paired receiving contracts, index/catalogue, this tracker and the
+existing local-controller plan's link to it. No new tracker, runtime, schema,
+fixture, model/provider, dependency or host procedure was introduced. All 171
+original catalogue cases and original numeric requirement IDs are preserved;
+51 open cases bring the catalogue to 222. All contract implementation/evidence
+axes are unchanged. C01–C20, J01–J10, U01–U08, A01–A06, P01–P06, B01–B12 and
+G01–G10 have complete nonduplicated inventory rows; all packages/gates remain open.
+
+Two review passes followed ordinary voice, protected review, scene partiality,
+routine/clock, revoke, original recovery, privacy and restore paths across their
+actual owning source/contracts. Corrections made before handoff:
+
+- Kept the classifier's original demonstration/evaluation evidence while
+  replacing its future-microphone/ten-command framing for the new M1 profile.
+- Bound the consumer to the actual seven-key Mutation/API and native original.
+  Explicitly identified that `Authority.submit/3` produces a held receipt;
+  native qualified execution is additional open work, not an ACK-to-success path.
+- Made native review capacity distinct from current human approval and
+  retained all current Store/revision/profile/qualification checks.
+- Put spoken disposition/uncertainty first, stop TTS before the next capture,
+  and recheck source audience/revocation before prompt/history/buffer/output
+  use. Output limits or an old transcript cannot hide or bypass those facts.
+- Preserved exact independent routine/physical/installed proof gates and
+  prevented wider lighting, media, appliance or voice support from inheriting
+  a narrower software/profile result. Updated index/version dates and table
+  structure without rewriting historical evidence dates.
+
+Executed `mise exec -- mix woh.spec.check`: exit 1, because this checkout lacks
+its declared dependencies (including the selected WoTEx/ExBooking/ExMaude,
+yaml_elixir and native/ML packages). No dependencies were installed. Executed
+the same existing checker source directly using:
+
+```sh
+mise exec -- elixir \
+  -pa /Users/futhr/Code/refpath/_build/dev/lib/yaml_elixir/ebin \
+  -pa /Users/futhr/Code/refpath/_build/dev/lib/yamerl/ebin \
+  -r lib/mix/tasks/woh.spec.check.ex \
+  -e 'IO.inspect(Mix.Tasks.Woh.Spec.Check.check("docs/specs"))'
+```
+
+Result: `{:ok, 22}`. Read-only parser application versions yaml_elixir 2.12.2
+and yamerl 0.10.0 match Home's `mix.lock`. The checker validates actual catalogue
+identities, versions, case references and dependency cycles; its predicates were
+not replaced. Additional bounded documentation queries confirm preserved
+statuses/requirements/cases, fifteen added local links, inventory and new table
+shape, no untracked files and changes confined to the 26 allowed documents.
+`git diff --check` passes. No application, database/Store, speech/model,
+browser/native accessibility, installed host/paired transport, hardware,
+network/power or deployment test ran. The check establishes documentation
+consistency; G01–G10 still require their real evidence. Shared read-only parser
+libraries/caches and private retained Home data were not changed.
+
+Final boundary checks retain the clean entry's original 204 inspected documents
+and confine the patch to the 26 intended documentation paths. Dependency/source,
+native code, tests, schemas and fixtures remain unchanged; no `deps` or `_build`
+directory was created. The existing catalogue check was rerun on the final
+canonical-spec tree and again passed all 22 contracts with preserved original
+statuses/requirements/cases. Whitespace checks passed after handoff edits.
+
+Session cleanup removed only
+`/var/folders/mn/3p3l7s893gn5lx3d4vybx_j00000gn/T/wotex-home-agentic-specs-oe0hpwfb`.
+All entries were owned by UID 501, with no symlink or live reader
+(`lsof -nP +D`, exit 1 with empty output). Removed 12 regular files and reclaimed
+275,227 logical bytes / 303,104 allocated bytes; verified that exact directory
+is absent. Shared parser/build caches, private custody/histories and other
+sessions' outputs were preserved. No containers, images or volumes were created.
+
 ## Local controller product delivery
 
-The [universal routines plan](universal-routines-delivery.md) adds generic
-producer work in ExBooking/WoTEx and the planned WOH.20 consumer successor.
-Specifications precede implementation; the first authorized code slice is
-ExBooking's generic original-occurrence API. It does not replace the current
-durable/installed-host critical path or update Home dependencies implicitly.
+The [universal routines plan](universal-routines-delivery.md) records generic
+producer work in ExBooking/WoTEx and WOH.20's bounded consumer work. Each
+producer's current handoff owns its next executable slice; new shared behavior
+is defined and qualified there before Home consumes it. The M1 packages above
+govern joined Home adoption while the current durable/installed-host/physical
+critical path stays required. No dependency is updated implicitly.
 
 The [local controller delivery plan](local-controller-delivery.md) extends this
 critical path with complete standalone Mac workflows, autonomous scheduling,

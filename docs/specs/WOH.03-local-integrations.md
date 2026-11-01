@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.66. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.67. Updated: 2026-11-01. Status: accepted target. Each implementation advertises only its qualified subset.
 
 The [private MQTT source installation](private-mqtt-installation-v1.md) now
 composes the local publisher from immutable operator profile/capture/policy and
@@ -226,3 +226,14 @@ ACK-to-state equivalence or command causation.
 H03-T8: the local-device behaviour annex requires independent cover/media/load/remote
 semantics, lifecycle refusal and exact-cohort physical acceptance; its planned
 software peers alone do not qualify devices.
+
+## M1 control and report cohort
+
+**H03-M1.** The English voice/text facade delegates through Home Authority and current Store dispatch, never directly to a protocol adapter. Freeze an exact model/firmware/host/runtime/capability manifest before implementing the M1 physical profile. Complete the supported lighting journey on the owned LIFX cohort, including power and its actually present declared brightness/colour/white/transition capabilities. Existing `lifx-direct-power-v1` requires immediate Boolean power only; widening its declaration, adding a fade or reusing its signatures for colour is forbidden. Broader claims need newly bound typed intent, unit/quantization/gamut/transition and settlement semantics plus separate qualification. A deliberately narrower reference profile must be explicitly accepted and its exclusions published; a stub returning unsupported cannot silently satisfy the approved lighting journey.
+
+The purchased Aqara detector remains a separately identified read-only cohort with its actual coordinator/firmware and independently functioning alarm. Hue/Shelly and generic sensor mappings keep exact-profile qualification tasks; no brand-wide support is inherited from the agent's vocabulary or read-only/scripted-peer tests. MQTT/certified TLS or interface reachability also does not establish semantic truth.
+
+Bound ACK/readback to the actual transition and correlated fresh request. LIFX's immediate response can precede a visual change; do not settle a fade from it. Preserve `unauthenticated_local` where appropriate, and distinguish reported match from actual light output or causal proof.
+
+H03-M1-T1: execute supported absolute light changes and a multi-light scene by English voice and text through the real installed facade, Authority, Store, worker and exact hardware; independently record request bytes/meaning, no-widening guards, readback timing, physical observation and limits. Fixture/model output cannot qualify the cohort.
+H03-M1-T2: unsupported colour/fade, stale report, wrong peer/sequence, lost ACK/readback, address change and worker death produce the owning refusal/unknown state with no raw-tool bypass or automatic new attempt. Record WAN-cut and physical interruption separately.

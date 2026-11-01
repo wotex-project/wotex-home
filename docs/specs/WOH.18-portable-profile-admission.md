@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.100. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.101. Updated: 2026-11-01. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 The [private MQTT installation](private-mqtt-installation-v1.md) supplies
 ordinary Host composition from explicit local source/capture/policy plus separate
@@ -710,3 +710,12 @@ install/revoke originals and complete requested collection have separate native,
 durable and recovery obligations. The programme and independent entry vectors
 are frozen; implementation and physical review remain open. Existing ordinary
 read approval and retained historical packages do not grant routine input use.
+
+## Conversational profile assistance stays inert
+
+**H18-M1.** WOH.06 C11 guides existing manual/import/generated authoring through WPF.03 finalization and the same Home policy/custody/Authority/Store paths. Model/tool output is untrusted bounded source evidence; it cannot invent a semantic quantity, packet endpoint, privileged capability, publisher trust or positive physical qualification. Preparation, finalization, source export consent, local approval, target selection, enrollment, qualification and command grant remain separate current native decisions. The existing remote authoring adapter is not permission for cloud voice/context export, and its provider/schema success does not install a profile.
+
+A generated replacement must show exact changed bytes/meaning/source/firmware, affected targets/routines/grants and current reviewed basis. Reusing a friendly name or cached guidance cannot widen control. Producer-independent original replay/status/revocation retains the existing contract when the live generator/reader is missing; do not force another generation attempt merely to recover history.
+
+H18-M1-T1: manual and agent-assisted/import source reach the same finalizer, native review and real Store selection guard. Substitute a source, target, model claim, privileged mapping or stale reviewed basis: independent vectors and original history show refusal and zero control authority.
+H18-M1-T2: lose generator/pairing/response during a prepared and a selected operation, revoke access and restart. Only the exact current-authorized original can be recovered; no new profile, lease, grant or effect is minted to make the task appear complete.

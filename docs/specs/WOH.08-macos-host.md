@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.155. Status: accepted target.
+Version: 0.2.156. Updated: 2026-11-01. Status: accepted target.
 
 The [native certificate clock source](native-certificate-clock-v1.md) now has
 its inert codec/lease, fixed-file production owner, volatile withdrawal and
@@ -594,3 +594,12 @@ owner. The read, CLI and typed SDK now pass actual SQLite/UDS/TLS and independen
 native decoding checks, without adding a writer or changing the identity route.
 It grants no later use-case authority. Actual signed selection and UI/recovery
 composition remain pending; saved approved access is historical metadata.
+
+## Native English voice M1 receiving tasks
+
+**H08-M1.** WOH.06 U01–U08/A01–A06 define required native families. Reuse the current Things/Rules/Activity/Setup shell, shared session/selection/custody/pending models and actual service registration. First launch remains Setup without implicit API/credential/microphone access; after explicit configuration the normal-use front door is conversation with visible current Home scope and text parity. No duplicate controller, transcript-owned business state or separate privilege model. The app/menu/keyboard action share one explicit push-to-talk owner; closing a window stops its capture while an enabled Home background service remains independent.
+
+M1 requires selected English input/output, recording/permission/mute visibility, partial versus final transcript, ambiguity repair, spoken/text outcome, interrupt, original pending/recovery, protected native handoff and usable typed controls. Mic denial/revocation, lock/sleep/wake, audio route loss, Refpath crash and paired-link loss have reachable native states. Native switches reflect actual registration/permission/availability, not an optimistic click. Existing adaptive thresholds/focus continuity remain; the new surfaces need real installed keyboard/VoiceOver/contrast/motion/enlarged-text evidence. No full-duplex or wake-word guarantee follows from a microphone.
+
+H08-M1-T1: J01/J02/J03 run on a signed installed Mac with the actual local English speech/agent profile and qualified light; exercise app/menu/keyboard, permissions, transcript repair, interruption, control and recovery. Test real native mic/Keychain/background ownership rather than substituted pipes or unsigned refusal only.
+H08-M1-T2: complete U/A tasks at compact/medium/expanded boundaries with keyboard/VoiceOver, current scope and outstanding original intact. Revoke mic, lock/sleep, switch controller and disconnect a paired client during a turn: capture/output stop, old views cannot publish, and native status/manual control remains truthful.

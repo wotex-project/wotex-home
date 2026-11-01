@@ -1,11 +1,18 @@
 # WOH specification index
 
-WOH.00–WOH.13 are target contracts at 0.2.x; WOH.14–WOH.20 cover durability,
-API/authority, release/recovery, optional component extensions and portable
-profile admission, the optional shared server and reusable routines at 0.1.x.
-WOH.21 covers multiroom music at 0.2.x. Exact versions and
-implementation/evidence status
-live in the catalogue. No runtime implementation is implied by a target contract.
+WOH.00–WOH.21 own the product, device, safety, interaction, host, durability,
+authority, recovery, profile, routine and media contracts. Exact versions and
+separate implementation/evidence status live in the catalogue. WOH.06 now owns
+the accepted English voice/conversational M1 target. A target contract does not
+establish runtime delivery or installed/physical qualification.
+
+## Accepted English voice first milestone
+
+[WOH.06](WOH.06-local-intent.md) owns the primary English push-to-talk/text experience, twenty capability dispositions (C01–C20), ten branching journeys (J01–J10), eight everyday families (U01–U08), six protected native families (A01–A06) and six public release/help families (P01–P06). Ordinary qualified changes use current grants without per-command visual approval; protected native decisions and unavailable high-impact operations remain distinct. Home Authority/Store retains all physical authority.
+
+[The existing implementation tracker](../plans/implementation.md#english-voice-and-conversational-m1) records the twelve remaining delivery packages, source allocation and required qualification gates. Refpath supplies a separately qualified local shared service; its present availability is not inferred from sibling source. Existing classifier, hardware, native and routine evidence remains bounded; no catalogue implementation/evidence status is promoted. Optional appliance/Matter/media and Goatmire profiles retain their independent scope.
+
+## Canonical owners
 
 | Contract | Responsibility |
 | --- | --- |
@@ -15,7 +22,7 @@ live in the catalogue. No runtime implementation is implied by a target contract
 | [WOH.03](WOH.03-local-integrations.md) | LIFX, Hue, Shelly and Aqara local mappings |
 | [WOH.04](WOH.04-state-automation.md) | Rule admission, arbitration and runtime prevention |
 | [WOH.05](WOH.05-safety-security.md) | Safety boundaries, credentials and threat model |
-| [WOH.06](WOH.06-local-intent.md) | Trained local intent classification and uncertainty |
+| [WOH.06](WOH.06-local-intent.md) | English voice, conversational control and qualified shared execution |
 | [WOH.07](WOH.07-formal-verification.md) | Proof scope, model fidelity and qualification |
 | [WOH.08](WOH.08-macos-host.md) | Native UI, background host and local IPC |
 | [WOH.09](WOH.09-nerves-host.md) | Appliance parity, boot, storage and updates |

@@ -1,7 +1,7 @@
 # Native task shell v1
 
-Version: 0.1.4. Implemented task composition with bounded software evidence,
-2026-10-08. WOH.08 owns the adaptive
+Version: 0.1.5. Updated: 2026-11-01. Existing task composition has bounded software evidence dated
+2026-10-08; the English voice M1 extension below is an unimplemented target. WOH.08 owns the adaptive
 profiles and accessibility obligations. This shell consumes existing shared
 authority/session models and creates no controller or permission model.
 
@@ -74,3 +74,9 @@ The complete Swift app compiles with warnings as errors. Existing session
 operations and portable-profile workflows pass 34 and 16 private-Store cases;
 the new Thing panel passes ten. App inventory/SPDX checks pass. These fixtures
 establish software composition, not signed installed custody or device effects.
+
+## Accepted English voice M1 receiving extension
+
+WOH.06 U01–U08/A01–A06 and WOH.08 H08-M1 own the new primary conversation/voice tasks. Reuse this shell's shared native session, scope, selection, draft and pending-original models. Initial Setup remains explicit and does not access a credential/API/microphone. After setup, voice/text is the normal-use entry while Things/Rules/Activity/Setup and typed controls remain reachable. No optimistic tool reply changes a Thing card or marks an original complete.
+
+Show mic permission/recording/selected endpoint, partial/final transcript, ambiguity, current controller/principal/targets, protected review receiver, spoken privacy and unavailable/model/offline/unknown states. Layout/navigation preserves the exact review subject and outstanding original. Mic/TTS stop on lock, sleep, scope switch or permission loss; a new client view cannot resurrect capture or dispatch. Execute H08-M1-T1/T2 and H06-T20 on signed installed and paired native tasks, including actual VoiceOver/keyboard and adaptive settings. Prior mounted-window/software results above do not qualify this new voice extension.

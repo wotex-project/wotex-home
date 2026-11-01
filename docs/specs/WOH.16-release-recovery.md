@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.146. Status: accepted target.
+Version: 0.1.147. Updated: 2026-11-01. Status: accepted target.
 
 The [HTTP dependency contract](http-header-dependency-v1.md) selects the exact
 upstream Cowlib encoder fix and bounds one advisory acknowledgement to its
@@ -789,3 +789,14 @@ Dependency reports count pairing rows and deny credential reissue. Quarantined
 restore and destination acceptance retain consumed originals without retaining
 raw bearers or transient invitation windows. Later acceptance revokes archived
 principals/grants; an old invitation can never authorize replacement access.
+
+## Assistant lifecycle, privacy and public release material
+
+**H16-M1.** The selected Refpath owner persists qualified local conversation/task state once; Home keeps native business/receipt truth and required scoped associations. WOH.06 defines conservative text/audio/context bounds; native controls may disable or shorten text history. Treat seven days as a product default, not a legal retention requirement. No default raw-audio archive, cross-home context, operational-data training or private-prompt telemetry. Derived summaries/embeddings and exports inherit exact source purpose/audience/deletion. Native unknown-effect obligations, spent roots, retained review/qualification history and tombstones cannot be swept with chat deletion. A failed disposal is visible; do not report success from a queued cleanup job.
+
+Backups/restore/transfer cover the actual selected shared custody plus native Store and artifact/key/counter continuity, with scope minimization and current authorization. Restore quarantines stale principals, assistant scopes, old-clock freshness, disposed context and pending shared/native work until the actual fencing/current guards pass. It cannot replay an uncertain effect, restore deleted private context silently or re-arm dispatch. Upgrade/model/voice/runtime changes preserve originals but reopen affected profile/evidence checks. Speech/resource failure cannot starve native recovery.
+
+WOH.06 P01–P06 require truthful public overview, install/offline assets, compatibility, privacy/security, help/recovery and release/licence notices through existing documentation/release surfaces. No hosted subscription/customer-account or anonymous control API is required. Retain explicit unresolved Home/model/dependency redistribution rights before publication. Static docs, release inventory, signed install, physical cohort and safety certification are distinct claims.
+
+H16-M1-T1: complete actual installed update/backup/restore/transfer with shared/native task associations and originals under WAN loss/revocation. Verify fenced single owner, preserved spent roots, no stale qualification/freshness or replay; model/service absence does not remove native recovery.
+H16-M1-T2: consented canaries through audio/text/tool/context/log/cache/export/backup and derived storage prove bounded retention, current access and actual disposal/recovery suppression. Public P01–P06 accurately list exact support, private-data policy, unresolved licensing and failed/not-run gates; no placeholder proves completion.

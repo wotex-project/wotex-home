@@ -1,6 +1,6 @@
 # Controller connections v1
 
-Version: 0.1.8. Owner: WOH.15, H15-07/H15-T8. Status: accepted target; bounded pairing/review codecs, transient local review, atomic Store consumption, per-install identity factory, explicit core LAN listener, OTP/Apple TLS bootstrap and native ordinary API foundations implemented; installed pairing and native remote workflow selection remain planned.
+Version: 0.1.9. Updated: 2026-11-01. Owner: WOH.15, H15-07/H15-T8. Status: accepted target; bounded pairing/review codecs, transient local review, atomic Store consumption, per-install identity factory, explicit core LAN listener, OTP/Apple TLS bootstrap and native ordinary API foundations implemented; installed pairing and native remote workflow selection remain planned.
 
 ## Transport and authority
 
@@ -160,3 +160,9 @@ mutation responses. Run identical Authority cases through UDS and TLS with
 independent clients. Audit artifacts, arguments, logs and discovery for secret
 absence. Installed Apple/OTP interoperability and actual headless first-boot
 custody are separate from synthetic TLS peers.
+
+## Accepted English voice M1 paired consumer
+
+WOH.06/15 require a qualified paired LAN native voice/text client using this owner's current controller identity, certificate-clock, association, private custody and limited native grants. Microphone location, model/speech-service location and Store/transport location are independent disclosed facts. No automatic remote assistant discovery or cloud relay; signed client pairing does not grant device or protected administration.
+
+Re-resolve the finite assistant scope at every request and current native effect boundary. Controller/principal/certificate/association change invalidates active capture/output/context and unsent old work. The private task/original association survives uncertain replies for current-authorized status/cancel/reconciliation without model availability; no new operation is minted. H15-M1-T1/T2 and H08-M1-T1/T2 require actual paired TLS/Store and signed installed success in addition to existing unsigned/refusal/software evidence. The existing narrower paired power path is not broader lighting/voice qualification.

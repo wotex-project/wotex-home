@@ -1,7 +1,7 @@
 # Native quick bar v1
 
-Version: 0.1.0. Implemented menu-bar composition with bounded software evidence,
-2026-10-08. WOH.08 owns this presentation. It adds no Authority route, credential,
+Version: 0.1.1. Updated: 2026-11-01. Existing menu-bar composition has bounded software evidence dated
+2026-10-08; the English voice M1 extension below is an unimplemented target. WOH.08 owns this presentation. It adds no Authority route, credential,
 control permission, worker or physical qualification.
 
 The app installs a SwiftUI menu-bar extra with a window-style dropdown. Its
@@ -74,3 +74,7 @@ app source compilation/assembly. Fixture compilation and mounted dropdowns do
 not establish actual system menu-bar accessibility, signed installed custody,
 SMAppService lifetime or physical qualification. Those installed-host and
 hardware obligations remain open under WOH.08 and its host/lab procedures.
+
+## Accepted English voice M1 menu extension
+
+WOH.06 C01/C02 and WOH.08 H08-M1 add explicit push-to-talk and current task/original status to this same shared app model. Menu/keyboard/window actions share one capture reservation and current selected session; no menu-specific credential, assistant or controller exists. Recording/mute/permission and selected input/output are visible, keyboard stop is reliable, and privacy-safe text remains available. Do not record automatically, re-submit a pending original on reopen, or interpret TTS output as input. Host registration remains distinct from assistant readiness and authenticated Home health. H08-M1-T1/T2 and H06-T19/T20 supply new installed evidence; existing menu software evidence is unchanged.

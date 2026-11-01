@@ -1,6 +1,6 @@
 # WOH.10 — Optional Matter export and ecosystem boundaries
 
-Version: 0.2.3. Status: accepted target. Matter server/bridge implementation remains an upstream prerequisite.
+Version: 0.2.4. Updated: 2026-11-01. Status: accepted target. Matter server/bridge implementation remains an upstream prerequisite.
 
 ## Separate roles
 
@@ -33,3 +33,9 @@ These are optional voice/control surfaces. Structured ecosystem commands do not 
 ## Acceptance
 
 H10-T1: stable endpoints and restart/remove/re-add behavior with an independent controller. H10-T2: two fabrics issuing conflicting commands reach one Home arbiter. H10-T3: denied/safety commands remain denied. H10-T4: subscription gaps and unknown effects are not presented as successful actuation. H10-T5: self-discovery cannot loop back into the physical command path. H10-T6: Apple/Google outages do not affect the direct local API or admitted automations. Physical ecosystem tests and certification are reported separately.
+
+## Later ecosystem input and M1 separation
+
+**H10-M1.** Matter and vendor/voice satellite endpoints remain separately admitted optional profiles. WOH.06 English voice M1 is delivered through the native app/paired LAN client and does not depend on a Matter bridge or Home Assistant installation. A later endpoint maps into the same Home Authority/Store with exact current subject/target/risk, not a raw device path. Ecosystem pairing or voice-platform recognition grants neither Home administration nor smoke maintenance.
+
+H10-M1-T1: offered capabilities and public compatibility distinguish native M1 from unavailable Matter/satellite profiles. When separately implemented, repeat current-revoke, forbidden-operation and original-recovery assertions through that endpoint; controller-role or playback evidence cannot qualify bridge/control behavior.

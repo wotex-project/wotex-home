@@ -1,6 +1,6 @@
 # WOH.07 — Proof obligations, admission and model fidelity
 
-Version: 0.2.20. Status: accepted target. This contract does not claim a completed verifier.
+Version: 0.2.21. Updated: 2026-11-01. Status: accepted target. This contract does not claim a completed verifier.
 
 ## What the present library proves
 
@@ -106,3 +106,12 @@ cannot transfer proof or physical evidence. Retain the complete Home/UDP code
 basis; a smaller scope requires independent dependency/correspondence and
 mutation evidence showing omitted policy, Store and adapter behavior is irrelevant.
 No external profile admission or narrower digest is implemented by this change.
+
+## M1 language is outside the proof authority
+
+**H07-M1.** Generative explanations, schema-valid source, recognizer confidence and signed synthetic receipts are not positive admission or physical qualification. WOH.06 uses this owner's current result/completion vocabulary and exact source/IR/runtime/profile/invariant basis. The selected Refpath service may prepare work; Home's native compiler, bounded checker and current Store guards decide it. Keep the existing ExMaude 0.5.0 receipt scope and missing composed positive proof visible. A timeout, unavailable producer, unsupported field or incomplete active set fails the affected admission rather than weakening it to a search-depth check.
+
+M1 release proof covers the actual chosen restricted routine/scene/schedule semantics and independent runtime correspondence, including transitions/clock/unknown/effect outcomes. Cached evidence requires the complete current subject; a model/provider update cannot rewrite a historical proof. Native ordinary control does not add per-click model checking.
+
+H07-M1-T1: use actual conversational/manual source through the same public finalizer/compiler and native admission. Independently mutate negation, unit, effect domain, late occurrence and omitted active member; the appropriate structural/correspondence/guard assertion detects each forbidden change with zero shadow effect.
+H07-M1-T2: stop or change model/checker/profile/runtime between preview, native review and activation. Positive evidence cannot be manufactured from unavailable/inconclusive output, and still-applicable admitted routines follow their existing availability contract.

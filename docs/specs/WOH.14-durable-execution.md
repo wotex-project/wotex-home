@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.141. Status: accepted target.
+Version: 0.1.142. Updated: 2026-11-01. Status: accepted target.
 
 The [bounded remote generation adapter](openai-generation-adapter-v1.md) now
 supplies an explicitly selected authenticated endpoint, private credential, finite
@@ -826,3 +826,12 @@ report lifetime renewal. Existing legacy wire formats and successful controls
 retain their scope. Full clock-loss/run encodings, Integrity/Backup joins and
 RCB-T1–T12 remain planned before implementation; a failed write cannot restore
 physical permission or become a resend instruction.
+
+## Shared tasks preserve native effect originals
+
+**H14-M1.** WOH.06 conversation/shared task IDs are references, not a second Home request/effect store. Authority/Store remains the sole owner of physical operation identity, canonical payload, current checks, global revision, outbox/handoff and original receipt. Before a shared effect becomes uncertain, retain the authorized association to each native `(principal, authority epoch, operation ID)`; status/cancel/reconcile still works without the model/shared service. Defining this association must reuse the current ledger, not weaken it or create parallel generic task tables.
+
+A scene has an exact reviewed membership and one native original per accepted member; its parent status is an aggregate of those immutable outcomes, never a physical transaction or blanket rollback. Shared reasoning/tool limits and Home causal/attempt/occurrence limits are different obligations, both applied by their actual owner. Repeated agent calls, cancel, model outage, restart, conversation expiry and transfer cannot renew the Home operation, refund a root or turn unknown into failure/success. Preserve current qualification, declaration, report freshness and writer-owned clocks at admission/claim/handoff. A new absolute corrective command needs new current intention and must not overwrite an intervening newer control by inference.
+
+H14-M1-T1: run real shared-to-Authority/SQLite duplicate/concurrent control and two-member scene attempts, inject transaction failure and lose replies at each stage. Independent journal/causal-root/driver assertions prove atomic native records, original receipt reuse, no extra handoff and honest partial/unknown aggregation.
+H14-M1-T2: expire/delete conversation context, revoke a principal and restart/restore with pending/handed-off originals. Required native history and spent-root tombstones survive; foreign/revoked reads fail current access, unsent stale work cannot send, and unknown recovery never issues a new effect.

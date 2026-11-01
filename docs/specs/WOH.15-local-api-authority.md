@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.177. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.178. Updated: 2026-11-01. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 The [native certificate clock source](native-certificate-clock-v1.md) now has
 its inert codec/lease, fixed-file production owner, volatile withdrawal and
@@ -569,3 +569,46 @@ owner. The read, CLI and typed SDK now pass actual SQLite/UDS/TLS and independen
 native decoding checks, without adding a writer or changing the identity route.
 It grants no later use-case authority. Actual signed selection and UI/recovery
 composition remain pending; saved approved access is historical metadata.
+
+## Home-scoped local assistant consumption
+
+**H15-M1.** The selected local Refpath profile consumes a closed Home facade over the existing authenticated application boundary. A paired LAN client uses the qualified controller identity, certificate-clock, association, custody and current permission/grant contract; generic MCP/voice pairing cannot replace these facts. Use current Home principal/epoch/targets/operations and finite WOH.06 scope resolved outside model input on every read/new mutation and final native effect boundary. Never export raw Store/qualify/credential/worker/packet/SQL/shell/admin functions as agent tools. Use the existing generic Refpath transport/identity adapters rather than a second MCP/OAuth server or Home agent router. Missing producer/profile behavior is an explicit entry condition.
+
+Reads and ordinary requests are separate from draft preparation and protected review. An installed `ReviewGate` capacity slot or a model-generated decision is not human authority. Native approval binds the exact current subject and session; the agent may open that receiver and inspect permitted status only. A global host maintainer may have no device grants, and an ordinary voice operator has no host maintenance by implication. No new permission string or principal hierarchy is introduced by this spec; any necessary future schema/association evolution belongs to this owner with independent vectors.
+
+The current source correspondence for that consumer is:
+
+| Operation class | Existing public boundary and exact constraint |
+| --- | --- |
+| Catalogue/current/history | `Authority.catalogue/5`, `snapshot/5`, `history/7` and the owning current/fact read. Preserve native paging, watermarks, current grant and report quality; a model cannot supply a Store connection or fabricate a refreshed receipt time. |
+| Ordinary request | `Authority.submit/3` constructs the existing `Mutation` envelope. It stores a held receipt, not admitted/dispatched work. The missing qualified ordinary-execution join must advance only through current native admission/claim/handoff and the disabled-by-default host/qualification policy; never export a worker/claim function to make a tool appear successful. |
+| Native original status/cancel | `Authority.request_status/4` and `cancel/4` use the existing principal/epoch/operation original and actual current access. No changed identity or new submit is a status/recovery operation. |
+| Rule preparation | `Authority.review_rules/3` supplies bounded analysis/current basis only. The protected review/admission/activation owners commit their own decisions; neither its return nor `ReviewGate` capacity is human approval. |
+| Override | Existing native override issue/status/revoke use cases retain exact target, expected basis, duration and current permission; no model-owned timer, unlimited lease or second arbiter. |
+| Scenes/schedules/profiles/admin | Their current owning contracts supply the typed schema and native receiver. Any missing implementation remains unavailable; do not translate unsupported work into raw control, a shell command or a different permission. |
+
+For a current ordinary request preserve exactly the existing seven wire keys:
+`api_version` (integer 1), `operation_id`, `authority_epoch`,
+`expected_revision`, `target_id`, `capability_key` and `value`. IDs use
+`WotexHome.Id`; revisions are native nonnegative signed-64-bit-range integers;
+`value` passes the existing closed `Semantics.Value` contract and current
+declared capability/unit/risk checks. Envelope validity alone grants nothing.
+The trusted consumer supplies operation/epoch/revision from its current native
+session and retained original, outside model arguments; the model proposes
+only resolved target/capability/value semantics. Unknown/duplicate fields,
+foreign targets or caller-authored principal/credential/endpoint data refuse.
+Do not silently widen version 1 to accept unsupported colour/fade values: the
+owning semantic/profile/execution contract must first define and qualify them.
+
+Assign each intended native original once before its first submission and
+retain it before an uncertain response. Canonical payload reuse returns its
+native disposition; a changed payload conflicts. A stale expected basis is
+refreshed and reviewed under the actual operation contract, never overwritten
+inside a retry. Scene member originals use deterministic target-ID order for
+presentation/association, without claiming physical atomicity or simultaneous
+dispatch. Project native disposition/reason/revision faithfully, with bounded
+safe errors and evidence references; held, queued, acknowledged, observed,
+contradicted and unknown are not interchangeable success labels.
+
+H15-M1-T1: actual local and paired English/text clients enter the same Authority/Store use cases, producing equal typed outcomes and original identities. Independently authored wire vectors check the seven-key envelope, held versus dispatched meaning and original mapping. Change peer/controller/certificate-clock/association or provide model-authored principal/target/credentials: the real native boundary refuses without disclosure/effect.
+H15-M1-T2: revoke/expire while a shared task streams, waits for native review, queues or hands off. Independent framed/TLS and Store assertions prove current authorization, minimized streams, producer-independent original recovery and no raw/admin tool bypass. Signed installed success is separate from unsigned rejection.
