@@ -1,6 +1,6 @@
 ---
 name: authority-journey
-description: Change or verify authoring review, target/grant selection, original-operation replay/status or framed native requests when human admission and current durable authority can diverge. Excludes presentation-only styling and packet codecs.
+description: "Change, verify or security-audit authoring review, target/grant selection, original-operation replay/status or framed native requests when human admission and current durable authority can diverge. Exclude presentation-only styling and packet codecs."
 ---
 
 # Prove an operation through current Authority
@@ -50,3 +50,30 @@ resend. Workers receive scoped work, never the Store connection or operator bear
 Use [durable changes](../durable-changes/SKILL.md) for transaction/history mechanics
 and [delivery verification](../delivery-verification/SKILL.md) for actual lanes.
 This workflow supplies no physical dispatch or production authority.
+
+
+## Scoped security assessment
+
+For a security audit, map authenticated peer and exact reviewed subject through
+current Authority/Store grants, framed requests and original-operation replay.
+Keep native IPC, protocol acknowledgement and physical readback separate.
+Record revision/working-tree scope, checked paths and unobserved target/cohort facts.
+
+Establish each claim against the strongest current control and owning contract.
+Confirmed findings need a complete reachable boundary trace and evidence for
+the stated consequence. Keep decisive unobserved facts as `needs_validation`,
+with the exact missing check and no severity; reject disproved claims.
+Distinguish source inspection, inspected tests, executed local tests and live
+evidence. Group duplicate root causes and recheck previous findings against
+current source and conditions.
+
+Use the existing validation owner for authorized dummy-data regressions.
+Executing untrusted code or hostile native/availability checks requires verified
+OS isolation, no external networking, a sanitized environment and resource/time
+limits. If unavailable, leave that execution unverified and continue source
+review. A review grants no live/provider operations or agent-permission changes.
+Independent verification is conditional on authorized, available delegation;
+otherwise state the single-reviewer limit. Return findings in chat unless the
+requested deliverable and repository contract permit a report.
+
+Audit-method background: [Cloudflare's source-first workflow](https://github.com/cloudflare/security-audit-skill/tree/c1c8a8c1471069fb0e188eeaff69b8e8db6564a8/skills/security-audit).
